@@ -1,0 +1,511 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    color: rgb(var(--foreground-rgb));
+    width: 100vw;
+    background-color: #1a1f25;
+    z-index: 0;
+    overflow: hidden;
+}
+
+::-webkit-scrollbar {
+    width: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background-color: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background-color: #888;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background-color: #555;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.disabled-page {
+    display: flex;
+    flex-direction: column;
+    color: white;
+    font-size: 16px;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    width: 100vw;
+    background: #1a1f25;
+    gap: 16px;
+    opacity: 0;
+    animation: fadeIn 1s ease-in-out forwards;
+}
+
+.background-image {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    background-image: url("/game/background_new.png");
+    background-size: cover;
+    background-position: top;
+}
+
+.raffle-background-image {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    background-image: url("/raffle/background.png");
+    background-size: cover;
+    background-position: center;
+}
+
+.boost-background {
+    background-image: url("/game/boost.png");
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.boosting-background {
+    background-image: url("/game/boosting.png");
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.boosting-bubble {
+    background-image: url("/game/boostbackground.png");
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.success-background {
+    background-image: url("/game/success-container.png");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.skeleton {
+    display: block;
+    width: 100%;
+    height: 47px;
+    background: linear-gradient(90deg, #252a31, #3b4049, #252a31);
+    background-size: 200% 100%;
+    animation: skeleton-loading 1.5s infinite linear;
+    border-radius: 16px;
+}
+
+.skeleton-raffle {
+    display: block;
+    width: 100%;
+    background: linear-gradient(90deg, #252a31, #3b4049, #252a31);
+    opacity: 0.5;
+    background-size: 200% 100%;
+    animation: skeleton-loading 1.5s infinite linear;
+    border-radius: 16px;
+}
+
+@keyframes skeleton-loading {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+.background-blur {
+    /* -webkit-backdrop-filter: blur(2px);
+    backdrop-filter: blur(2px); */
+}
+
+.bg-blur {
+    -webkit-backdrop-filter: blur(2px);
+    backdrop-filter: blur(2px);
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+
+.hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.responsive-box {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+}
+
+@media (min-width: 430px) {
+    .responsive-box {
+        width: 111px;
+        max-width: 111px;
+        min-width: 111px;
+        height: 88px;
+        max-height: 88px;
+        min-height: 88px;
+    }
+}
+
+@media (min-width: 375px) {
+    .responsive-box {
+        width: 100px;
+        max-width: 100px;
+        min-width: 100px;
+        height: 80px;
+        max-height: 80px;
+        min-height: 80px;
+    }
+}
+
+@keyframes gradient-border {
+    0% {
+        background-position: 0% 50%;
+    }
+    100% {
+        background-position: 100% 50%;
+    }
+}
+
+.border-gradient-animated {
+    border: solid 4px transparent;
+    border-radius: 0.5rem;
+    background-image: linear-gradient(white, white), linear-gradient(to right, blue, purple, red);
+    background-origin: border-box;
+    background-clip: content-box, border-box;
+    animation: gradient-border 3s infinite linear;
+}
+
+.full-size-box {
+    height: 100%;
+    width: 100%;
+    display: flex;
+    align-items: flex-start;
+}
+
+@media (min-width: 430px) {
+    .full-size-box {
+        margin-top: 185px;
+    }
+}
+
+@media (min-width: 375px) {
+    .full-size-box {
+        margin-top: 136px;
+    }
+}
+
+@media (min-width: 360px) {
+    .full-size-box {
+        margin-top: 106px;
+    }
+}
+
+@layer utilities {
+    .text-balance {
+        text-wrap: balance;
+    }
+}
+
+.div-with-gradient-border {
+    position: relative;
+    z-index: 1;
+    border-radius: 16px;
+    overflow: hidden;
+}
+
+.div-with-gradient-border::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    border-radius: 16px;
+    padding: 2px;
+    background: linear-gradient(45deg, #5964f5, #343a8f);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    z-index: -1;
+}
+
+.div-with-gradient-border-airdrop {
+    position: relative;
+    z-index: 1;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.div-with-gradient-border-airdrop::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    border-radius: 12px;
+    padding: 1px;
+    background: linear-gradient(180deg, rgb(255, 255, 255, 0.2), transparent);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    z-index: -1;
+}
+
+.div-with-gradient-border-request {
+    position: relative;
+    z-index: 2;
+    border-radius: 16px;
+    overflow: hidden;
+}
+
+.div-with-gradient-border-request::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    border-radius: 16px;
+    padding: 2px;
+    background: linear-gradient(45deg, #5964f5, #7732bb);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+}
+
+.div-with-gradient-border-delete-modal {
+    position: relative;
+    z-index: 1;
+    border-radius: 16px;
+    overflow: hidden;
+}
+
+.div-with-gradient-border-delete-modal::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    border-radius: 16px;
+    padding: 2px;
+    background: linear-gradient(45deg, #5964f5, #7732bb);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    z-index: -1;
+}
+
+@keyframes slideInFromBottomLeft {
+    0% {
+        scale: 0;
+        transform: translate(-100%, 100%);
+        opacity: 0;
+    }
+    100% {
+        scale: 1;
+        transform: translate(0, 0);
+        opacity: 1;
+    }
+}
+
+.animate-slideInFromBottomLeft {
+    animation: slideInFromBottomLeft 0.2s ease-out forwards;
+}
+
+.progress-circle {
+    transform: rotate(90deg) scale(-1, 1);
+}
+
+.progress-background {
+    stroke: #7abf61;
+}
+
+.progress-foreground {
+    stroke: #eaffe1;
+    transition: stroke-dashoffset 0.5s;
+    transform-origin: 50% 50%;
+}
+
+.successrate-background {
+    stroke: rgba(69, 120, 179, 0.3);
+}
+
+.spot-light-blur {
+    filter: blur(55px);
+}
+
+.bordered {
+    border: 1px solid black; /* 边框样式为实线，颜色为黑色，宽度为1像素 */
+    padding: 5px; /* 可选，设置文字与边框的间距 */
+}
+
+.outlinedtexttitle {
+    color: white;
+    position: relative;
+    z-index: 0;
+}
+
+.outlinedtexttitle::after {
+    content: attr(data-content);
+    -webkit-text-stroke: 4px #000;
+    color: transparent;
+    position: absolute;
+    left: 0;
+    top: 0;
+    z-index: -1;
+}
+
+.outlinedtext {
+    color: white;
+    position: relative;
+    z-index: 0;
+}
+
+.outlinedtext::after {
+    content: attr(data-content);
+    -webkit-text-stroke: 3px #000;
+    color: transparent;
+    position: absolute;
+    left: 0;
+    top: 0;
+    z-index: -1;
+}
+
+.outlinedtext-bold {
+    color: white;
+    position: relative;
+    z-index: 0;
+}
+
+.outlinedtext-bold::after {
+    content: attr(data-content);
+    -webkit-text-stroke: 6px #521a00;
+    color: transparent;
+    position: absolute;
+    white-space: nowrap;
+    left: 1.5px;
+    top: 0;
+    z-index: -1;
+}
+
+.outlinedtext-bold-gurdiant-text-color {
+    position: relative;
+    z-index: 1;
+    color: transparent;
+    font-weight: bold;
+}
+
+.outlinedtext-bold-gurdiant-text-color::before {
+    content: attr(data-content);
+    position: absolute;
+    top: 0;
+    left: 0;
+    background: linear-gradient(to bottom, #ffd400, #f78701);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    white-space: nowrap;
+    z-index: -1;
+    font-weight: bold;
+}
+
+/* .outlinedtext-bold-gurdiant-text-color::after {
+    content: attr(data-content);
+    position: absolute;
+    top: 0px;
+    left: -2px;
+    white-space: nowrap;
+    color: #fff6c7de;
+    z-index: -2;
+    font-weight: bold;
+} */
+
+.outlinedtext-bold-gurdiant-text-color::after {
+    content: attr(data-content);
+    -webkit-text-stroke: 5.5px #521a00;
+    color: transparent;
+    position: absolute;
+    white-space: nowrap;
+    left: 1px;
+    top: 0;
+    z-index: -3;
+}
+
+.reward-box-background {
+    background-image: url("/game/reward-box-background.png");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.reward-popup-background {
+    background-image: url("/game/leaderboard-popup-bg.png");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    width: 100%;
+}
+
+.outlinedtext-leaderboard {
+    color: white;
+    position: relative;
+    z-index: 0;
+    text-shadow: 1px 1px 5px rgba(0, 0, 0, 0.5);
+}
+
+.outlinedtext-leaderboard::after {
+    content: attr(data-content);
+    -webkit-text-stroke: 1.5px #60b5ff;
+    color: transparent;
+    position: absolute;
+    white-space: nowrap;
+    left: 0.8px;
+    top: 0.5px;
+    z-index: -1;
+}
+
+.blur-bg-color {
+    filter: blur(60px);
+}
+
+.slide-in {
+    opacity: 0;
+    transform: translateY(100%);
+    transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
+}
+
+.slide-in.active {
+    opacity: 1;
+    transform: translateY(0);
+}
