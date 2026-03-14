@@ -2,7 +2,7 @@ import axios, { AxiosRequestConfig } from "axios"
 import { parsePaymentRequired, signX402Payment, encodePaymentHeader } from "../func/x402"
 
 const apiClient = axios.create({
-    baseURL: process.env.NEXT_PUBLIC_API_URL ?? "",
+    baseURL: process.env.NEXT_PUBLIC_API_URL || "",
     withCredentials: true,
     headers: {
         "Content-Type": "application/json",

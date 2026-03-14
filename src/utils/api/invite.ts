@@ -19,7 +19,26 @@ export interface InviteStats {
 export const fetchInviteStats = async (cursor?: string | null): Promise<InviteStats> => {
     const params: Record<string, string> = {}
     if (cursor) params.cursor = cursor
+    // TODO: Update to use new API
     const res = await apiClient.get<InviteStats>("/u/invite/", { params })
+    return res.data
+}
+
+// New API: Get invite info
+export const fetchInviteInfo = async (userId: string) => {
+    const res = await apiClient.get(`/api/invite?userId=${userId}`)
+    return res.data
+}
+
+// New API: Get invite code
+export const fetchInviteCode = async (userId: string) => {
+    const res = await apiClient.get(`/api/invite/code?userId=${userId}`)
+    return res.data.inviteCode
+}
+
+// New API: Claim invite reward
+export const claimInviteReward = async (userId: string, inviteCode: string) => {
+    const res = await apiClient.post('/api/invite/claim', { userId, inviteCode })
     return res.data
 }
 

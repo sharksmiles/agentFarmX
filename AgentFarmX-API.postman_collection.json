@@ -1,0 +1,614 @@
+{
+  "info": {
+    "name": "AgentFarm X API",
+    "description": "Complete API collection for AgentFarm X backend",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3001",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "user_123",
+      "type": "string"
+    },
+    {
+      "key": "sessionToken",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Authentication",
+      "item": [
+        {
+          "name": "Get Nonce",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/nonce",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "nonce"]
+            }
+          }
+        },
+        {
+          "name": "Login (SIWE)",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"localhost:3001 wants you to sign in...\",\n  \"signature\": \"0x...\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Get Session",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{sessionToken}}"}],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/session",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "session"]
+            }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "logout"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Farm",
+      "item": [
+        {
+          "name": "Get Farm State",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/farm/state?userId={{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "farm", "state"],
+              "query": [{"key": "userId", "value": "{{userId}}"}]
+            }
+          }
+        },
+        {
+          "name": "Plant Crop",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"plotIndex\": 0,\n  \"cropId\": \"Apple\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/farm/plant",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "farm", "plant"]
+            }
+          }
+        },
+        {
+          "name": "Harvest Crop",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"plotIndex\": 0\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/farm/harvest",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "farm", "harvest"]
+            }
+          }
+        },
+        {
+          "name": "Unlock Land",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"plotIndex\": 6\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/farm/unlock",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "farm", "unlock"]
+            }
+          }
+        },
+        {
+          "name": "Water Crop",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"plotIndex\": 0\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/farm/water",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "farm", "water"]
+            }
+          }
+        },
+        {
+          "name": "Boost Crop",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"plotIndex\": 0\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/farm/boost",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "farm", "boost"]
+            }
+          }
+        },
+        {
+          "name": "Upgrade Farm",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/farm/upgrade",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "farm", "upgrade"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Inventory",
+      "item": [
+        {
+          "name": "Get Inventory",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/inventory?userId={{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "inventory"],
+              "query": [{"key": "userId", "value": "{{userId}}"}]
+            }
+          }
+        },
+        {
+          "name": "Use Item",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"itemType\": \"energy_pack\",\n  \"itemId\": \"small\",\n  \"quantity\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/inventory/use",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "inventory", "use"]
+            }
+          }
+        },
+        {
+          "name": "Sell Item",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"itemType\": \"crop\",\n  \"itemId\": \"Apple\",\n  \"quantity\": 5\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/inventory/sell",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "inventory", "sell"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Energy",
+      "item": [
+        {
+          "name": "Get Energy Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/energy?userId={{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "energy"],
+              "query": [{"key": "userId", "value": "{{userId}}"}]
+            }
+          }
+        },
+        {
+          "name": "Buy Energy Pack",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"pack\": \"large\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/energy/buy",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "energy", "buy"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Social",
+      "item": [
+        {
+          "name": "Get Friends",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/social/friends?userId={{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "social", "friends"],
+              "query": [{"key": "userId", "value": "{{userId}}"}]
+            }
+          }
+        },
+        {
+          "name": "Send Friend Request",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromUserId\": \"{{userId}}\",\n  \"toUserId\": \"user_456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/social/friends",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "social", "friends"]
+            }
+          }
+        },
+        {
+          "name": "Search Users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/social/friends/search?q=alice",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "social", "friends", "search"],
+              "query": [{"key": "q", "value": "alice"}]
+            }
+          }
+        },
+        {
+          "name": "Get Friend Requests",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/social/friends/requests?userId={{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "social", "friends", "requests"],
+              "query": [{"key": "userId", "value": "{{userId}}"}]
+            }
+          }
+        },
+        {
+          "name": "Visit Friend Farm",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/social/user_456/farm",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "social", "user_456", "farm"]
+            }
+          }
+        },
+        {
+          "name": "Water Friend Crop",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"friendId\": \"user_456\",\n  \"plotIndex\": 0\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/social/water",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "social", "water"]
+            }
+          }
+        },
+        {
+          "name": "Steal Crop",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"friendId\": \"user_456\",\n  \"plotIndex\": 0\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/social/steal",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "social", "steal"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Tasks",
+      "item": [
+        {
+          "name": "Get Tasks",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks?userId={{userId}}&type=daily",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tasks"],
+              "query": [
+                {"key": "userId", "value": "{{userId}}"},
+                {"key": "type", "value": "daily"}
+              ]
+            }
+          }
+        },
+        {
+          "name": "Claim Task Reward",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks/task_123/claim",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tasks", "task_123", "claim"]
+            }
+          }
+        },
+        {
+          "name": "Get Daily Check-in",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks/daily?userId={{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tasks", "daily"],
+              "query": [{"key": "userId", "value": "{{userId}}"}]
+            }
+          }
+        },
+        {
+          "name": "Daily Check-in",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks/daily/claim",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tasks", "daily", "claim"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Leaderboard",
+      "item": [
+        {
+          "name": "Get Leaderboard",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/leaderboard?type=coins&limit=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "leaderboard"],
+              "query": [
+                {"key": "type", "value": "coins"},
+                {"key": "limit", "value": "50"}
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Leaderboard by Type",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/leaderboard/level?limit=50&userId={{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "leaderboard", "level"],
+              "query": [
+                {"key": "limit", "value": "50"},
+                {"key": "userId", "value": "{{userId}}"}
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Raffle",
+      "item": [
+        {
+          "name": "Get Raffles",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/raffle",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "raffle"]
+            }
+          }
+        },
+        {
+          "name": "Enter Raffle",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"ticketCount\": 3\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/raffle/raffle_1/enter",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "raffle", "raffle_1", "enter"]
+            }
+          }
+        },
+        {
+          "name": "Get Winners",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/raffle/raffle_1/winners",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "raffle", "raffle_1", "winners"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "9. Invite",
+      "item": [
+        {
+          "name": "Get Invite Info",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/invite?userId={{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "invite"],
+              "query": [{"key": "userId", "value": "{{userId}}"}]
+            }
+          }
+        },
+        {
+          "name": "Get Invite Code",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/invite/code?userId={{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "invite", "code"],
+              "query": [{"key": "userId", "value": "{{userId}}"}]
+            }
+          }
+        },
+        {
+          "name": "Claim Invite Reward",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"user_456\",\n  \"inviteCode\": \"INV12345\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/invite/claim",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "invite", "claim"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "10. Airdrop",
+      "item": [
+        {
+          "name": "Get Airdrops",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/airdrop?userId={{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "airdrop"],
+              "query": [{"key": "userId", "value": "{{userId}}"}]
+            }
+          }
+        },
+        {
+          "name": "Claim Airdrop",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"airdropId\": \"airdrop_1\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/airdrop/claim",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "airdrop", "claim"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

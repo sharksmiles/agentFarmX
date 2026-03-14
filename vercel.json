@@ -1,0 +1,20 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/energy-recovery",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/crop-maturity",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/agent-heartbeat",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/daily-reset",
+      "schedule": "0 0 * * *"
+    }
+  ]
+}

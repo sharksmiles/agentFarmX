@@ -36,12 +36,13 @@ model User {
   lastLoginAt   DateTime @default(now())
   
   // 关联关系
-  farmState     FarmState?
-  agents        Agent[]
-  inventory     Inventory[]
-  socialActions SocialAction[]
-  raffleEntries RaffleEntry[]
-  transactions  Transaction[]
+  farmState          FarmState?
+  agents             Agent[]
+  inventory          Inventory[]
+  socialActionsFrom  SocialAction[] @relation("SocialActionsFrom")
+  socialActionsTo    SocialAction[] @relation("SocialActionsTo")
+  raffleEntries      RaffleEntry[]
+  transactions       Transaction[]
   
   @@index([walletAddress])
   @@index([inviteCode])
@@ -321,20 +322,26 @@ model AgentDecision {
 
 model SocialAction {
   id            String   @id @default(cuid())
-  userId        String
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fromUserId    String   // 发起用户 ID
+  fromUser      User     @relation("SocialActionsFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
   
-  targetUserId  String   // 目标用户 ID
-  actionType    String   @db.VarChar(50) // "visit" | "water" | "steal"
+  toUserId      String   // 目标用户 ID
+  toUser        User     @relation("SocialActionsTo", fields: [toUserId], references: [id], onDelete: Cascade)
+  
+  actionType    String   @db.VarChar(50) // "visit" | "water" | "steal" | "friend" | "invite" | "airdrop_claim"
   
   // 奖励
   rewardCoins   Int      @default(0)
   rewardExp     Int      @default(0)
   
+  // 元数据 (用于存储额外信息)
+  metadata      Json?    // 额外数据 (JSONB)
+  
   createdAt     DateTime @default(now())
   
-  @@index([userId])
-  @@index([targetUserId])
+  @@index([fromUserId])
+  @@index([toUserId])
+  @@index([actionType])
   @@index([createdAt])
   @@map("social_actions")
 }
@@ -347,6 +354,7 @@ model RaffleEntry {
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   
   raffleId      String   @db.VarChar(100) // 抽奖活动 ID
+  ticketNumber  Int      // 抽奖券号码
   ticketCount   Int      @default(1) // 抽奖券数量
   
   // 中奖信息

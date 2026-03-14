@@ -17,8 +17,27 @@ export interface TasksResponse {
 }
 
 export const fetchTasks = async (): Promise<TasksResponse> => {
+    // TODO: Update to use new API when userId is available
     const res = await apiClient.get<TasksResponse>("/g/tasv/")
     return res.data
+}
+
+// New API: Get tasks by userId
+export interface Task {
+    id: string
+    name: string
+    description: string
+    type: 'daily' | 'achievement'
+    reward: number
+    requirement: number
+    progress: number
+    completed: boolean
+    claimed: boolean
+}
+
+export const fetchTasksByUserId = async (userId: string, type: 'daily' | 'achievement' | 'all' = 'all'): Promise<Task[]> => {
+    const res = await apiClient.get<{ tasks: Task[] }>(`/api/tasks?userId=${userId}&type=${type}`)
+    return res.data.tasks
 }
 
 // ── Daily sign-in ─────────────────────────────────────────────────────────────
@@ -29,12 +48,26 @@ export interface DailyCheckInStatus {
 }
 
 export const fetchDailyCheckIn = async (): Promise<DailyCheckInStatus> => {
+    // TODO: Update to use new API when userId is available
     const res = await apiClient.get<DailyCheckInStatus>("/g/gdt/")
     return res.data
 }
 
+// New API: Get daily check-in status
+export const fetchDailyCheckInStatus = async (userId: string) => {
+    const res = await apiClient.get(`/api/tasks/daily?userId=${userId}`)
+    return res.data
+}
+
 export const claimDailyReward = async (): Promise<{ reward: number; updated_user: any }> => {
+    // TODO: Update to use new API when userId is available
     const res = await apiClient.patch<{ reward: number; updated_user: any }>("/g/gdt/")
+    return res.data
+}
+
+// New API: Claim daily check-in
+export const claimDailyCheckIn = async (userId: string) => {
+    const res = await apiClient.post('/api/tasks/daily/claim', { userId })
     return res.data
 }
 
@@ -42,10 +75,17 @@ export const claimDailyReward = async (): Promise<{ reward: number; updated_user
 export const claimGameTask = async (
     taskId: number
 ): Promise<{ reward: number; updated_user: any }> => {
+    // TODO: Update to use new API when userId is available
     const res = await apiClient.post<{ reward: number; updated_user: any }>(
         "/g/tasv/",
         { task_id: taskId }
     )
+    return res.data
+}
+
+// New API: Claim task reward
+export const claimTaskReward = async (taskId: string, userId: string) => {
+    const res = await apiClient.post(`/api/tasks/${taskId}/claim`, { userId })
     return res.data
 }
 

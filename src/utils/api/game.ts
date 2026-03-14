@@ -2,15 +2,36 @@ import apiClient from "./client"
 import { FarmStats, GameStats, User } from "../types"
 import { CropTypes, LandIdTypes } from "../types"
 
+import { getMockGameStats } from "./mock"
+
 // ── Config ────────────────────────────────────────────────────────────────────
 export const fetchGameStats = async (): Promise<GameStats> => {
-    const res = await apiClient.get<GameStats>("/g/gs/")
-    return res.data
+    // Return mock data for now - this can be replaced with real API later
+    return getMockGameStats()
 }
 
 // ── Plant ─────────────────────────────────────────────────────────────────────
 export const plantCrop = async (land_id: LandIdTypes, crop_name: CropTypes): Promise<User> => {
+    // TODO: Update to use new API when userId is available
     const res = await apiClient.post<User>("/g/c/", { land_id, crop_name })
+    return res.data
+}
+
+// New API: Get farm state
+export const fetchFarmState = async (userId: string) => {
+    const res = await apiClient.get(`/api/farm/state?userId=${userId}`)
+    return res.data.farmState
+}
+
+// New API: Plant crop
+export const plantCropNew = async (userId: string, plotIndex: number, cropId: string) => {
+    const res = await apiClient.post('/api/farm/plant', { userId, plotIndex, cropId })
+    return res.data
+}
+
+// New API: Harvest crop
+export const harvestCropNew = async (userId: string, plotIndex: number) => {
+    const res = await apiClient.post('/api/farm/harvest', { userId, plotIndex })
     return res.data
 }
 
@@ -46,6 +67,30 @@ export const buyLand      = (land_id: LandIdTypes) => farmAction({ action: "buyl
 export const boostCrop    = (land_id: LandIdTypes) => farmAction({ action: "boost",   land_id })
 export const buyEnergy    = (pack: "small" | "large" | "full") => farmAction({ action: "buy_energy", pack })
 export const shopPurchase = (quantities: { [k: string]: number }) => farmAction({ action: "shop", quantities })
+
+// New API: Unlock land
+export const unlockLand = async (userId: string, plotIndex: number) => {
+    const res = await apiClient.post('/api/farm/unlock', { userId, plotIndex })
+    return res.data
+}
+
+// New API: Water crop
+export const waterCropNew = async (userId: string, plotIndex: number) => {
+    const res = await apiClient.post('/api/farm/water', { userId, plotIndex })
+    return res.data
+}
+
+// New API: Boost crop
+export const boostCropNew = async (userId: string, plotIndex: number) => {
+    const res = await apiClient.post('/api/farm/boost', { userId, plotIndex })
+    return res.data
+}
+
+// New API: Upgrade farm
+export const upgradeFarmNew = async (userId: string) => {
+    const res = await apiClient.post('/api/farm/upgrade', { userId })
+    return res.data
+}
 
 // ── Onboarding ────────────────────────────────────────────────────────────────
 export const completeOnboarding = async (phase: 1 | 2): Promise<void> => {

@@ -40,3 +40,13 @@ next-env.d.ts
 .vscode/
 .idea/
 .trae/
+
+# Backup files
+*.backup
+*.bak
+*~
+
+# Git output files (prevent accidental commits)
+tatus*
+and related features
+ma and backend structure
