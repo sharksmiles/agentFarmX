@@ -9,7 +9,6 @@ import { useData } from "../context/dataContext"
 import { ActionTypes, LandIdTypes } from "@/utils/types"
 import { motion } from "framer-motion"
 import { DotLottiePlayer } from "@dotlottie/react-player"
-import { messages } from "@/utils/func/telegram"
 import { useLanguage } from "../context/languageContext"
 import { waterCrop, harvestCrop, boostCrop } from "@/utils/api/game"
 
@@ -120,6 +119,11 @@ const GamePad = ({}) => {
                     new Date().toISOString()
             )
             if (nextWateringDue > new Date()) {
+                const messages = [
+                    "[crop] is not ready for watering yet!",
+                    "[crop] doesn't need water right now.",
+                    "Come back later to water [crop]!",
+                ]
                 const randomIndex = Math.floor(Math.random() * messages.length)
                 const randomMessage = t(messages[randomIndex]).replace(
                     "[crop]",

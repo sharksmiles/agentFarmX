@@ -6,7 +6,6 @@ import { useUser } from "./context/userContext"
 import {
     MOCK_GAME_STATS,
     MOCK_FRIEND_INFO,
-    MOCK_CAPILA,
     MOCK_AIRDROP,
 } from "@/utils/mock/mockData"
 import { fetchGameStats } from "@/utils/api/game"
@@ -24,7 +23,6 @@ const Init = () => {
         setWalletSettingHeight,
         setFriendsHeight,
         setFriendInfo,
-        setCapilaStats,
     } = useData()
     const { setAirdropInfo, setAvailableProviders, refreshUser, setIsSessionRestored } = useUser()
 
@@ -76,9 +74,6 @@ const Init = () => {
                 pendingRequest: MOCK_FRIEND_INFO.new_friend_requests_count,
                 friendsTotal: MOCK_FRIEND_INFO.friend_total,
             }))
-
-        // ── Load capila stats (mock for now, pending backend capila API) ──────
-        setCapilaStats(MOCK_CAPILA)
 
         // ── Load airdrop info from real API, fall back to mock ────────────────
         fetchAirdropInfo()

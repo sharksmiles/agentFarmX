@@ -2,7 +2,6 @@
 import { imagesToLoad, preloadImage } from "@/utils/func/imageloader"
 import {
     ActionTypes,
-    CapilaTypes,
     CropTypes,
     FriendPageNotificationTypes,
     GameStats,
@@ -122,8 +121,6 @@ interface DataContextValue {
     >
     friendList: FriendsData[]
     setFriendList: React.Dispatch<React.SetStateAction<FriendsData[]>>
-    capilaStats: CapilaTypes | null
-    setCapilaStats: React.Dispatch<React.SetStateAction<CapilaTypes | null>>
     openEnergyModal: boolean
     setOpenEnergyModal: React.Dispatch<React.SetStateAction<boolean>>
     openRadarModal: boolean
@@ -202,7 +199,6 @@ export const DataProvider: FC<DataProviderProps> = ({ children }) => {
     const [openDeleteFriendModel, setOpenDeleteFriendModel] =
         useState<openDeleteFriendModelData | null>(null)
     const [friendList, setFriendList] = useState<FriendsData[]>([])
-    const [capilaStats, setCapilaStats] = useState<CapilaTypes | null>(null)
     const [openEnergyModal, setOpenEnergyModal] = useState<boolean>(false)
     const [openRadarModal, setOpenRadarModal] = useState<boolean>(false)
     const [radaring, setRadaring] = useState<boolean>(false)
@@ -328,8 +324,6 @@ export const DataProvider: FC<DataProviderProps> = ({ children }) => {
         setOpenDeleteFriendModel,
         friendList,
         setFriendList,
-        capilaStats,
-        setCapilaStats,
         openEnergyModal,
         setOpenEnergyModal,
         openRadarModal,

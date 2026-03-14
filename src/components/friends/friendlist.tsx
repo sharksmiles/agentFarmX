@@ -42,10 +42,6 @@ const FriendItem: FC<{
             {...handlers}
             className={`relative w-full bg-[#252A31] h-[70px] py-[12px] px-[16px] rounded-2xl flex justify-between items-center transition-transform duration-300 cursor-default select-none`}
             style={{
-                backgroundImage: friend.capila_owner
-                    ? "url('/capila/capila-background.png')"
-                    : "none",
-                backgroundSize: "cover",
                 backgroundPosition: "top",
                 backgroundRepeat: "no-repeat",
             }}

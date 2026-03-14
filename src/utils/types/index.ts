@@ -249,14 +249,6 @@ export interface Raffle {
     total_participants?: number | null
 }
 
-export type CapilaTypes = {
-    owned: boolean
-    token_list: {
-        token_id: string
-        picture_url: string
-    }[]
-}
-
 export type StealConfirmationTypes = {
     success_rate_details: {
         base_success_rate: string

@@ -1,5 +1,4 @@
 "use client"
-import Capila from "@/components/capila/capila"
 import { useData } from "@/components/context/dataContext"
 import BuylandModal from "@/components/game/buylandmodal"
 import EnergyModal from "@/components/game/energymodal"
@@ -35,7 +34,6 @@ export default function Home() {
             <EnergyModal />
             <RadarModal />
             <LeaderBoardPopUpModal />
-            <Capila />
         </main>
     )
 }

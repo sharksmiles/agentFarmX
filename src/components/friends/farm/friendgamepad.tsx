@@ -7,7 +7,6 @@ import { ActionTypes, FriendStats, LandIdTypes, StealConfirmationTypes } from "@
 import { motion } from "framer-motion"
 import { DotLottiePlayer } from "@dotlottie/react-player"
 import { waterFriendCrop, checkSteal } from "@/utils/api/social"
-import { messages } from "@/utils/func/telegram"
 import { useLanguage } from "@/components/context/languageContext"
 import { useData } from "@/components/context/dataContext"
 import { useUser } from "@/components/context/userContext"
@@ -77,6 +76,11 @@ const FriendGamePad = ({
                     new Date().toISOString()
             )
             if (nextWateringDue > new Date()) {
+                const messages = [
+                    "[crop] is not ready for watering yet!",
+                    "[crop] doesn't need water right now.",
+                    "Come back later to water [crop]!",
+                ]
                 const randomIndex = Math.floor(Math.random() * messages.length)
                 const randomMessage = t(messages[randomIndex]).replace(
                     "[crop]",

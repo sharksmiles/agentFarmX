@@ -143,10 +143,6 @@ const Record = () => {
                                         key={index}
                                         className="w-full bg-[#252A31] max-h-[60px] py-[2px] px-[16px] rounded-2xl flex justify-between items-center div-with-gradient-border"
                                         style={{
-                                            backgroundImage: record.capila_owner
-                                                ? "url('/capila/capila-background.png')"
-                                                : "none",
-                                            backgroundSize: "cover",
                                             backgroundPosition: "top",
                                             backgroundRepeat: "no-repeat",
                                         }}

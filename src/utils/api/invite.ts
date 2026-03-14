@@ -59,7 +59,6 @@ export interface ActivityRecord {
     crop_name: string
     action_time: string
     last_login: string
-    capila_owner: boolean
 }
 
 export interface ActivityResponse {

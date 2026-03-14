@@ -56,11 +56,6 @@ export const imagesToLoad = [
     "/icon/farmtab.png",
     "/icon/friendstab.png",
     "/icon/wallettab.png",
-    "/capila/capila.webp",
-    "/capila/okx-logo.png",
-    "/capila/magiceden.png",
-    "/capila/opensea-logo.svg",
-    "/capila/capila-background.png",
     "/wallet/pic_wallet.png",
 ]
 

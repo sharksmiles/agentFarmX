@@ -16,7 +16,6 @@ export type FriendsData = {
     need_water: number
     need_harvest: number
     last_login: string
-    capila_owner: boolean
 }
 
 export type FriendInfoStats = {
@@ -134,10 +133,6 @@ const FriendRequest = () => {
                                     key={index}
                                     className="w-full bg-[#252A31] min-h-[70px] py-[12px] px-[16px] rounded-2xl flex justify-between items-center div-with-gradient-border"
                                     style={{
-                                        backgroundImage: friend.capila_owner
-                                            ? "url('/capila/capila-background.png')"
-                                            : "none",
-                                        backgroundSize: "cover",
                                         backgroundPosition: "top",
                                         backgroundRepeat: "no-repeat",
                                     }}

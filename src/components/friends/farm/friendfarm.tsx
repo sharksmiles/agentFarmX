@@ -9,8 +9,7 @@ import { MOCK_FRIENDS } from "@/utils/mock/mockData"
 import Loader from "@/components/loader/Loader"
 import { AnimatePresence } from "framer-motion"
 import { motion } from "framer-motion"
-import { CapilaTypes, FriendStats, StealConfirmationTypes } from "@/utils/types"
-import FriendCapila from "@/components/capila/friendcapila"
+import { FriendStats, StealConfirmationTypes } from "@/utils/types"
 import FriendStealConfirmation from "./friendstealconfirmation"
 import { FriendRadar } from "@/components/friends/farm/friendradar"
 
@@ -23,7 +22,6 @@ const FriendFarm = ({
 }) => {
     const { setCurrentTab } = useData()
     const [friendStats, setFriendStats] = useState<FriendStats | null>(null)
-    const [friendCapilaStats, setFriendCapilaStats] = useState<CapilaTypes | null>(null)
     const [stealLoading, setStealLoading] = useState<"caculate" | "steal" | null>(null)
     const [stealConfirmation, setStealConfirmation] = useState<StealConfirmationTypes | null>(null)
     const router = useRouter()
@@ -58,10 +56,6 @@ const FriendFarm = ({
                         setStealConfirmation={setStealConfirmation}
                         stealLoading={stealLoading}
                         setStealLoading={setStealLoading}
-                    />
-                    <FriendCapila
-                        friendStats={friendStats}
-                        friendCapilaStats={friendCapilaStats}
                     />
                     {action === "ra" && <FriendRadar />}
                 </>

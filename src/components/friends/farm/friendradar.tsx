@@ -27,7 +27,7 @@ export const FriendRadar = () => {
                     src="/game/radar-big.png"
                     height={60}
                     width={60}
-                    alt="Capila"
+                    alt="Radar"
                     quality={100}
                     priority={true}
                     loading="eager"

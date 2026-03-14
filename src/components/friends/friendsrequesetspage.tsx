@@ -92,10 +92,6 @@ const FriendsRequestsPage = () => {
                                 key={index}
                                 className="w-full bg-[#252A31] min-h-[114px] rounded-2xl flex flex-col justify-between items-center div-with-gradient-border-request"
                                 style={{
-                                    backgroundImage: friend.capila_owner
-                                        ? "url('/capila/capila-background.png')"
-                                        : "none",
-                                    backgroundSize: "cover",
                                     backgroundPosition: "top",
                                     backgroundRepeat: "no-repeat",
                                 }}

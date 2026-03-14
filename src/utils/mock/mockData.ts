@@ -416,13 +416,6 @@ export const MOCK_AIRDROP = {
     ],
 }
 
-// ─── Capila NFT ───────────────────────────────────────────────────────────────
-
-export const MOCK_CAPILA = {
-    owned: true,
-    token_list: [{ token_id: "42", picture_url: "/capila/capila.png" }],
-}
-
 // ─── Misc ─────────────────────────────────────────────────────────────────────
 
 export const MOCK_FRIEND_INFO = {
