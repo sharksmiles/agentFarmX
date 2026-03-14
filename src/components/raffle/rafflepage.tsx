@@ -1,8 +1,8 @@
-﻿"use client"
+"use client"
 
 import { MOCK_RAFFLES } from "@/utils/mock/mockData"
 import { fetchRaffleList } from "@/utils/api/raffle"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, useCallback } from "react"
 import Countdown from "./countdown"
 import { useData } from "../context/dataContext"
 import { DotLottiePlayer } from "@dotlottie/react-player"
@@ -20,7 +20,7 @@ const RafflePage = ({}) => {
     const [raffleListLoading, setRaffleListLoading] = useState<boolean>(true)
     const [selectedButton, setSelectedButton] = useState<"inProgress" | "ended">("inProgress")
 
-    const getRaffleList = async () => {
+    const getRaffleList = useCallback(async () => {
         setRaffleListLoading(true)
         fetchRaffleList()
             .then((list) => {
@@ -32,9 +32,9 @@ const RafflePage = ({}) => {
                 setRaffleList(MOCK_RAFFLES)
             })
             .finally(() => setRaffleListLoading(false))
-    }
+    }, [setRaffleList, setRaffleListLoading])
 
-    const checkAndMaybeRefresh = () => {
+    const checkAndMaybeRefresh = useCallback(() => {
         const now = new Date()
         const hasEndedRaffle = raffleList.some(
             (raffle) => new Date(raffle.end_time) < now && !raffle.drawed
@@ -45,7 +45,7 @@ const RafflePage = ({}) => {
                 getRaffleList()
             }, 20000)
         }
-    }
+    }, [raffleList, getRaffleList])
 
     useEffect(() => {
         checkIntervalRef.current = setInterval(() => {
@@ -57,7 +57,7 @@ const RafflePage = ({}) => {
                 clearInterval(checkIntervalRef.current)
             }
         }
-    }, [raffleList])
+    }, [raffleList, checkAndMaybeRefresh])
 
     const scrollToFirstRaffle = (ended: boolean) => {
         const firstRaffleIndex = raffleList.findIndex((raffle) => raffle.ended === ended)
@@ -90,7 +90,7 @@ const RafflePage = ({}) => {
 
     useEffect(() => {
         getRaffleList()
-    }, [])
+    }, [getRaffleList])
 
     useEffect(() => {
         const observer = new IntersectionObserver(

@@ -33,7 +33,7 @@ const RadarModal = () => {
             }
             setOpenRadarModal(false)
         }
-    }, [setRadaring])
+    }, [setRadaring, setOpenRadarModal])
 
     return (
         <>

@@ -8,7 +8,7 @@ export default function Home() {
 
     useEffect(() => {
         setCurrentTab("Wallet")
-    }, [])
+    }, [setCurrentTab])
 
     return (
         <main className="h-screen w-full bg-[#F8F8F8] z-10">

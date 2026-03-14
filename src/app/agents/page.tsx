@@ -30,7 +30,7 @@ export default function AgentsPage() {
         fetchAgents()
             .then(setAgents)
             .catch(() => setAgents(MOCK_AGENTS as any))
-    }, [])
+    }, [setCurrentTab])
 
     const totalEarned  = agents.reduce((s, a) => s + a.stats.total_earned_coin, 0)
     const totalGas     = agents.reduce((s, a) => s + a.stats.total_spent_gas, 0)

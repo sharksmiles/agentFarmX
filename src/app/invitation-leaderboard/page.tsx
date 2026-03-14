@@ -8,7 +8,7 @@ export default function Home() {
 
     useEffect(() => {
         setCurrentTab(null)
-    }, [])
+    }, [setCurrentTab])
 
     return (
         <main className="h-screen w-full z-10">

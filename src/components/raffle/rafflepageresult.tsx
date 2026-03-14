@@ -64,13 +64,13 @@ const RafflePageResult = ({}) => {
         { id: "p5", username: "Eve_Planter",   level: 10 },
     ]
 
-    const getRaffleWinner = (_raffle_id: number) => {
+    const getRaffleWinner = useCallback((_raffle_id: number) => {
         setTimeout(() => { setWinnerList(MOCK_WINNERS); setWinnerLoading(false) }, 300)
-    }
+    }, [])
 
-    const getRaffleParticipants = (_raffle_id: number) => {
+    const getRaffleParticipants = useCallback((_raffle_id: number) => {
         setTimeout(() => { setParticipantList(MOCK_PARTICIPANTS); setParticipantLoading(false) }, 300)
-    }
+    }, [])
 
     useEffect(() => {
         const observer = new IntersectionObserver(
@@ -83,16 +83,17 @@ const RafflePageResult = ({}) => {
             { threshold: 0.5 }
         )
 
-        if (loadMoreRef.current) {
-            observer.observe(loadMoreRef.current)
+        const currentRef = loadMoreRef.current
+        if (currentRef) {
+            observer.observe(currentRef)
         }
 
         return () => {
-            if (loadMoreRef.current) {
-                observer.unobserve(loadMoreRef.current)
+            if (currentRef) {
+                observer.unobserve(currentRef)
             }
         }
-    }, [participantsCursor, openRaffleResult])
+    }, [participantsCursor, openRaffleResult, getRaffleParticipants])
 
     useEffect(() => {
         if (openRaffleResult) {
@@ -107,7 +108,7 @@ const RafflePageResult = ({}) => {
             setWinnerLoading(true)
             setParticipantLoading(true)
         }
-    }, [openRaffleResult])
+    }, [openRaffleResult, getRaffleWinner, getRaffleParticipants])
 
     return (
         <>

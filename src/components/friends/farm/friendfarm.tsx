@@ -35,7 +35,7 @@ const FriendFarm = ({
             if_friend_status: mockFriend.if_friend_status as any,
             farm_stats: mockFriend.farm_stats,
         } as any)
-    }, [id])
+    }, [id, setCurrentTab])
 
     return (
         <AnimatePresence>

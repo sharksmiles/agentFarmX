@@ -3,7 +3,7 @@
 import { ActionTypes, GasEstimate } from "@/utils/types"
 import { DotLottiePlayer } from "@dotlottie/react-player"
 import Image from "next/image"
-import { FC, useEffect, useState } from "react"
+import { FC, useEffect, useState, useCallback } from "react"
 import { useUser } from "../context/userContext"
 import { useRouter } from "next/navigation"
 import { useData } from "../context/dataContext"
@@ -37,10 +37,10 @@ const TransactionPage: FC<{ action: ActionTypes; id: string }> = ({ action, id: 
         checksteal: { walletResult: "+", coinAmount: 0,  description: "Check steal opportunity",           displayImage: "/game/coin_big.png" },
     } as any
 
-    const getTransactionDetails = () => {
+    const getTransactionDetails = useCallback(() => {
         const details = MOCK_TX_MAP[action] ?? { walletResult: "+" as const, coinAmount: 0, description: action, displayImage: "/game/coin_big.png" }
         setTimeout(() => setTransactionDetails({ action, ...details }), 400)
-    }
+    }, [action])
 
     const getBurnCoinGas = () => {
         setFetchingGas(true)
@@ -68,7 +68,7 @@ const TransactionPage: FC<{ action: ActionTypes; id: string }> = ({ action, id: 
         }, 1500)
     }
 
-    const updateBalance = () => {}
+    const updateBalance = useCallback(() => {}, [])
 
     const enoughBalance =
         trasactionDetails?.walletResult === "-"
@@ -78,7 +78,7 @@ const TransactionPage: FC<{ action: ActionTypes; id: string }> = ({ action, id: 
     useEffect(() => {
         getTransactionDetails()
         updateBalance()
-    }, [action])
+    }, [action, getTransactionDetails, updateBalance])
 
     useEffect(() => {
         if (action === "upgrade") {

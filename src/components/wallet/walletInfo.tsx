@@ -1,16 +1,11 @@
 ﻿"use client"
 import { useUser } from "@/components/context/userContext"
-import { formatMnemonicForAlert, getMnemonic, getPrivateKey } from "@/utils/encryption"
 import {
-    ArchiveRestore,
     CircleAlert,
     CircleCheck,
-    Download,
-    TimerResetIcon,
 } from "lucide-react"
 import Image from "next/image"
-import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useData } from "../context/dataContext"
 import { useLanguage } from "../context/languageContext"
 import WalletInfoTopBar from "./walletInfoTopBar"
@@ -20,82 +15,23 @@ export default function WalletInfo() {
     const { user, wallet, artBalance, setArtBalance } = useUser()
     const {
         walletSettingheight,
-        OpenAgentFarmAlert,
         stone,
         crystal,
-        setStone,
-        setCrystal,
     } = useData()
-    const router = useRouter()
     const [tabOpen, setTabOpen] = useState<"assets" | "Settings" | "history" | "Airdrop">("assets")
-    // const [settingsOpen, setSettingsOpen] = useState<boolean>(false)
-    // const [transactions, setTrasactions] = useState<TransactionHistory[]>([])
 
     const getStoneAngCrystalBalance = async () => {
         // Mock: stone/crystal already set via context init
     }
 
-    async function displayPrivateKey() {
-        if (user && user.id) {
-            const ok = window.confirm(t("You are about to see your wallet private key. Continue?"))
-            if (ok) {
-                const privateKey = await getPrivateKey(user.id, user.td)
-                if (privateKey) {
-                    OpenAgentFarmAlert({
-                        notificationTitle: t("private key"),
-                        notificationMessage: privateKey.toString(),
-                        needCopy: true,
-                    })
-                } else {
-                    OpenAgentFarmAlert({ notificationTitle: t("Oops!"), notificationMessage: t("Failed to retrieve private key") })
-                }
-            }
-        }
-    }
-
-    async function displayMnemonic() {
-        if (user && user.id) {
-            const ok = window.confirm(t("You are about to see your recovery phrase. Continue?"))
-            if (ok) {
-                const mnemonic = await getMnemonic(user.id, user.td)
-                if (mnemonic) {
-                    OpenAgentFarmAlert({
-                        notificationTitle: t("Recovery Phrase"),
-                        notificationMessage: formatMnemonicForAlert("", mnemonic),
-                        needCopy: true,
-                    })
-                } else {
-                    OpenAgentFarmAlert({ notificationTitle: t("Oops!"), notificationMessage: t("Failed to retrieve recovery phrase") })
-                }
-            }
-        }
-    }
-
-    async function resetWallet() {
-        const ok = window.confirm(
-            t("You are about to reset your wallet. Make sure you have backed up your recovery phrase and private key. AgentFarm X is not responsible for any loss. Continue?")
-        )
-        if (ok) {
-            router.push("/new-wallet")
-        }
-    }
-
-    const copyToClipboard = async (text: string) => {
-        try {
-            await navigator.clipboard.writeText(text)
-        } catch (err) {
-            console.error("Failed to copy: ", err)
-        }
-    }
-
-    const updateBalance = async () => {
+    const updateBalance = useCallback(async () => {
         setArtBalance("10.5")
-    }
+    }, [setArtBalance])
 
     useEffect(() => {
         updateBalance()
         getStoneAngCrystalBalance()
-    }, [])
+    }, [updateBalance])
 
     return (
         <>
@@ -216,46 +152,6 @@ export default function WalletInfo() {
                             </div>
                         </div>
                         <span className="w-full bg-[#E4E3FF] h-[2px] flex" />
-                        {wallet && wallet.hasPrivateKey && (
-                            <>
-                                <button
-                                    className="w-full pl-[32px] h-[60px] flex items-center gap-[16px]"
-                                    onClick={displayPrivateKey}
-                                >
-                                    <div className="w-[32px] h-[32px] bg-white rounded-full flex justify-center items-center">
-                                        <Download size={20} color="#807DC0" />
-                                    </div>
-                                    <p className="text-[#807DC0]">{t("Export Private Key")}</p>
-                                </button>
-                                <span className="w-full bg-[#E4E3FF] h-[2px] flex" />
-                            </>
-                        )}
-                        {wallet && wallet.hasMnemonic && (
-                            <>
-                                <button
-                                    className="w-full pl-[32px] h-[60px] flex items-center gap-[16px]"
-                                    onClick={displayMnemonic}
-                                >
-                                    <div className="w-[32px] h-[32px] bg-white rounded-full flex justify-center items-center">
-                                        <ArchiveRestore size={20} color="#807DC0" />
-                                    </div>
-                                    <p className="text-[#807DC0]">{t("Backup Recovery Phase")}</p>
-                                </button>
-                                <span className="w-full bg-[#E4E3FF] h-[2px] flex" />
-                            </>
-                        )}
-                        <>
-                            <button
-                                className="w-full pl-[32px] h-[60px] flex items-center gap-[16px]"
-                                onClick={resetWallet}
-                            >
-                                <div className="w-[32px] h-[32px] bg-white rounded-full flex justify-center items-center">
-                                    <TimerResetIcon size={20} color="#807DC0" />
-                                </div>
-                                <p className="text-[#807DC0]">{t("Reset or Import Wallet")}</p>
-                            </button>
-                            <span className="w-full bg-[#E4E3FF] h-[2px] flex" />
-                        </>
 
                     </div>
                 </>

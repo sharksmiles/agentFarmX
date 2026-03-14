@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useState, useCallback } from "react"
 import { useLanguage } from "../context/languageContext"
 
 interface CountdownProps {
@@ -15,7 +15,7 @@ interface TimeLeft {
 
 const Countdown: React.FC<CountdownProps> = ({ endTime, onEnd }) => {
     const { t } = useLanguage()
-    const calculateTimeLeft = (): TimeLeft => {
+    const calculateTimeLeft = useCallback((): TimeLeft => {
         const difference = +new Date(endTime) - +new Date()
         let timeLeft: TimeLeft = { days: 0, hours: 0, minutes: 0, seconds: 0 }
 
@@ -28,11 +28,14 @@ const Countdown: React.FC<CountdownProps> = ({ endTime, onEnd }) => {
             }
         }
         return timeLeft
-    }
+    }, [endTime])
 
-    const [timeLeft, setTimeLeft] = useState<TimeLeft>(calculateTimeLeft())
+    const [timeLeft, setTimeLeft] = useState<TimeLeft>({ days: 0, hours: 0, minutes: 0, seconds: 0 })
 
     useEffect(() => {
+        // Initial calculation
+        setTimeLeft(calculateTimeLeft())
+        
         const timer = setInterval(() => {
             const newTimeLeft = calculateTimeLeft()
             setTimeLeft(newTimeLeft)
@@ -61,7 +64,7 @@ const Countdown: React.FC<CountdownProps> = ({ endTime, onEnd }) => {
         }, 1000)
 
         return () => clearInterval(timer)
-    }, [endTime, onEnd])
+    }, [calculateTimeLeft, onEnd])
 
     const formatTime = (): string => {
         const { days, hours, minutes, seconds } = timeLeft

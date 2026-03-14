@@ -18,7 +18,7 @@ export default function Home() {
 
     useEffect(() => {
         setCurrentTab("Farm")
-    }, [])
+    }, [setCurrentTab])
 
     return (
         <main className="h-screen w-full flex justify-center items-center flex-col z-10">

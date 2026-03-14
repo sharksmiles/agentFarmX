@@ -4,7 +4,7 @@ import { useUser } from "../context/userContext"
 import ProgressBar from "./levelprogressbar"
 import { useData } from "../context/dataContext"
 import Image from "next/image"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import CountUp from "react-countup"
 import { useRouter } from "next/navigation"
 import { useLanguage } from "../context/languageContext"
@@ -29,7 +29,7 @@ const GameStats = ({}) => {
     const [prevEnergy, setPrevEnergy] = useState<number>(0)
     const [currentEnergy, setCurrentEnergy] = useState<number>(0)
     const [openMoreButtons, setOpenMoreButtons] = useState<boolean>(false)
-    const setupNextRestore = async (nextRestoreTimeString: string) => {
+    const setupNextRestore = useCallback((nextRestoreTimeString: string) => {
         const nextRestoreTime = new Date(nextRestoreTimeString).getTime()
         const now = new Date().getTime()
         const timeUntilRestore = nextRestoreTime - now
@@ -68,23 +68,23 @@ const GameStats = ({}) => {
                 }
             })
         }
-    }
+    }, [currentEnergy, user?.farm_stats?.max_energy, setUser])
 
     useEffect(() => {
         if (user?.farm_stats.next_restore_time) {
-            setupNextRestore(user.farm_stats.next_restore_time)
+            return setupNextRestore(user.farm_stats.next_restore_time)
         }
-    }, [user?.farm_stats.next_restore_time])
+    }, [user?.farm_stats.next_restore_time, setupNextRestore])
 
     useEffect(() => {
         setPrevEnergy(currentEnergy)
         setCurrentEnergy(user?.farm_stats.energy_left || 0)
-    }, [user?.farm_stats.energy_left])
+    }, [user?.farm_stats.energy_left, currentEnergy])
 
     useEffect(() => {
         setPrevBalance(currentBalance)
         setCurrentBalance(user?.farm_stats.coin_balance || 0)
-    }, [user?.farm_stats.coin_balance])
+    }, [user?.farm_stats.coin_balance, currentBalance])
 
     const currentLevel = user?.farm_stats.level || 1
     const requiredExp = gameStats?.level_requirements[currentLevel]

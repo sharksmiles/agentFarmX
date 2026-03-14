@@ -54,13 +54,13 @@ const LeaderBoard = (): JSX.Element => {
 
     const rankedData = useMemo(() => calculateRanks(data), [data])
 
-    const extractNextCursor = (next: string | null): string | null => {
+    const extractNextCursor = useCallback((next: string | null): string | null => {
         if (!next) return null
         const cursorMatch = next.match(/cursor=([^&]*)/)
         return cursorMatch ? cursorMatch[1] : null
-    }
+    }, [])
 
-    const loadInitial = async (): Promise<void> => {
+    const loadInitial = useCallback(async (): Promise<void> => {
         setLoading(true)
         fetchLeaderboard("invite")
             .then(({ results, next }) => {
@@ -72,9 +72,9 @@ const LeaderBoard = (): JSX.Element => {
                 setNextCursor(null)
             })
             .finally(() => setLoading(false))
-    }
+    }, [extractNextCursor])
 
-    const loadMore = async (): Promise<void> => {
+    const loadMore = useCallback(async (): Promise<void> => {
         if (!nextCursor || loading) return
         setLoading(true)
         fetchLeaderboard("invite", nextCursor)
@@ -84,7 +84,7 @@ const LeaderBoard = (): JSX.Element => {
             })
             .catch(() => setNextCursor(null))
             .finally(() => setLoading(false))
-    }
+    }, [nextCursor, loading, extractNextCursor])
 
     const handleObserver = useCallback(
         (entries: IntersectionObserverEntry[]): void => {
@@ -93,7 +93,7 @@ const LeaderBoard = (): JSX.Element => {
                 loadMore()
             }
         },
-        [nextCursor, loading]
+        [nextCursor, loadMore]
     )
 
     useEffect(() => {
@@ -112,7 +112,7 @@ const LeaderBoard = (): JSX.Element => {
 
     useEffect(() => {
         loadInitial()
-    }, [])
+    }, [loadInitial])
 
     const renderLeaderboardItems = useMemo(
         () =>
@@ -162,7 +162,7 @@ const LeaderBoard = (): JSX.Element => {
                     </div>
                 </div>
             )),
-        [rankedData, t]
+        [rankedData, t, router]
     )
 
     return (

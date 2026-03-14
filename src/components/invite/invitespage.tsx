@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 import Image from "next/image"
 import { useUser } from "../context/userContext"
 import { fetchInviteStats, InviteFriend } from "@/utils/api/invite"
@@ -61,7 +61,7 @@ const InvitesPage = () => {
         }
     }
 
-    const getInvitationFriendsFriends = async () => {
+    const getInvitationFriendsFriends = useCallback(async () => {
         setLoadingFriend(true)
         fetchInviteStats(page)
             .then((data) => {
@@ -77,7 +77,7 @@ const InvitesPage = () => {
                 setPage(null)
             })
             .finally(() => setLoadingFriend(false))
-    }
+    }, [page])
 
     const scrollToTop = () => {
         observerRef.current?.scrollTo({
@@ -97,7 +97,7 @@ const InvitesPage = () => {
 
     useEffect(() => {
         getInvitationFriendsFriends()
-    }, [])
+    }, [getInvitationFriendsFriends])
 
     useEffect(() => {
         if (totalFriendsData.length === 0) {
@@ -123,16 +123,17 @@ const InvitesPage = () => {
             }
         }, options)
 
-        if (observerRef.current) {
-            observer.observe(observerRef.current)
+        const currentRef = observerRef.current
+        if (currentRef) {
+            observer.observe(currentRef)
         }
 
         return () => {
-            if (observerRef.current) {
-                observer.unobserve(observerRef.current)
+            if (currentRef) {
+                observer.unobserve(currentRef)
             }
         }
-    }, [totalFriendsData, totalFriends])
+    }, [totalFriendsData, totalFriends, page, loadingFriend, getInvitationFriendsFriends])
 
     return (
         invitationHeight && (

@@ -1,5 +1,5 @@
 // WheelComponent.tsx
-import React, { useState, useEffect, useRef } from "react"
+import React, { useState, useEffect, useRef, useCallback } from "react"
 
 interface WheelOption {
     text: string
@@ -15,11 +15,7 @@ const WheelComponent: React.FC<WheelProps> = ({ options }) => {
     const [isSpinning, setIsSpinning] = useState<boolean>(false)
     const canvasRef = useRef<HTMLCanvasElement>(null)
 
-    useEffect(() => {
-        drawWheel()
-    }, [rotation])
-
-    const drawWheel = (): void => {
+    const drawWheel = useCallback((): void => {
         const canvas = canvasRef.current
         if (!canvas) return
 
@@ -84,7 +80,11 @@ const WheelComponent: React.FC<WheelProps> = ({ options }) => {
         ctx.lineTo(260, 50)
         ctx.closePath()
         ctx.fill()
-    }
+    }, [options, rotation])
+
+    useEffect(() => {
+        drawWheel()
+    }, [drawWheel])
 
     const spinWheel = (): void => {
         if (isSpinning) return

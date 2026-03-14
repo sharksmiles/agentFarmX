@@ -24,7 +24,7 @@ const FriendsPage = () => {
     const [isVisible, setIsVisible] = useState<boolean>(false)
     const [loadingFriends, setLoadingFriends] = useState<boolean>(true)
 
-    const loadMoreFriend = async () => {
+    const loadMoreFriend = useCallback(async () => {
         if (!cursor || loadingFriends) return
         setLoadingFriends(true)
         fetchFriends((friendsFilter || "all") as "need_water" | "all", cursor)
@@ -34,7 +34,7 @@ const FriendsPage = () => {
             })
             .catch(() => {})
             .finally(() => setLoadingFriends(false))
-    }
+    }, [cursor, loadingFriends, friendsFilter, setFriendList])
 
     const scrollToTop = () => {
         observerRef.current?.scrollTo({
@@ -56,7 +56,7 @@ const FriendsPage = () => {
         fetchFriendInfo()
             .then((info) => setFriendInfo({ pendingRequest: info.new_friend_requests_count, friendsTotal: info.friend_total }))
             .catch(() => setFriendInfo({ pendingRequest: MOCK_FRIEND_INFO.new_friend_requests_count, friendsTotal: MOCK_FRIEND_INFO.friend_total }))
-    }, [])
+    }, [setFriendInfo])
 
     useEffect(() => {
         setLoadingFriends(true)
@@ -73,7 +73,7 @@ const FriendsPage = () => {
                 setCursor(null)
             })
             .finally(() => setLoadingFriends(false))
-    }, [friendsFilter])
+    }, [friendsFilter, setFriendList])
 
     useEffect(() => {
         const handleScroll = () => {
@@ -96,7 +96,7 @@ const FriendsPage = () => {
                 currentRef.removeEventListener("scroll", handleScroll)
             }
         }
-    }, [cursor, friendsFilter, loadingFriends])
+    }, [cursor, friendsFilter, loadingFriends, loadMoreFriend])
 
     useEffect(() => {
         const container = observerRef.current

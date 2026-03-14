@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useUser } from "../context/userContext"
 import { useData } from "../context/dataContext"
@@ -132,14 +132,14 @@ const PlantModal = () => {
         return () => {
             container.removeEventListener("scroll", handleScroll)
         }
-    }, [observerRef.current])
+    }, [toggleVisibility])
 
     useEffect(() => {
         if (actionType !== "plant") return
         if (user?.farm_stats.inventory && user?.farm_stats.inventory.length > 0) {
             setSelectedCrop(user?.farm_stats.inventory[0].crop_type)
         }
-    }, [actionType])
+    }, [actionType, user?.farm_stats.inventory, setSelectedCrop])
 
     return (
         <AnimatePresence>

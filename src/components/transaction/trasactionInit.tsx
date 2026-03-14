@@ -7,7 +7,7 @@ const TransactionInit = ({}) => {
     const { setCurrentTab } = useData()
     useEffect(() => {
         setCurrentTab(null)
-    }, [])
+    }, [setCurrentTab])
     return null
 }
 

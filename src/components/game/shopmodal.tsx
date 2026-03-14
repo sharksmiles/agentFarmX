@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useUser } from "../context/userContext"
 import { useData } from "../context/dataContext"
@@ -54,7 +54,7 @@ const ShopModal = () => {
         return () => {
             container.removeEventListener("scroll", toggleVisibility)
         }
-    }, [scrollToRight])
+    }, [toggleVisibility])
 
     useEffect(() => {
         if (!gameStats?.crop_info) return
@@ -73,7 +73,7 @@ const ShopModal = () => {
             totalPrice: newTotalPrice,
             selectedItemsNumber: newSelectedItemsNumber,
         }))
-    }, [selectedShop.quantities, gameStats?.crop_info])
+    }, [selectedShop.quantities, gameStats?.crop_info, setSelectedShop])
 
     const handleQuantityChange = (cropName: string, delta: number) => {
         setSelectedShop((prev) => {

@@ -12,7 +12,7 @@ export default function Home() {
 
     useEffect(() => {
         setCurrentTab("Earn")
-    }, [])
+    }, [setCurrentTab])
 
     return (
         <main className="h-screen w-full flex justify-start items-center flex-col z-10">

@@ -22,7 +22,7 @@ const FriendGameStats = ({
     useEffect(() => {
         setPrevBalance(currentBalance)
         setCurrentBalance(friendStats?.farm_stats.coin_balance || 0)
-    }, [friendStats?.farm_stats.coin_balance])
+    }, [friendStats?.farm_stats.coin_balance, currentBalance])
     const currentLevel = friendStats?.farm_stats.level || 1
     const requiredExp = gameStats?.level_requirements[currentLevel]
         ? gameStats?.level_requirements[currentLevel]["Require Experience"]

@@ -84,7 +84,20 @@ const Init = () => {
         setIsDataFetched(true)
 
         return () => stopDiscovery()
-    }, [])
+    }, [
+        refreshUser,
+        setAirdropInfo,
+        setAvailableProviders,
+        setFriendInfo,
+        setFriendsHeight,
+        setGameStats,
+        setInvitationHeight,
+        setIsDataFetched,
+        setIsSessionRestored,
+        setPadHeight,
+        setTaskHeight,
+        setWalletSettingHeight
+    ])
 
     return null
 }

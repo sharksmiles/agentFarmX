@@ -41,7 +41,7 @@ const EarnPage = () => {
     const [isGameWallet, setIsGameWallet] = useState<boolean>(false)
     const [claimingReward, setClaimingReward] = useState<boolean>(false)
 
-    const getTask = async () => {
+    const getTask = useCallback(async () => {
         fetchTasks()
             .then((data) => {
                 setInGameTask(data.game_tasks)
@@ -58,7 +58,7 @@ const EarnPage = () => {
                 setGameReward(MOCK_DAILY_REWARD.game_reward)
                 setCompleted(MOCK_DAILY_REWARD.completed)
             })
-    }
+    }, [setCompleted, setDailyRewardList, setGameReward, setInGameTask, setRenaissanceTask])
 
     const scrollToTop = () => {
         containerRef.current?.scrollTo({
@@ -78,7 +78,7 @@ const EarnPage = () => {
 
     useEffect(() => {
         getTask()
-    }, [])
+    }, [getTask])
 
     useEffect(() => {
         const container = containerRef.current
@@ -86,7 +86,7 @@ const EarnPage = () => {
         return () => {
             container?.removeEventListener("scroll", toggleVisibility)
         }
-    }, [])
+    }, [toggleVisibility])
 
     useEffect(() => {
         if (user?.wallet_address_type === "game") {

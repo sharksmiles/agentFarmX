@@ -21,7 +21,7 @@ const Record = () => {
     )
     const [isVisible, setIsVisible] = useState(false)
 
-    const fetchRecords = (reset: boolean, cur: string | null) => {
+    const fetchRecords = useCallback((reset: boolean, cur: string | null) => {
         setLoadingRecords(true)
         fetchActivityRecords(cur)
             .then(({ results, next }) => {
@@ -35,15 +35,15 @@ const Record = () => {
                 }
             })
             .finally(() => setLoadingRecords(false))
-    }
+    }, [])
 
     useEffect(() => {
         fetchRecords(true, null)
-    }, [])
+    }, [fetchRecords])
 
-    const loadMoreRecord = async () => {
+    const loadMoreRecord = useCallback(async () => {
         if (cursor && !loadingRecords) fetchRecords(false, cursor)
-    }
+    }, [cursor, loadingRecords, fetchRecords])
 
     const scrollToTop = () => {
         observerRef.current?.scrollTo({
@@ -65,7 +65,7 @@ const Record = () => {
         setRecordResults([])
         setCursor(null)
         fetchRecords(true, null)
-    }, [recordFilter])
+    }, [recordFilter, fetchRecords])
 
     useEffect(() => {
         const handleScroll = () => {
@@ -88,7 +88,7 @@ const Record = () => {
                 currentRef.removeEventListener("scroll", handleScroll)
             }
         }
-    }, [cursor, recordFilter, loadingRecords])
+    }, [cursor, recordFilter, loadingRecords, loadMoreRecord])
 
     useEffect(() => {
         const container = observerRef.current

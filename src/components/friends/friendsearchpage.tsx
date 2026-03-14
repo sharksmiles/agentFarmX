@@ -53,7 +53,7 @@ const FriendRequest = () => {
         return () => {
             clearTimeout(handler)
         }
-    }, [search])
+    }, [search, setSearchResults])
 
     // Trigger search when debouncedSearch is updated
     useEffect(() => {
@@ -83,7 +83,7 @@ const FriendRequest = () => {
         }
 
         searchFriends()
-    }, [debouncedSearch])
+    }, [debouncedSearch, search, setSearchResults])
 
     const handleSendFriendsRequest = async (user_id: string) => {
         sendFriendRequest(user_id).catch(() => {})
