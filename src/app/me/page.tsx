@@ -1,6 +1,5 @@
 "use client"
 import { useData } from "@/components/context/dataContext"
-import LanguageSwitcher from "@/components/wallet/languageSwitcher"
 import WalletInfo from "@/components/wallet/walletInfo"
 import { useEffect } from "react"
 
@@ -13,7 +12,6 @@ export default function Home() {
 
     return (
         <main className="h-screen w-full bg-[#F8F8F8] z-10">
-            <LanguageSwitcher />
             <WalletInfo />
         </main>
     )

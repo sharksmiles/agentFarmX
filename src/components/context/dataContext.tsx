@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 import { imagesToLoad, preloadImage } from "@/utils/func/imageloader"
 import {
     ActionTypes,
@@ -92,10 +92,7 @@ interface DataContextValue {
     setRaffleList: React.Dispatch<React.SetStateAction<Raffle[]>>
     openRaffleResult: Raffle | null
     setOpenRaffleResult: React.Dispatch<React.SetStateAction<Raffle | null>>
-    languageReady: boolean
-    setLanguageReady: React.Dispatch<React.SetStateAction<boolean>>
-    openLanguageSetting: boolean
-    setOpenLanguageSetting: React.Dispatch<React.SetStateAction<boolean>>
+
     friendsHeight: number | null
     setFriendsHeight: React.Dispatch<React.SetStateAction<number | null>>
     friendFarmNotification: FriendPageNotificationTypes | null
@@ -158,7 +155,6 @@ export const DataProvider: FC<DataProviderProps> = ({ children }) => {
     const [gameStats, setGameStats] = useState<GameStats | null>(null)
     const [isDataFetched, setIsDataFetched] = useState<boolean>(false)
     const [loading, setLoading] = useState<boolean>(true)
-    const [languageReady, setLanguageReady] = useState<boolean>(false)
     const [currentTab, setCurrentTab] = useState<currentTabTypes>(null)
     const [selectedLandId, setSelectedLandId] = useState<LandIdTypes | null>(null)
     const [selectedCrop, setSelectedCrop] = useState<CropTypes | null>(null)
@@ -187,7 +183,6 @@ export const DataProvider: FC<DataProviderProps> = ({ children }) => {
     const [openRaffleEntry, setOpenRaffleEntry] = useState<Raffle | null>(null)
     const [openRaffleResult, setOpenRaffleResult] = useState<Raffle | null>(null)
     const [raffleList, setRaffleList] = useState<Raffle[]>([])
-    const [openLanguageSetting, setOpenLanguageSetting] = useState<boolean>(false)
     // friend stats
     const [friendInfo, setFriendInfo] = useState<FriendInfoStats>({
         pendingRequest: 0,
@@ -302,10 +297,7 @@ export const DataProvider: FC<DataProviderProps> = ({ children }) => {
         setRaffleList,
         openRaffleResult,
         setOpenRaffleResult,
-        languageReady,
-        setLanguageReady,
-        openLanguageSetting,
-        setOpenLanguageSetting,
+
         friendsHeight,
         setFriendsHeight,
         friendFarmNotification,

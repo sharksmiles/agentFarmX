@@ -11,7 +11,7 @@ interface WithLoaderProps {
 }
 
 const WithLoader: FC<WithLoaderProps> = ({ children }) => {
-    const { isDataFetched, imgLoaded, languageReady } = useData()
+    const { isDataFetched, imgLoaded } = useData()
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
@@ -32,7 +32,7 @@ const WithLoader: FC<WithLoaderProps> = ({ children }) => {
     return (
         <div>
             <AnimatePresence>
-                {!languageReady || !isDataFetched || loading || !imgLoaded ? (
+                {!isDataFetched || loading || !imgLoaded ? (
                     <motion.div
                         key="loader"
                         initial={{ opacity: 1 }}

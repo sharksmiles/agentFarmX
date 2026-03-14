@@ -6,7 +6,6 @@ import {
     CircleAlert,
     CircleCheck,
     Download,
-    Earth,
     TimerResetIcon,
 } from "lucide-react"
 import Image from "next/image"
@@ -26,7 +25,6 @@ export default function WalletInfo() {
         crystal,
         setStone,
         setCrystal,
-        setOpenLanguageSetting,
     } = useData()
     const router = useRouter()
     const [tabOpen, setTabOpen] = useState<"assets" | "Settings" | "history" | "Airdrop">("assets")
@@ -258,30 +256,7 @@ export default function WalletInfo() {
                             </button>
                             <span className="w-full bg-[#E4E3FF] h-[2px] flex" />
                         </>
-                        <div className="pl-[32px] pt-[28px] pb-[12px]">
-                            <div className="flex flex-col justify-end gap-[10px] mb-auto">
-                                <p className="text-[#373583] font-medium">{t("Game")}</p>
-                            </div>
-                        </div>
-                        <span className="w-full bg-[#E4E3FF] h-[2px] flex" />
-                        <>
-                            <button
-                                className="w-full pl-[32px] h-[60px] flex items-center gap-[16px]"
-                                onClick={() => {
-                                    // setNotification({
-                                    //     notificationTitle: "Oops",
-                                    //     notificationMessage: "This feature is not available yet",
-                                    // })
-                                    setOpenLanguageSetting(true)
-                                }}
-                            >
-                                <div className="w-[32px] h-[32px] bg-white rounded-full flex justify-center items-center">
-                                    <Earth size={20} color="#807DC0" />
-                                </div>
-                                <p className="text-[#807DC0]">{t("Language")}</p>
-                            </button>
-                            <span className="w-full bg-[#E4E3FF] h-[2px] flex" />
-                        </>
+
                     </div>
                 </>
             )}
