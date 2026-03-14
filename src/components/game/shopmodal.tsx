@@ -153,7 +153,7 @@ const ShopModal = () => {
                             visible: { y: 0 },
                         }}
                         transition={{ duration: 0.3 }}
-                        className="fixed w-full bottom-0 bg-[#1A1F25] h-auto z-20 rounded-t-[32px] border-t-4 border-[#FBB602] max-h-[90%]"
+                        className="fixed w-full bottom-0 bg-[#1A1F25] h-auto z-[60] rounded-t-[32px] border-t-4 border-[#FBB602] max-h-[90%] pb-32"
                     >
                         {/* close button */}
                         <button
@@ -320,7 +320,7 @@ const ShopModal = () => {
                         </div>
                         {isVisible && (
                             <div
-                                className="fixed right-[14px] bottom-[204px] bg-deep-dark rounded-full p-2 hover:opacity-75"
+                                className="fixed right-[14px] bottom-[332px] bg-deep-dark rounded-full p-2 hover:opacity-75"
                                 onClick={scrollToRight}
                             >
                                 <ArrowRightFromLine color="white" width={20} />

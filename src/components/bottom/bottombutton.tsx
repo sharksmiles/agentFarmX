@@ -28,10 +28,10 @@ const BouncingButton: React.FC<{
                 onClick={() => {}}
                 className={`${
                     currentTab === buttonName && "bg-[#1A1F25]"
-                } rounded-2xl w-auto h-full flex justify-center items-center cursor-pointer text-white flex-col py-[8px] px-[4px]`}
+                } rounded-2xl w-auto h-full flex justify-center items-center cursor-pointer text-white flex-col py-[8px] px-[2px]`}
             >
                 <Image
-                    className="w-[40px] h-[40px]"
+                    className="w-[36px] h-[36px]"
                     src={icon}
                     width={4000}
                     height={4000}
@@ -40,7 +40,7 @@ const BouncingButton: React.FC<{
                     loading="eager"
                     quality={100}
                 />
-                <p className="text-[14px]">{t(buttonName)}</p>
+                <p className="text-[11px] leading-tight text-center mt-1 font-medium">{t(buttonName)}</p>
             </motion.div>
         </Link>
     )

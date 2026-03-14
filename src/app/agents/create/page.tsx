@@ -85,9 +85,9 @@ export default function CreateAgentPage() {
     const stepLabels = ["Type", "Configure", "Fund", "Activate"]
 
     return (
-        <div className="w-full min-h-screen bg-[#1A1F25] text-white flex flex-col">
+        <div className="w-full h-screen bg-[#1A1F25] text-white flex flex-col overflow-hidden">
             {/* Header */}
-            <div className="px-4 pt-5 pb-3 flex items-center gap-3">
+            <div className="px-4 pt-5 pb-3 flex items-center gap-3 shrink-0">
                 <Link href="/agents">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                         <path d="M15 18L9 12L15 6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -97,7 +97,7 @@ export default function CreateAgentPage() {
             </div>
 
             {/* Step Indicator */}
-            <div className="px-4 pb-4">
+            <div className="px-4 pb-4 shrink-0">
                 <div className="flex items-center gap-1">
                     {stepLabels.map((label, i) => {
                         const num = i + 1

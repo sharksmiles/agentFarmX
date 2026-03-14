@@ -48,11 +48,11 @@ const FriendStealConfirmation = ({
     const stealStatsList = Object.entries(stealStats)
     const mainColor = (successRate: number) => {
         switch (true) {
-            case successRate <= 10:
+            case successRate < 10:
                 return "#5964F5"
-            case successRate > 10 && successRate <= 20:
+            case successRate >= 10 && successRate < 20:
                 return "#2EB9FF"
-            case successRate > 20 && successRate <= 25:
+            case successRate >= 20 && successRate <= 25:
                 return "#FF7E2E"
             case successRate > 25:
                 return "#BE61F9"

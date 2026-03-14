@@ -145,6 +145,16 @@ const FriendGamePad = ({
                         }
                         return { ...prev, farm_stats: { ...prev.farm_stats, growing_crops: crops } }
                     })
+                    setUser((prev) => {
+                        if (!prev) return prev
+                        return {
+                            ...prev,
+                            farm_stats: {
+                                ...prev.farm_stats,
+                                energy_left: Math.max((prev.farm_stats.energy_left ?? 0) - 1, 0),
+                            },
+                        }
+                    })
                     addNotification({ notificationTitle: "Watered!", notificationMessage: "You helped water their crop +5 COIN", reward: 5, friend_name: friendStats.user_name, action: "Harvest" } as any, 3000)
                     setLandWatering((prev) => prev.filter((i) => i !== landId))
                 }, 800)
@@ -227,7 +237,7 @@ const FriendGamePad = ({
                                         differenceInMinutes(nextWateringDue, lastWateringTime)
                                 }
 
-                                cropStage = Math.floor((currentGrowthTime / growthDuration) * 9)
+                                cropStage = Math.floor((currentGrowthTime / growthDuration) * 8)
                                 cropStage = Math.min(cropStage, 7)
 
                                 if (land.is_planted && currentGrowthTime >= growthDuration) {

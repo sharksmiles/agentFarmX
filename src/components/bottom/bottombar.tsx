@@ -3,6 +3,7 @@
 import BouncingButton from "./bottombutton"
 import { useData } from "../context/dataContext"
 import { useEffect } from "react"
+import { usePathname } from "next/navigation"
 
 const ButtonList = [
     {
@@ -33,6 +34,14 @@ const ButtonList = [
 ]
 const BottomBar = ({}) => {
     const { currentTab } = useData()
+    const pathname = usePathname()
+
+    // Define pages where bottom bar should be hidden
+    const isSubPage = pathname.split("/").filter(Boolean).length > 1
+    const hideBottomBarPaths = ["/agents/create"]
+    const shouldHide = isSubPage || hideBottomBarPaths.some(path => pathname === path || pathname.startsWith(path + "/"))
+
+    if (shouldHide) return null
 
     return (
         <>

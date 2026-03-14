@@ -12,7 +12,7 @@ body {
 body {
     color: rgb(var(--foreground-rgb));
     width: 100vw;
-    background-color: #1a1f25;
+    background-color: theme('backgroundColor.main-bg');
     z-index: 0;
     overflow: hidden;
 }
@@ -52,7 +52,7 @@ body {
     justify-content: center;
     height: 100vh;
     width: 100vw;
-    background: #1a1f25;
+    background: theme('backgroundColor.main-bg');
     gap: 16px;
     opacity: 0;
     animation: fadeIn 1s ease-in-out forwards;
@@ -114,7 +114,7 @@ body {
     display: block;
     width: 100%;
     height: 47px;
-    background: linear-gradient(90deg, #252a31, #3b4049, #252a31);
+    background: linear-gradient(90deg, theme('backgroundColor.card-bg'), theme('colors.skeleton.dark'), theme('backgroundColor.card-bg'));
     background-size: 200% 100%;
     animation: skeleton-loading 1.5s infinite linear;
     border-radius: 16px;
@@ -123,7 +123,7 @@ body {
 .skeleton-raffle {
     display: block;
     width: 100%;
-    background: linear-gradient(90deg, #252a31, #3b4049, #252a31);
+    background: linear-gradient(90deg, theme('backgroundColor.card-bg'), theme('colors.skeleton.dark'), theme('backgroundColor.card-bg'));
     opacity: 0.5;
     background-size: 200% 100%;
     animation: skeleton-loading 1.5s infinite linear;
@@ -349,11 +349,11 @@ body {
 }
 
 .progress-background {
-    stroke: #7abf61;
+    stroke: theme('colors.green.DEFAULT');
 }
 
 .progress-foreground {
-    stroke: #eaffe1;
+    stroke: theme('colors.green.light');
     transition: stroke-dashoffset 0.5s;
     transform-origin: 50% 50%;
 }
@@ -411,7 +411,7 @@ body {
 
 .outlinedtext-bold::after {
     content: attr(data-content);
-    -webkit-text-stroke: 6px #521a00;
+    -webkit-text-stroke: 6px theme('colors.brown.dark');
     color: transparent;
     position: absolute;
     white-space: nowrap;
@@ -453,7 +453,7 @@ body {
 
 .outlinedtext-bold-gurdiant-text-color::after {
     content: attr(data-content);
-    -webkit-text-stroke: 5.5px #521a00;
+    -webkit-text-stroke: 5.5px theme('colors.brown.dark');
     color: transparent;
     position: absolute;
     white-space: nowrap;
@@ -486,7 +486,7 @@ body {
 
 .outlinedtext-leaderboard::after {
     content: attr(data-content);
-    -webkit-text-stroke: 1.5px #60b5ff;
+    -webkit-text-stroke: 1.5px theme('colors.blue.stroke');
     color: transparent;
     position: absolute;
     white-space: nowrap;

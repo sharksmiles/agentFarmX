@@ -41,7 +41,7 @@ const GameStats = ({}) => {
                     if (prev) {
                         const nextRestore =
                             newEnergy < prev.farm_stats.max_energy!
-                                ? new Date(now + 5 * 60 * 1000).toISOString()
+                                ? new Date(now + 1 * 60 * 1000).toISOString()
                                 : null
 
                         return {
@@ -172,25 +172,22 @@ const GameStats = ({}) => {
                             onClick={() => {
                                 setOpenBoost(false)
                             }}
-                            className="relative w-full h-[37.69px] text-white rounded-[10.5px] z-0 flex justify-center items-center border-[1px] shadow-regular hover:opacity-85"
+                            className="relative w-full h-[40px] rounded-[10.5px] z-0 flex justify-center items-center hover:brightness-110 active:translate-y-[2px] active:shadow-none transition-all bg-gradient-to-b from-[#a8ff98] to-[#6fcf5f] border-[2px] border-white shadow-[0_2px_0_#3e8e41]"
                         >
-                            <div className="absolute w-full h-[37.69px] border-[1px] border-white bg-[rgba(213,81,81,0.5)] rounded-[10.5px] -z-1 top-[2px]" />
-                            <div className="absolute w-full h-[35.74px] border-[1px] border-white rounded-[10.5px] -z-1 -top-[2px] left-0" />
-                            <div className="absolute w-full h-[37.69px] border-[1px] border-white bg-[rgba(156,248,141,0.8)] rounded-[10.5px] z-1 -top-[2px] left-0" />
                             <Image
-                                className="absolute left-[4px] top-[4px]"
+                                className="absolute left-[8px] top-1/2 -translate-y-1/2"
                                 src="/game/Boost_Big.png"
                                 width={24}
                                 height={24}
                                 alt="boost icon"
                                 quality={100}
                             />
-                            <div className="text-[rgba(81,53,20,0.82)] w-full h-full flex justify-center items-center text-[16px] font-bold whitespace-nowrap z-10 border-[1px] border-transparent">
+                            <div className="text-[#1b3d1c] text-[16px] font-bold whitespace-nowrap z-10 flex items-center justify-center w-full pl-6">
                                 <span>{t("SELECT CROPS")}</span>
                             </div>
 
-                            <span className="absolute top-[6px] right-[15px] text-nowrap flex">
-                                <span className="text-[rgba(81,53,20,0.82)] text-[16px] font-bold flex whitespace-nowrap">
+                            <span className="absolute top-1/2 -translate-y-1/2 right-[12px] text-nowrap flex">
+                                <span className="text-[#1b3d1c] text-[16px] font-bold flex whitespace-nowrap">
                                     <span>{user?.farm_stats.boost_left}/3</span>
                                 </span>
                             </span>
@@ -200,20 +197,17 @@ const GameStats = ({}) => {
                             onClick={() => {
                                 setOpenBoost(true)
                             }}
-                            className="relative w-full h-[37.69px] text-white rounded-[10.5px] z-0 flex justify-center items-center border-[1px] shadow-regular hover:opacity-85"
+                            className="relative w-full h-[40px] rounded-[10.5px] z-0 flex justify-center items-center hover:brightness-110 active:translate-y-[2px] active:shadow-none transition-all bg-gradient-to-b from-[#ffcd4d] to-[#e69b00] border-[2px] border-white shadow-[0_2px_0_#d14d2e]"
                         >
-                            <div className="absolute w-full h-[37.69px] border-[1px] border-white bg-[rgba(213,81,81,0.5)] rounded-[10.5px] -z-1 top-[2px]" />
-                            <div className="absolute w-full h-[35.74px] border-[1px] border-white rounded-[10.5px] -z-1 -top-[2px] left-0" />
-                            <div className="absolute w-full h-[37.69px] border-[1px] border-white bg-linear-orange rounded-[10.5px] z-1 -top-[2px] left-0" />
                             <Image
-                                className="absolute left-[4px] top-[4px]"
+                                className="absolute left-[8px] top-1/2 -translate-y-1/2"
                                 src="/game/Boost_Big.png"
                                 width={24}
                                 height={24}
                                 alt="boost icon"
                                 quality={100}
                             />
-                            <div className="text-[rgba(81,53,20,0.82)] w-full h-full flex justify-center items-center text-[16px] font-bold whitespace-nowrap z-10 border-[1px] border-transparent">
+                            <div className="text-[#5A4B23] w-full h-full flex justify-center items-center text-[16px] font-bold whitespace-nowrap z-10 pl-6">
                                 {t("BOOST YOUR CROPS")}
                             </div>
                         </button>
@@ -387,17 +381,14 @@ const GameStats = ({}) => {
                 </div>
                 <div className="flex flex-col gap-[14.4px]">
                     <button
-                        className="relative max-w-[110.5px] min-w-[110.5px] h-[37.69px] text-white rounded-[10.5px] z-0 flex justify-center items-center border-[1px] shadow-regular hover:opacity-85"
+                        className="relative w-[112px] h-[40px] rounded-[10.5px] z-0 flex justify-center items-center hover:brightness-110 active:translate-y-[2px] active:shadow-none transition-all bg-gradient-to-b from-[#ffcd4d] to-[#e69b00] border-[2px] border-white shadow-[0_2px_0_#d14d2e]"
                         onClick={() => {
                             setActionType("shop")
                         }}
                     >
-                        <div className="absolute w-full h-[37.69px] border-[1px] border-white bg-[rgba(213,81,81,0.5)] rounded-[10.5px] -z-1 top-[2px]" />
-                        <div className="absolute w-full h-[35.74px] border-[1px] border-white rounded-[10.5px] -z-1 -top-[2px] left-0" />
-                        <div className="absolute w-full h-[37.69px] border-[1px] border-white bg-linear-orange rounded-[10.5px] z-1 -top-[2px] left-0" />
-                        <div className="text-[rgba(81,53,20,0.82)] w-full h-full flex justify-center items-center text-[16px] font-bold whitespace-nowrap z-10 border-[1px] border-transparent">
+                        <div className="text-[#5A4B23] w-full h-full flex justify-center items-center text-[16px] font-bold whitespace-nowrap z-10 gap-1">
                             <Image
-                                className="w-[20.5px] h-[18.5px] mr-1 -mt-1"
+                                className="w-[20.5px] h-[18.5px] -mt-1"
                                 src="/game/market.png"
                                 width={41}
                                 height={37}

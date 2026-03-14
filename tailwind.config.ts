@@ -21,11 +21,34 @@ const config: Config = {
                 "light-orange": "rgba(246, 161, 18, 0.2)",
                 "light-dark": "rgba(37, 42, 49, 0.5)",
                 "deep-dark": "rgba(255, 255, 255, 0.2)",
+                "main-bg": "#1a1f25",
+                "card-bg": "#252A31",
             },
             screens: {
                 promax: "430px",
                 pro: "375px",
                 se: "360px",
+            },
+            colors: {
+                brown: {
+                    text: "#5A4B23",
+                    border: "#9D6441",
+                    dark: "#521a00",
+                },
+                green: {
+                    DEFAULT: "#7abf61",
+                    light: "#eaffe1",
+                },
+                blue: {
+                    DEFAULT: "#4578b3",
+                    stroke: "#60b5ff",
+                },
+                yellow: {
+                    text: "#FBB602",
+                },
+                skeleton: {
+                    dark: "#3b4049",
+                },
             },
             backdropFilter: {
                 none: "none",

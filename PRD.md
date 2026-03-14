@@ -173,7 +173,7 @@ type FarmStats = {
     boost_left: number            // 剩余 Boost（max: 3）
     energy_left?: number          // 当前体力
     max_energy?: number           // 最大体力（40 + level × 2）
-    next_restore_time?: string | null
+    next_restore_time?: string | null  // 下一次自然恢复 +1 Energy 的时间戳（每分钟触发一次）
 }
 ```
 
@@ -240,7 +240,7 @@ type Agent = {
     name: string
     type: "farmer" | "trader" | "raider" | "defender"
     status: "idle" | "running" | "paused" | "error" | "out_of_funds"
-    sca_address?: string          // ERC-4337 智能合约账户地址
+    sca_address?: string          // ERC-4337 智能合约账户地址（激活前为 null；Agent 激活后必须存在，x402 支付与资金操作均依赖此字段）
     balance_okb: number
     balance_usdc: number
     config: AgentConfig
@@ -406,7 +406,7 @@ type Service = {
 - Agent 名称（最多 32 字符）
 - **Farmer**：偏好作物多选 Tag、Auto Harvest / Auto Replant 开关
 - **Trader**：利润触发率滑块（5%~50%）、单次 Swap 上限（USDC）
-- **Raider**：雷达等级（Basic/Advanced/Precision）、每日最大偷盗次数（1~20）
+- **Raider**：雷达等级（`1`=Basic / `2`=Advanced / `3`=Precision，对应 `radar_level: 1|2|3`）、每日最大偷盗次数（1~20）
 - **Defender**：早期收割阈值（50%~100%）
 - **通用安全控制**：每日最大 Gas (OKB)、每日最大支出 (USDC)、紧急停止余额下限 (USDC)
 
@@ -457,7 +457,7 @@ type Service = {
 | 已成熟 | `is_mature=true` | 触发收割动画 |
 | 被偷 | `status="Stolen"` | 展示 Stolen 标识 |
 
-**作物生长阶段**：图片路径 `/crop/{CropType}_{stage}.png`，`stage = floor(currentGrowthTime / totalMatureTime * 9)`，最大为 7
+**作物生长阶段**：图片路径 `/crop/{CropType}_{stage}.png`，`stage = floor(currentGrowthTime / totalMatureTime * 8)`，结果范围 0~7（共 8 张图），成熟后由 `is_mature=true` 触发收割态，不再递增
 
 ### 7.2 核心操作流程
 
@@ -465,7 +465,7 @@ type Service = {
 - **浇水**：点击需水作物 → `POST /g/a/` `{action:"water", land_id}` → 浇水动画 → 消耗 1 Energy
 - **收割**：点击成熟作物 → `POST /g/a/` `{action:"harvest", land_id}` → `HarvestModal`（COIN 奖励动画）
 - **购地**：点击可购土地 → 展示 `land_prices[level]` → `POST /g/a/` `{action:"buyland", land_id}`
-- **Boost**：每日限 3 次（`boost_left`），点击目标地块 → `POST /g/a/` `{action:"boost", land_id}` → 爆炸动画
+- **Boost**：`boost_left` 为当日剩余可用次数，**基础每日上限为 3 次**；通过邀请奖励获得的 Boost 会累加到 `boost_left`，可超过 3 次（例如：当日基础 3 次 + 邀请奖励 +1 = 当日可用 4 次）。点击目标地块 → `POST /g/a/` `{action:"boost", land_id}` → 爆炸动画
 
 ### 7.3 农场顶部信息区
 
@@ -532,7 +532,7 @@ type Service = {
 | 新手保护 | `new_farmer` | 新手受保护 |
 | 熟悉度 | `recidivist` | 重复偷同人惩罚 |
 
-**成功率颜色**：0% → 蓝 `#5964F5` | 10~20% → 青 `#2EB9FF` | 20~25% → 橙 `#FF7E2E` | >25% → 紫 `#BE61F9`
+**成功率颜色**：0%~9% → 蓝 `#5964F5` | 10%~19% → 青 `#2EB9FF` | 20%~25% → 橙 `#FF7E2E` | >25% → 紫 `#BE61F9`
 
 ---
 
@@ -565,7 +565,7 @@ type Service = {
 
 ## 13. 抽奖系统（`/raffle`）
 
-购票流程：检查 Twitter 任务 → 选择数量（1 ~ `max_tickets_per_user`）→ 合计 `ticket_price × count` → `POST /g/raffle/` `{raffle_id, ticket_count}`
+购票流程：（当 `is_twitter_task=true` 时）检查 Twitter 任务完成状态 → 选择数量（1 ~ `max_tickets_per_user`）→ 合计 `ticket_price × count` → `POST /g/raffle/` `{raffle_id, ticket_count}`
 
 校验：等级不足 | 邀请数不足 | Coin 不足
 
@@ -633,7 +633,8 @@ type Service = {
 | 参数 | 值 |
 |------|---|
 | 最大体力 | `40 + level × 2` |
-| 自然恢复 | 每分钟 +1 |
+| 自然恢复 | 每分钟 +1（`next_restore_time` 为下一次 +1 的时间戳，每分钟触发一次） |
+| 浇水（自己地块）消耗 | -1 Energy |
 | 浇水好友消耗 | -1 Energy |
 | 偷盗消耗 | -1 Energy |
 
@@ -659,7 +660,7 @@ API：`POST /g/a/` `{action:"buy_energy", pack:"small"|"large"|"full"}`
 |------|------|
 | 1 | 高亮 Market，"Open Market to get seeds" |
 | 2 | 高亮购买 Wheat 入口 |
-| 3 | 作物成熟，"click to earn" + 引导动画 |
+| 3 | 系统触发首块作物**即时成熟**（新手专属加速，仅首次引导生效），显示 "click to earn" + 引导动画 |
 | 4 | 收割完成 → 升级按钮高亮 |
 
 **Phase 2（Step 5~7）**：
@@ -825,7 +826,7 @@ Base URL：环境变量 `NEXT_PUBLIC_API_URL`，通过 `axiosInstance` 统一请
 
 **投票权重**：`vote_power = sqrt(FARM_balance)`（防巨鲸垄断）| 有效期：72小时
 
-**可治理参数**：种子价格 / 收割奖励 / 土地价格 | Agent 偷盗率上限 | 抽奖门槛 | 体力恢复速率 | 邀请奖励金额
+**可治理参数**：种子价格 / 收割奖励 / 土地价格 | Agent 偷盗率上限 | 抽奖门槛 | 体力恢复速率（调整后同步影响 Section 19 能量购买套餐的 Coin 单价，由后端动态下发，前端从 `/g/gs/` 获取最新价格）| 邀请奖励金额
 
 **治理 API**：`GET /dao/proposals/` | `GET /dao/proposals/{id}/` | `POST /dao/proposals/{id}/vote/` `{vote:"for"|"against"}`
 

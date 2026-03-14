@@ -3,14 +3,14 @@ import { FC } from "react"
 const StealConfirmationBackground: FC<{ percentage: number }> = ({ percentage }) => {
     return (
         <>
-            {percentage <= 10 && (
+            {percentage < 10 && (
                 <>
                     {/* 10% */}
                     <div className="-z-[30] absolute rounded-t-[20px] w-full h-[200px] top-0 left-0 bg-gradient-to-b from-[#E0E6F7] to-[rgba(224,230,247,0)]" />
                 </>
             )}
 
-            {percentage > 10 && percentage <= 20 && (
+            {percentage >= 10 && percentage < 20 && (
                 <>
                     {/* 20% */}
                     <div className="-z-[30] absolute rounded-t-[20px] w-full h-[200px] top-0 left-0 bg-gradient-to-b from-[#EDFBFF] via-[#EDFBFF] to-[rgba(237,251,255,0)]"></div>

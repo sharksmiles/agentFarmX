@@ -175,7 +175,14 @@ const GamePad = ({}) => {
                                   }
                                 : c
                         )
-                        return { ...prev, farm_stats: { ...prev.farm_stats, growing_crops: crops } }
+                        return {
+                            ...prev,
+                            farm_stats: {
+                                ...prev.farm_stats,
+                                growing_crops: crops,
+                                energy_left: Math.max((prev.farm_stats.energy_left ?? 0) - 1, 0),
+                            },
+                        }
                     })
                     setLandWatering((prev) => prev.filter((id) => id !== landId))
                 }, 800)
@@ -250,17 +257,27 @@ const GamePad = ({}) => {
                                         differenceInMinutes(nextWateringDue, lastWateringTime)
                                 }
 
-                                cropStage = Math.floor((currentGrowthTime / growthDuration) * 9)
+                                cropStage = Math.floor((currentGrowthTime / growthDuration) * 8)
                                 cropStage = Math.min(cropStage, 7)
                             }
 
                             return (
-                                <div
+                                <button
                                     key={index}
-                                    className="w-[96px] h-[76.85px] flex justify-center lands-center relative"
+                                    className="w-[96px] h-[76.85px] flex justify-center lands-center relative focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 rounded-lg"
                                     onClick={() => {
                                         handleAction(land.land_id, land.crop_details.crop_id)
                                     }}
+                                    type="button"
+                                    aria-label={`Land ${land.land_id} - ${
+                                        stolen
+                                            ? "Stolen"
+                                            : land.land_owned
+                                            ? !needWater && land.is_planted
+                                                ? "Farmed"
+                                                : "Ready to farm"
+                                            : "Not owned"
+                                    }`}
                                 >
                                     <Image
                                         src={`/game/${
@@ -274,9 +291,8 @@ const GamePad = ({}) => {
                                         }.png`}
                                         width={140}
                                         height={114}
-                                        alt={`${land}`}
-                                        loading="eager"
-                                        priority={true}
+                                        alt={`Land ${land.land_id}`}
+                                        loading="lazy"
                                         quality={100}
                                         style={{
                                             transform: "rotateX(-15deg)",
@@ -287,10 +303,8 @@ const GamePad = ({}) => {
                                             src={`/crop/${crop_details.crop_type}_${cropStage}.png`}
                                             width={24}
                                             height={32}
-                                            alt="crop"
+                                            alt={`${crop_details.crop_type} crop`}
                                             className="absolute w-[64px] h-[96px] z-20 bottom-[16.85px]"
-                                            loading="eager"
-                                            priority={true}
                                             quality={100}
                                         />
                                     )}
@@ -328,9 +342,7 @@ const GamePad = ({}) => {
                                                     src="/game/seeding.png"
                                                     width={81}
                                                     height={81}
-                                                    alt="sedding"
-                                                    priority={true}
-                                                    loading="eager"
+                                                    alt="seeding"
                                                     quality={100}
                                                 />
                                             </motion.div>
@@ -347,8 +359,6 @@ const GamePad = ({}) => {
                                                 width={81}
                                                 height={81}
                                                 alt="harvesting"
-                                                priority={true}
-                                                loading="eager"
                                                 quality={100}
                                             />
                                         </motion.div>
@@ -364,9 +374,7 @@ const GamePad = ({}) => {
                                                 src="/game/seeding.png"
                                                 width={81}
                                                 height={81}
-                                                alt="sedding"
-                                                priority={true}
-                                                loading="eager"
+                                                alt="seeding"
                                                 quality={100}
                                             />
                                         </motion.div>
@@ -392,8 +400,6 @@ const GamePad = ({}) => {
                                                     width={81}
                                                     height={81}
                                                     alt="watering"
-                                                    priority={true}
-                                                    loading="eager"
                                                     quality={100}
                                                 />
                                             </motion.div>
@@ -411,7 +417,7 @@ const GamePad = ({}) => {
                                                 </span>
                                             </motion.div>
                                         )}
-                                </div>
+                                </button>
                             )
                         })}
                     </div>
