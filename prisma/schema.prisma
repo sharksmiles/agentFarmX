@@ -1,0 +1,407 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url = env("POSTGRES_PRISMA_URL") // uses connection pooling
+  directUrl = env("POSTGRES_URL_NON_POOLING") // uses a direct connection
+}
+
+// ==================== 用户系统 ====================
+
+model User {
+  id            String   @id @default(cuid())
+  walletAddress String   @unique @db.VarChar(42)
+  username      String?  @db.VarChar(50)
+  avatar        String?  @db.VarChar(255)
+  
+  // 游戏数据
+  level         Int      @default(1)
+  experience    Int      @default(0)
+  farmCoins     Int      @default(1000)
+  
+  // 社交数据
+  inviteCode    String   @unique @default(cuid()) @db.VarChar(20)
+  invitedBy     String?  @db.VarChar(20)
+  inviteCount   Int      @default(0)
+  
+  // 时间戳
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  lastLoginAt   DateTime @default(now())
+  
+  // 关联关系
+  farmState     FarmState?
+  agents        Agent[]
+  inventory     Inventory[]
+  socialActions SocialAction[]
+  raffleEntries RaffleEntry[]
+  transactions  Transaction[]
+  
+  @@index([walletAddress])
+  @@index([inviteCode])
+  @@index([createdAt])
+  @@map("users")
+}
+
+// ==================== 农场状态 ====================
+
+model FarmState {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // 能量系统
+  energy        Int      @default(100)
+  maxEnergy     Int      @default(100)
+  lastEnergyUpdate DateTime @default(now())
+  
+  // 土地系统
+  unlockedLands Int      @default(6) // 已解锁地块数
+  
+  // 统计数据
+  totalHarvests Int      @default(0)
+  totalPlants   Int      @default(0)
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // 关联关系
+  landPlots     LandPlot[]
+  
+  @@index([userId])
+  @@map("farm_states")
+}
+
+// ==================== 土地地块 ====================
+
+model LandPlot {
+  id            String   @id @default(cuid())
+  farmStateId   String
+  farmState     FarmState @relation(fields: [farmStateId], references: [id], onDelete: Cascade)
+  
+  plotIndex     Int      // 地块索引 (0-35)
+  isUnlocked    Boolean  @default(false)
+  
+  // 作物状态
+  cropId        String?  @db.VarChar(50) // 作物类型 ID (如 "Apple")
+  plantedAt     DateTime?
+  harvestAt     DateTime?
+  growthStage   Int      @default(0) // 0: 空地, 1-3: 生长阶段, 4: 成熟
+  
+  // 增益效果
+  boostMultiplier Float  @default(1.0) // 收益倍数
+  boostExpireAt   DateTime?
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@unique([farmStateId, plotIndex])
+  @@index([farmStateId])
+  @@index([harvestAt])
+  @@map("land_plots")
+}
+
+// ==================== 背包系统 ====================
+
+model Inventory {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  itemType      String   @db.VarChar(50) // "crop" | "boost" | "decoration"
+  itemId        String   @db.VarChar(50) // 物品 ID (如 "Apple", "SpeedBoost")
+  quantity      Int      @default(0)
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@unique([userId, itemType, itemId])
+  @@index([userId])
+  @@map("inventories")
+}
+
+// ==================== AI Agent 系统 ====================
+
+model Agent {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // 链上数据
+  scaAddress    String   @unique @db.VarChar(42) // Smart Contract Account 地址
+  nftTokenId    String?  @db.VarChar(78) // NFT Token ID (uint256)
+  
+  // Agent 配置
+  name          String   @db.VarChar(100)
+  personality   String   @db.VarChar(50) // "aggressive" | "conservative" | "balanced"
+  strategyType  String   @db.VarChar(50) // "farming" | "trading" | "social"
+  
+  // AI 配置 (v2.0)
+  aiModel       String   @default("gpt-3.5-turbo") @db.VarChar(50) // LLM 模型
+  customPrompt  String?  @db.Text // 用户自定义提示词
+  temperature   Float    @default(0.7) // LLM 温度参数
+  
+  // 状态
+  status        String   @default("idle") @db.VarChar(20) // "idle" | "running" | "paused" | "error"
+  isActive      Boolean  @default(false)
+  
+  // 性能数据
+  totalProfit   Int      @default(0) // 累计收益 (FarmCoins)
+  totalTasks    Int      @default(0) // 执行任务数
+  successRate   Float    @default(0.0) // 成功率
+  
+  // 时间戳
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  lastActiveAt  DateTime?
+  
+  // 关联关系
+  tasks         AgentTask[]
+  logs          AgentLog[]
+  skillUsages   AgentSkillUsage[]
+  decisions     AgentDecision[]
+  
+  @@index([userId])
+  @@index([scaAddress])
+  @@index([status])
+  @@map("agents")
+}
+
+// ==================== Agent 任务 ====================
+
+model AgentTask {
+  id            String   @id @default(cuid())
+  agentId       String
+  agent         Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  
+  taskType      String   @db.VarChar(50) // "plant" | "harvest" | "trade" | "social"
+  taskData      Json     // 任务参数 (JSONB)
+  
+  status        String   @default("pending") @db.VarChar(20) // "pending" | "running" | "completed" | "failed"
+  priority      Int      @default(0) // 优先级 (0-10)
+  
+  // 执行结果
+  result        Json?    // 执行结果 (JSONB)
+  error         String?  @db.Text
+  
+  // 时间戳
+  createdAt     DateTime @default(now())
+  startedAt     DateTime?
+  completedAt   DateTime?
+  
+  @@index([agentId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("agent_tasks")
+}
+
+// ==================== Agent 日志 ====================
+
+model AgentLog {
+  id            String   @id @default(cuid())
+  agentId       String
+  agent         Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  
+  level         String   @db.VarChar(20) // "info" | "warning" | "error"
+  message       String   @db.Text
+  metadata      Json?    // 额外数据 (JSONB)
+  
+  createdAt     DateTime @default(now())
+  
+  @@index([agentId])
+  @@index([createdAt])
+  @@map("agent_logs")
+}
+
+// ==================== Agent Skills (AI v2.0) ====================
+
+model AgentSkill {
+  id            String   @id @default(cuid())
+  
+  // Skill 定义
+  name          String   @unique @db.VarChar(100) // 技能名称 (如 "plant_crop")
+  displayName   String   @db.VarChar(100) // 显示名称
+  description   String   @db.Text // 功能描述 (给 LLM 看)
+  category      String   @db.VarChar(50) // "farming" | "trading" | "social" | "strategy"
+  
+  // 参数定义 (JSON Schema)
+  parameters    Json     // { type: "object", properties: {...}, required: [...] }
+  
+  // 限制条件
+  energyCost    Int      @default(0) // 能量消耗
+  cooldown      Int      @default(0) // 冷却时间 (秒)
+  requiredLevel Int      @default(1) // 所需等级
+  
+  // 状态
+  isActive      Boolean  @default(true) // 是否启用
+  isSystem      Boolean  @default(true) // 是否系统内置 (false 为用户自定义)
+  
+  // 统计数据
+  totalUsages   Int      @default(0) // 总使用次数
+  successCount  Int      @default(0) // 成功次数
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // 关联关系
+  usages        AgentSkillUsage[]
+  
+  @@index([category])
+  @@index([isActive])
+  @@map("agent_skills")
+}
+
+// ==================== Agent Skill 使用记录 ====================
+
+model AgentSkillUsage {
+  id            String   @id @default(cuid())
+  agentId       String
+  agent         Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  
+  skillId       String
+  skill         AgentSkill @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  
+  // 执行信息
+  parameters    Json     // 执行参数
+  result        Json?    // 执行结果
+  success       Boolean  @default(false)
+  error         String?  @db.Text
+  
+  // 性能数据
+  executionTime Int      @default(0) // 执行时间 (毫秒)
+  
+  createdAt     DateTime @default(now())
+  
+  @@index([agentId])
+  @@index([skillId])
+  @@index([createdAt])
+  @@map("agent_skill_usages")
+}
+
+// ==================== Agent LLM 决策记录 ====================
+
+model AgentDecision {
+  id            String   @id @default(cuid())
+  agentId       String
+  agent         Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  
+  // LLM 调用信息
+  model         String   @db.VarChar(50) // 使用的模型
+  prompt        String   @db.Text // 提示词
+  response      String   @db.Text // LLM 响应
+  
+  // 决策结果
+  decisions     Json     // 决策列表 (Skill 调用序列)
+  reasoning     String?  @db.Text // 决策理由
+  
+  // 成本和性能
+  tokensUsed    Int      @default(0) // Token 消耗
+  cost          Float    @default(0.0) // 成本 (USD)
+  latency       Int      @default(0) // 延迟 (毫秒)
+  
+  // 执行结果
+  executed      Boolean  @default(false) // 是否已执行
+  success       Boolean  @default(false) // 是否成功
+  
+  createdAt     DateTime @default(now())
+  
+  @@index([agentId])
+  @@index([createdAt])
+  @@index([model])
+  @@map("agent_decisions")
+}
+
+// ==================== 社交系统 ====================
+
+model SocialAction {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  targetUserId  String   // 目标用户 ID
+  actionType    String   @db.VarChar(50) // "visit" | "water" | "steal"
+  
+  // 奖励
+  rewardCoins   Int      @default(0)
+  rewardExp     Int      @default(0)
+  
+  createdAt     DateTime @default(now())
+  
+  @@index([userId])
+  @@index([targetUserId])
+  @@index([createdAt])
+  @@map("social_actions")
+}
+
+// ==================== 抽奖系统 ====================
+
+model RaffleEntry {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  raffleId      String   @db.VarChar(100) // 抽奖活动 ID
+  ticketCount   Int      @default(1) // 抽奖券数量
+  
+  // 中奖信息
+  isWinner      Boolean  @default(false)
+  prizeType     String?  @db.VarChar(50) // "nft" | "token" | "boost"
+  prizeAmount   String?  @db.VarChar(78) // 奖品数量 (支持大数)
+  
+  // 链上数据
+  txHash        String?  @db.VarChar(66) // 交易哈希
+  
+  createdAt     DateTime @default(now())
+  claimedAt     DateTime?
+  
+  @@index([userId])
+  @@index([raffleId])
+  @@index([isWinner])
+  @@map("raffle_entries")
+}
+
+// ==================== 交易记录 ====================
+
+model Transaction {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  type          String   @db.VarChar(50) // "earn" | "spend" | "transfer"
+  category      String   @db.VarChar(50) // "harvest" | "plant" | "unlock_land" | "agent_create"
+  
+  amount        Int      // 金额 (FarmCoins)
+  balance       Int      // 交易后余额
+  
+  description   String?  @db.VarChar(255)
+  metadata      Json?    // 额外数据 (JSONB)
+  
+  createdAt     DateTime @default(now())
+  
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
+  @@map("transactions")
+}
+
+// ==================== 系统配置 ====================
+
+model SystemConfig {
+  id            String   @id @default(cuid())
+  key           String   @unique @db.VarChar(100)
+  value         Json     // 配置值 (JSONB)
+  
+  description   String?  @db.Text
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@index([key])
+  @@map("system_configs")
+}

@@ -1,0 +1,57 @@
+warning: in the working copy of 'src/app/page.tsx', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/src/app/page.tsx b/src/app/page.tsx[m
+[1mindex b5a1b2a..470e1b5 100644[m
+[1m--- a/src/app/page.tsx[m
+[1m+++ b/src/app/page.tsx[m
+[36m@@ -1,5 +1,4 @@[m
+ "use client"[m
+[31m-import Capila from "@/components/capila/capila"[m
+ import { useData } from "@/components/context/dataContext"[m
+ import BuylandModal from "@/components/game/buylandmodal"[m
+ import EnergyModal from "@/components/game/energymodal"[m
+[36m@@ -35,7 +34,6 @@[m [mexport default function Home() {[m
+             <EnergyModal />[m
+             <RadarModal />[m
+             <LeaderBoardPopUpModal />[m
+[31m-            <Capila />[m
+         </main>[m
+     )[m
+ }[m
+[1mdiff --git a/src/components/context/dataContext.tsx b/src/components/context/dataContext.tsx[m
+[1mindex 79a5800..b12a31c 100644[m
+[1m--- a/src/components/context/dataContext.tsx[m
+[1m+++ b/src/components/context/dataContext.tsx[m
+[36m@@ -2,7 +2,6 @@[m
+ import { imagesToLoad, preloadImage } from "@/utils/func/imageloader"[m
+ import {[m
+     ActionTypes,[m
+[31m-    CapilaTypes,[m
+     CropTypes,[m
+     FriendPageNotificationTypes,[m
+     GameStats,[m
+[36m@@ -122,8 +121,6 @@[m [minterface DataContextValue {[m
+     >[m
+     friendList: FriendsData[][m
+     setFriendList: React.Dispatch<React.SetStateAction<FriendsData[]>>[m
+[31m-    capilaStats: CapilaTypes | null[m
+[31m-    setCapilaStats: React.Dispatch<React.SetStateAction<CapilaTypes | null>>[m
+     openEnergyModal: boolean[m
+     setOpenEnergyModal: React.Dispatch<React.SetStateAction<boolean>>[m
+     openRadarModal: boolean[m
+[36m@@ -202,7 +199,6 @@[m [mexport const DataProvider: FC<DataProviderProps> = ({ children }) => {[m
+     const [openDeleteFriendModel, setOpenDeleteFriendModel] =[m
+         useState<openDeleteFriendModelData | null>(null)[m
+     const [friendList, setFriendList] = useState<FriendsData[]>([])[m
+[31m-    const [capilaStats, setCapilaStats] = useState<CapilaTypes | null>(null)[m
+     const [openEnergyModal, setOpenEnergyModal] = useState<boolean>(false)[m
+     const [openRadarModal, setOpenRadarModal] = useState<boolean>(false)[m
+     const [radaring, setRadaring] = useState<boolean>(false)[m
+[36m@@ -328,8 +324,6 @@[m [mexport const DataProvider: FC<DataProviderProps> = ({ children }) => {[m
+         setOpenDeleteFriendModel,[m
+         friendList,[m
+         setFriendList,[m
+[31m-        capilaStats,[m
+[31m-        setCapilaStats,[m
+         openEnergyModal,[m
+         setOpenEnergyModal,[m
+         openRadarModal,[m

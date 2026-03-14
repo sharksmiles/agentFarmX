@@ -257,46 +257,49 @@ type GameStats = {
 }
 ```
 
-### 5.7 AI Agent
+### 5.7 AI Agent（✅ 已实现）
 ```typescript
 type Agent = {
     id: string
-    owner_address: string
-    name: string
+    name: string                  // 用户自定义名称（最多 32 字符）
     type: "farmer" | "trader" | "raider" | "defender"
     status: "idle" | "running" | "paused" | "error" | "out_of_funds"
-    sca_address?: string          // ERC-4337 智能合约账户地址（激活前为 null；Agent 激活后必须存在，x402 支付与资金操作均依赖此字段）
-    balance_okb: number
-    balance_usdc: number
-    config: AgentConfig
-    stats: AgentStats
-    nft_skin?: string
+    sca_address: string           // ERC-4337 SCA 地址（CREATE2 确定性生成）
+    balance_okb: number           // Agent SCA 的 OKB 余额（Gas 费用）
+    balance_usdc: number          // Agent SCA 的 USDC 余额（操作资金）
+    config: AgentConfig           // 策略配置（4 种类型各有专属参数）
+    stats: AgentStats             // 累计统计数据
+    nft_skin?: string             // NFT 皮肤（预留，Phase 5）
     created_at: string
-    last_active_at: string
-    logs: AgentLog[]
+    last_active_at: string        // 最后活跃时间（用于心跳监控）
+    logs: AgentLog[]              // 活动日志（支持过滤和分页）
 }
 
 type AgentConfig = {
-    // Farmer
-    preferred_crops?: CropTypes[]
-    auto_harvest: boolean
-    auto_replant: boolean
-    // Trader
-    swap_trigger_profit_rate?: number   // 默认 15%
-    max_single_swap_usdc?: number
-    // Raider
-    radar_level?: 1 | 2 | 3
-    max_daily_steals?: number
-    // Defender
-    early_harvest_threshold?: number    // 50~100%
-    // 通用
-    max_daily_gas_okb: number
-    max_daily_spend_usdc: number
-    emergency_stop_balance: number      // USDC 下限触发急停
+    // ── Farmer 专属 ──
+    preferred_crops?: string[]          // 优先种植的作物列表（从 8 种可选）
+    auto_harvest?: boolean              // 自动收割成熟作物
+    auto_replant?: boolean              // 收割后自动重新种植
+    
+    // ── Trader 专属 ──
+    swap_trigger_profit_rate?: number   // 触发 Swap 的利润率阈值（默认 15%）
+    max_single_swap_usdc?: number       // 单次 Swap 最大 USDC 金额（默认 5）
+    
+    // ── Raider 专属 ──
+    radar_level?: 1 | 2 | 3             // 雷达等级：1=Basic, 2=Advanced, 3=Precision
+    max_daily_steals?: number           // 每日最大偷盗次数（默认 5）
+    
+    // ── Defender 专属 ──
+    early_harvest_threshold?: number    // 提前收割阈值（50~100%，默认 80%）
+    
+    // ── 通用安全控制 ──
+    max_daily_gas_okb?: number          // 每日最大 Gas 消耗（OKB，默认 0.05）
+    max_daily_spend_usdc?: number       // 每日最大 USDC 支出（默认 10）
+    emergency_stop_balance?: number     // 紧急停止余额阈值（USDC，默认 1）
 }
 
 type AgentStats = {
-    total_actions: number
+    total_actions: number               // 累计执行的操作次数
     total_earned_coin: number
     total_spent_gas: number
     total_spent_usdc: number
@@ -388,22 +391,29 @@ type Service = {
 | **Raider** ⚔️ | 偷盗他人作物 | `okx-onchain-gateway` | `#EB5757` |
 | **Defender** 🛡️ | 保护己方农场 | `okx-wallet-portfolio` | `#F2994A` |
 
-### 6.2 自主支付流程（x402 协议）
+### 6.2 自主支付流程（x402 协议）✅ 已实现
 
-**User → Agent（资金充值）**：用户向 Agent SCA 存入 OKB（Gas）+ USDC（操作资金），需钱包签名
+**User → Agent（资金充值）**：
+- 用户在 Agent 详情页点击 "+ Top Up" 按钮
+- 选择 OKB 或 USDC，输入金额
+- 调用 `utils/func/onchain.ts` 中的 `transferOKB()` 或 `transferUSDC()`
+- 钱包签名确认链上转账到 Agent SCA 地址
+- 获取 `tx_hash` 后调用 `POST /api/agents/{id}/topup/` 记录充值
+- 后端更新 Agent 余额，前端实时刷新
 
 **Agent → System（x402 API 调用）**：
-1. Agent 发起 API 请求
+1. Agent 发起 API 请求（如雷达扫描）
 2. Server 返回 `HTTP 402 Payment Required`，Header 携带 `WWW-Authenticate: x402 chain_id=196 token=USDC price=<amount> recipient=<address>`
-3. Agent 构造 EIP-712 签名的 USDC Transfer
-4. 附带 `Authorization: x402 <proof_data>` 重新请求
+3. Agent 使用 `utils/func/x402.ts` 中的 `signX402Payment()` 构造 EIP-712 签名
+4. 附带 `X-Payment: <encoded_payment>` Header 重新请求
 5. Server 验证支付并响应
+6. **前端实现**：`src/utils/api/client.ts` Axios 拦截器自动处理 402 响应，无需手动干预
 
-**Agent → Agent（服务协作）**：通过 Service Registry 发现服务，x402 微支付结算
+**Agent → Agent（服务协作）**：通过 Service Registry 发现服务，x402 微支付结算（预留，Phase 8）
 
 ---
 
-### 6.3 Agent 列表页（`/agents`）✅ 已实现（Mock）
+### 6.3 Agent 列表页（`/agents`）✅ 已实现
 
 **顶部概览（3列）**：总获得 $COIN（金色）| 总消耗 OKB + USDC | 运行中/全部
 
@@ -421,7 +431,7 @@ type Service = {
 
 ---
 
-### 6.4 创建 Agent（`/agents/create`）✅ 已实现（Mock）
+### 6.4 创建 Agent（`/agents/create`）✅ 已实现
 
 **4步引导**（`stepLabels: ["Type", "Configure", "Fund", "Activate"]`）：
 
@@ -441,7 +451,7 @@ type Service = {
 
 ---
 
-### 6.5 Agent 详情页（`/agents/[id]`）✅ 已实现（Mock）
+### 6.5 Agent 详情页（`/agents/[id]`）✅ 已实现
 
 **① 状态与余额**：名称 + 类型 + `Rank #XX` + 状态徽章 + OKB/USDC 余额（各含 Top Up 按钮）
 
@@ -460,9 +470,21 @@ type Service = {
 
 ---
 
-### 6.6 Agent 配置编辑（`/agents/[id]/config`）
+### 6.6 Agent 配置编辑（`/agents/[id]/config`）✅ 已实现
 
-展示 `AgentConfig` 全部字段，支持编辑，需钱包签名确认。API：`PATCH /api/agents/{id}/config/`
+**功能**：
+- 根据 Agent `type` 动态渲染对应配置表单
+- Farmer：多选作物、自动收割/重种开关
+- Trader：利润率滑块（5~50%）、单次 Swap 上限
+- Raider：雷达等级选择（Basic/Advanced/Precision）、每日偷盗次数滑块
+- Defender：提前收割阈值滑块（50~100%）
+- 通用：每日 Gas/USDC 上限、紧急停止余额
+
+**保存流程**：
+- 点击 "Save Changes" 调用 `PATCH /api/agents/{id}/config/`
+- 后端更新 `agents.config` JSONB 字段
+- 前端显示 "Saved!" 提示 2 秒后消失
+- **注意**：当前版本未强制钱包签名，计划在后续版本添加
 
 ---
 
@@ -520,15 +542,19 @@ type Service = {
 
 ---
 
-## 10. 好友系统（Friends）
+## 10. 好友系统（Friends）✅ 已实现
 
-### 10.1 好友列表（`/friends`）
+### 10.1 好友列表（`/friends`）✅ 已实现
 过滤 Tab：All | Water（need_water）| 好友卡片（头像/用户名/等级/Coin/在线状态/浇水收割需求）| 长按删除好友 | Cursor 无限滚动
 
-### 10.2 好友请求（`/friends/request`）
+**API**：`GET /u/friends/?filter=&cursor=`
+
+### 10.2 好友请求（`/friends/request`）✅ 已实现
 待处理入站请求，操作：Accept | Decline
 
-### 10.3 搜索好友（`/friends/search`）
+**API**：`GET /u/friends/requests/` | `PATCH /u/friends/{id}/ {action}`
+
+### 10.3 搜索好友（`/friends/search`）✅ 已实现
 
 | 状态值 | 说明 | 操作 |
 |--------|------|------|
@@ -537,13 +563,20 @@ type Service = {
 | `request_received` | 收到请求 | 接受/拒绝 |
 | `friend` | 已是好友 | 查看农场 |
 
-### 10.4 好友农场（`/friends/farm/[type]/[id]`）
+### 10.4 好友农场（`/friends/farm/[type]/[id]`）✅ 已实现
 
 **type 参数**：`f`（好友列表）| `i`（我邀请的）| `ra`（抢夺来源）| `re`（活动记录）
 
-**浇水**：`next_watering_due` 过期可操作，消耗 1 Energy，API: `POST /g/fa/` `{action:"water", friend_id, land_id}`
+**浇水**：`next_watering_due` 过期可操作，消耗 1 Energy
+- API: `POST /g/fa/ {action:"water", friend_id, land_id}`
+- 实现：`src/utils/api/social.ts` - `waterFriendCrop()`
+- 返回：`{reward: number, updatedSelf: User}`
 
-**偷盗流程**：`POST /g/fa/` `{action:"checksteal", friend_id, crop_id}` → 返回 `StealConfirmation`（含成功率因子详情）→ 确认后 `POST /g/fa/` `{action:"steal", friend_id, crop_id}`（消耗 100 Coin + 1 Energy）
+**偷盗流程**：
+1. 检查偷盗：`POST /g/fa/ {action:"checksteal", friend_id, crop_id}`
+2. 返回 `StealConfirmation`（含成功率因子详情）
+3. 确认后：`POST /g/fa/ {action:"steal", friend_id, crop_id}`（消耗 100 Coin + 1 Energy）
+4. 实现：`src/utils/api/social.ts` - `checkSteal()` + `stealCrop()`
 
 **成功率因子**：
 
@@ -561,7 +594,7 @@ type Service = {
 
 ---
 
-## 11. 邀请系统（`/invite`）
+## 11. 邀请系统（`/invite`）✅ 已实现
 
 **直接邀请**：新用户 1,000 Coin + 1 Boost + 20 Energy
 
@@ -578,19 +611,35 @@ type Service = {
 
 ---
 
-## 12. 任务系统（`/earn`）
+## 12. 任务系统（`/earn`）✅ 已实现
 
-**每日签到**：7天进度（`dailyRewardList`），API：`GET /g/gdt/` | `PATCH /g/gdt/`
+**每日签到**：7天进度（`dailyRewardList`）
+- 查询：`GET /g/gdt/`
+- 签到：`PATCH /g/gdt/`
+- 实现：`src/utils/api/tasks.ts` - `fetchDailyCheckIn()` + `claimDailyReward()`
 
-**游戏任务**：`click=true` 打开链接后自动标记完成 | 任务 ID=5 需绑定 Web3 钱包 | 批量领取按钮（`gameReward > 0`），API：`GET /g/tasv/` | `POST /g/tasv/` `{task_id}`
+**游戏任务**：`click=true` 打开链接后自动标记完成 | 任务 ID=5 需绑定 Web3 钱包 | 批量领取按钮（`gameReward > 0`）
+- 查询：`GET /g/tasv/`
+- 领取：`POST /g/tasv/ {task_id}`
+- 批量领取：`POST /g/cwr/`
+- 实现：`src/utils/api/tasks.ts` - `fetchTasks()` + `claimGameTask()` + `claimGameReward()`
 
-**X Layer 生态任务**：奖励 Coin + Stone + Crystal，API：`POST /g/rt/` `{claim: 0|1}`
+**X Layer 生态任务**：奖励 Coin + Stone + Crystal
+- API：`POST /g/rt/ {claim: 0|1}`
+- 实现：`src/utils/api/tasks.ts` - `checkEcosystemTask()` + `claimEcosystemTask()`
 
 ---
 
-## 13. 抽奖系统（`/raffle`）
+## 13. 抽奖系统（`/raffle`）✅ 已实现
 
-购票流程：（当 `is_twitter_task=true` 时）检查 Twitter 任务完成状态 → 选择数量（1 ~ `max_tickets_per_user`）→ 合计 `ticket_price × count` → `POST /g/raffle/` `{raffle_id, ticket_count}`
+购票流程：（当 `is_twitter_task=true` 时）检查 Twitter 任务完成状态 → 选择数量（1 ~ `max_tickets_per_user`）→ 合计 `ticket_price × count` → `POST /g/raffle/ {raffle_id, ticket_count}`
+
+**API**：
+- 抽奖列表：`GET /g/raffle/`
+- 购票：`POST /g/raffle/ {raffle_id, ticket_count}`
+- 参与者：`GET /g/raffle/{id}/participants/?cursor=`
+- 获奖者：`GET /g/raffle/{id}/winners/`
+- 实现：`src/utils/api/raffle.ts`
 
 校验：等级不足 | 邀请数不足 | Coin 不足
 
@@ -598,7 +647,7 @@ type Service = {
 
 ---
 
-## 14. 钱包/个人中心（`/me`）
+## 14. 钱包/个人中心（`/me`）✅ 已实现
 
 | Tab | 内容 |
 |-----|------|
@@ -609,15 +658,20 @@ type Service = {
 
 ---
 
-## 15. 空投（`/airdrop`）
+## 15. 空投（`/airdrop`）✅ 已实现
 
 展示：$FARM 数量 | 钱包地址 | 快照周期 | 资格说明（`remarks[]`）
 
 逻辑：`airdrop_amount > 0` → "Claim $FARM" | 不符合 → "Your farm is ineligible for this airdrop."
 
+**API**：
+- 查询资格：`GET /u/airdrop/`
+- 领取空投：`POST /u/airdrop/ {airdrop_id}` → 返回 `{tx_hash}`
+- 实现：`src/utils/api/airdrop.ts` - `fetchAirdropInfo()` + `claimAirdrop()`
+
 ---
 
-## 16. 活动记录（`/record` — Scarecrow Notes）
+## 16. 活动记录（`/record` — Scarecrow Notes）✅ 已实现
 
 | 类型 | 颜色 | 说明 |
 |------|------|------|

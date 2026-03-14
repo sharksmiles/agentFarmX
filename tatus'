@@ -1,0 +1,113 @@
+[1mdiff --git a/PRD.md b/PRD.md[m
+[1mindex b3060d4..7fd1c8a 100644[m
+[1m--- a/PRD.md[m
+[1m+++ b/PRD.md[m
+[36m@@ -1,5 +1,5 @@[m
+[31m-# AgentFarm X — 产品需求文档 (PRD v2.0)[m
+[31m-> **版本**: v2.0（代码同步修订版）| **更新日期**: 2026-03-14 | **语言**: 简体中文[m
+[32m+[m[32m# AgentFarm X — 产品需求文档 (PRD v2.1)[m
+[32m+[m[32m> **版本**: v2.1（后端集成完成版）| **更新日期**: 2026-03-14 | **语言**: 简体中文[m
+ [m
+ ---[m
+ [m
+[36m@@ -28,22 +28,29 @@[m [mAgentFarm X 是构建在 **X Layer** 上的 **AI Agent Playground**，将链上[m
+ [m
+ ---[m
+ [m
+[31m-## 1.5 当前开发状态（Mock 锁定说明）[m
+[32m+[m[32m## 1.5 当前开发状态[m
+ [m
+[31m-> **截止**: 2026-03-14，UI 层已达 **100% Mock 驱动**，尚未接入真实后端 API。[m
+[32m+[m[32m> **截止**: 2026-03-14，后端 API 集成 **7 个阶段全部完成**，TypeScript 构建通过（exit 0）。[m
+ [m
+ | 模块 | 状态 | 说明 |[m
+ |------|------|------|[m
+[31m-| 前端 UI Mock | ✅ 100% | 所有数据来自 `MOCK_*` 常量（`utils/mock/mockData.ts`） |[m
+[31m-| Telegram 集成 | ⚠️ 待接入 | 类型已安装，`utils/func/telegram.ts` 存在，layout 层未启用 |[m
+[31m-| AI Agent UI | ✅ Mock 完成 | `/agents`、`/agents/create`、`/agents/[id]`、`/agents/[id]/config` 均已实现，数据来自 `MOCK_AGENTS` |[m
+[31m-| 后端 API 对接 | ❌ 未开始 | `utils/axios/apiRequests.ts` 定义规范，未真实调用 |[m
+[31m-| 链上交互（ethers/x402） | ❌ 未开始 | `utils/contract/contractfunc.ts` 框架存在，未集成 |[m
+[31m-| Web3 钱包登录（SIWE） | ❌ 未开始 | **wagmi/RainbowKit 未安装**，使用 ethers.js v6，SIWE 待实现 |[m
+[31m-| 构建状态 | ⚠️ 待验证 | `npm run build` 存在 lint 警告，`utils/encryption/index.ts` Buffer 报错 |[m
+[31m-[m
+[31m-**Mock 常量清单**（`utils/mock/mockData.ts`）：[m
+[31m-`MOCK_USER`、`MOCK_GAME_STATS`、`MOCK_AGENTS`（含 logs）、`MOCK_FRIENDS`、`MOCK_FRIEND_FARM_STATS`、`MOCK_FRIEND_REQUESTS`、`MOCK_SEARCH_RESULTS`、`MOCK_STEAL_CONFIRMATION`、`MOCK_TASKS`、`MOCK_DAILY_REWARD`、`MOCK_RENAISSANCE_TASKS`、`MOCK_RAFFLES`、`MOCK_LEADERBOARD`、`MOCK_INVITES`、`MOCK_RECORDS`、`MOCK_AIRDROP`、`MOCK_CAPILA`[m
+[32m+[m[32m| 前端 UI | ✅ 100% | 全部路由与交互已实现 |[m
+[32m+[m[32m| 后端 API 对接（Phase 1~7） | ✅ 完成 | `src/utils/api/` 下 9 个模块全部对接真实端点 |[m
+[32m+[m[32m| Web3 钱包登录（SIWE） | ✅ 已实现 | `siwe` v3.0.0 已安装；`walletAuth.ts` + `AuthGate.tsx` 完整实现 |[m
+[32m+[m[32m| EIP-6963 钱包发现 | ✅ 已实现 | `discoverWalletProviders()` 自动发现 OKX Wallet / MetaMask 等 |[m
+[32m+[m[32m| x402 支付协议 | ✅ 已实现 | `utils/func/x402.ts` + `api/client.ts` 拦截器自动处理 402 重试 |[m
+[32m+[m[32m| 链上转账（OKB / USDC） | ✅ 已实现 | `utils/func/onchain.ts`：`transferOKB`、`transferUSDC`、`waitForTx` |[m
+[32m+[m[32m| AuthGate 认证守卫 | ✅ 已实现 | `components/auth/AuthGate.tsx` 覆盖全局，未登录展示 ConnectWallet |[m
+[32m+[m[32m| AI Agent UI + API | ✅ 已实现 | `/agents/*` 全路由 + `utils/api/agents.ts` 全端点对接 |[m
+[32m+[m[32m| 好友系统 API | ✅ 已实现 | 浇水 / 偷盗 / 请求 / 搜索 全部对接真实 API |[m
+[32m+[m[32m| 任务 / 签到 API | ✅ 已实现 | 每日签到 PATCH、游戏任务、生态任务、批量奖励领取 |[m
+[32m+[m[32m| 抽奖 API | ✅ 已实现 | 购票 / 参与者 / 获奖者 全部对接 |[m
+[32m+[m[32m| 邀请 / 排行榜 / 活动记录 | ✅ 已实现 | Cursor 分页无限滚动 |[m
+[32m+[m[32m| 空投领取 | ✅ 已实现 | `claimAirdrop()` + tx_hash 通知 |[m
+[32m+[m[32m| 构建状态 | ✅ 通过 | TypeScript 编译 exit 0，无 Buffer 报错 |[m
+[32m+[m
+[32m+[m[32m**仍使用 Mock 的模块**（`utils/mock/mockData.ts`）：[m
+[32m+[m[32m`MOCK_GAME_STATS`、`MOCK_FRIEND_INFO`、`MOCK_AIRDROP` 仅作 API 失败时的降级 fallback，正常路径已对接真实 API。[m
+ [m
+ ---[m
+ [m
+[36m@@ -80,18 +87,33 @@[m [mAgentFarm X 是构建在 **X Layer** 上的 **AI Agent Playground**，将链上[m
+ | next-view-transitions | ^0.2.0 | 页面切换动画 |[m
+ | Baloo Bhai 2 | Google Font | 主字体 |[m
+ | Lucide React | ^0.381.0 | 图标库 |[m
+[32m+[m[32m| **siwe** | **^3.0.0** | **SIWE 登录签名**（已安装） |[m
+[32m+[m[32m| react-swipeable | ^7.0.1 | 滑动手势 |[m
+ [m
+[31m-> ⚠️ **规划中但未安装**：`wagmi`、`viem`、`@rainbow-me/rainbowkit`、`onchainos-skills`、`x402-sdk`[m
+[32m+[m[32m> ⚠️ **规划中但未安装**：`wagmi`、`viem`、`@rainbow-me/rainbowkit`、`onchainos-skills`[m
+[32m+[m[32m>[m
+[32m+[m[32m> 💡 **x402 已实现自定义方案**（`utils/func/x402.ts`），无需 `x402-sdk`。[m
+ [m
+ ### 3.2 全局状态管理（React Context）[m
+ [m
+ | Context | 职责 |[m
+ |---------|------|[m
+ | `DataContext` | 主数据层：游戏状态、好友、Raffle、Earn、通知等 |[m
+[31m-| `UserContext` | 用户信息、钱包地址、余额 |[m
+[32m+[m[32m| `UserContext` | 用户信息、钱包地址、认证状态、钱包连接/断开 |[m
+ | `LanguageContext` | 多语言切换 |[m
+ [m
+[31m-> ⚠️ PRD 中提到的 `AgentContext` **代码中尚未实现**，Agent 状态目前通过组件内部 `useState` 管理。[m
+[32m+[m[32m> ℹ️ `AgentContext` **代码中尚未实现**，Agent 状态目前通过组件内部 `useState` 管理。[m
+[32m+[m
+[32m+[m[32m**UserContext 主要状态字段**（`src/components/context/userContext.tsx`）：[m
+[32m+[m[32m- `user` / `setUser` — 当前登录用户（`User | null`）[m
+[32m+[m[32m- `isAuthenticated` — Session 是否有效[m
+[32m+[m[32m- `isSessionRestored` / `setIsSessionRestored` — 应用初始化时 session 恢复完成标志（控制 AuthGate 加载界面）[m
+[32m+[m[32m- `isAuthLoading` — 钱包连接中状态[m
+[32m+[m[32m- `availableProviders` / `setAvailableProviders` — EIP-6963 发现的钱包列表[m
+[32m+[m[32m- `connectWallet(provider)` — 触发 SIWE 登录流程[m
+[32m+[m[32m- `disconnectWallet()` — 调用 `/auth/logout`，清空本地状态[m
+[32m+[m[32m- `refreshUser()` — 调用 `GET /u/me` 尝试恢复 Session[m
+[32m+[m[32m- `airdropInfo` 、`coinBalance`、`artBalance`[m
+ [m
+ **DataContext 主要状态字段**（`src/components/context/dataContext.tsx`）：[m
+ - 游戏：`gameStats`、`selectedLandId`、`actionType`、`selectedShop`、`openBoost`、`harvestCoinAmount`、`onBoardingStep`[m
+[36m@@ -129,15 +151,20 @@[m [mAgentFarm X 是构建在 **X Layer** 上的 **AI Agent Playground**，将链上[m
+ [m
+ ---[m
+ [m
+[31m-## 4. 用户认证（规划，尚未实现）[m
+[32m+[m[32m## 4. 用户认证（✅ 已实现）[m
+ [m
+ ### 4.1 钱包连接与 SIWE 流程[m
+[31m-1. **EIP-6963 钱包检测**：自动发现浏览器钱包（OKX Wallet、MetaMask 等）[m
+[31m-2. **SIWE 签名**：[m
+[32m+[m[32m1. **EIP-6963 钱包检测**：`discoverWalletProviders()` 自动发现 OKX Wallet、MetaMask 等，结果存入 `availableProviders`[m
+[32m+[m[32m2. **SIWE 签名**（`utils/func/walletAuth.ts`）：[m
+    - `GET /auth/nonce` 获取 Nonce[m
+[31m-   - 签名消息：`"Welcome to AgentFarm X. Sign this message to authenticate."`[m
+[31m-   - `POST /auth/login` `{address, signature, message}` → 获取 Session Token (JWT)[m
+[31m-3. **Session 管理**：HttpOnly Cookie 存储 Session Token[m
+[32m+[m[32m   - 使用 `siwe` 库构造 `SiweMessage`，链 ID: `196`（X Layer Mainnet）[m
+[32m+[m[32m   - 签名语句：`"Welcome to AgentFarm X. Sign this message to authenticate."`[m
+[32m+[m[32m   - `POST /auth/login` `{address, signature, message}` → 后端验证并设置 Session[m
+[32m+[m[32m3. **Session 管理**：HttpOnly Cookie，应用启动时通过 `GET /u/me` 尝试恢复[m
+[32m+[m[32m4. **AuthGate**（`components/auth/AuthGate.tsx`）：[m
+[32m
