@@ -1,6 +1,7 @@
 "use client"
 import { useEffect, useState } from "react"
 import { MOCK_AGENTS } from "../../utils/mock/mockData"
+import { fetchAgents, Agent } from "../../utils/api/agents"
 import Link from "next/link"
 import { useData } from "../../components/context/dataContext"
 import { timeAgo } from "../../utils/func/utils"
@@ -21,12 +22,14 @@ const STATUS_STYLES: Record<string, { bg: string; text: string; dot: string; lab
 }
 
 export default function AgentsPage() {
-    const [agents, setAgents] = useState<typeof MOCK_AGENTS>([])
+    const [agents, setAgents] = useState<Agent[]>([])
     const { setCurrentTab } = useData()
 
     useEffect(() => {
         setCurrentTab("Agents")
-        setAgents(MOCK_AGENTS)
+        fetchAgents()
+            .then(setAgents)
+            .catch(() => setAgents(MOCK_AGENTS as any))
     }, [])
 
     const totalEarned  = agents.reduce((s, a) => s + a.stats.total_earned_coin, 0)

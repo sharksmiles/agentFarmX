@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react"
 import { useLanguage } from "../context/languageContext"
 import { FriendsData } from "./friendsearchpage"
 import { MOCK_FRIEND_REQUESTS } from "@/utils/mock/mockData"
+import { fetchFriendRequests, respondFriendRequest } from "@/utils/api/social"
 import Image from "next/image"
 import { useData } from "../context/dataContext"
 import { useRouter } from "next/navigation"
@@ -19,11 +20,10 @@ const FriendsRequestsPage = () => {
     const { setNotification } = useData()
     const getFriendRquestList = async (cursor: string = "null") => {
         setLoadingFriend(true)
-        setTimeout(() => {
-            setRequestResults(MOCK_FRIEND_REQUESTS as any)
-            setCursor("")
-            setLoadingFriend(false)
-        }, 200)
+        fetchFriendRequests()
+            .then((reqs) => setRequestResults(reqs as any))
+            .catch(() => setRequestResults(MOCK_FRIEND_REQUESTS as any))
+            .finally(() => setLoadingFriend(false))
     }
 
     const scrollToTop = () => {
@@ -66,11 +66,13 @@ const FriendsRequestsPage = () => {
 
     const handleAcceptRequest = async (user_id: string) => {
         setRequestResults((prev) => prev.filter((f) => f.id !== user_id))
+        respondFriendRequest(user_id, "accept").catch(() => {})
         setNotification({ notificationTitle: "Success", notificationMessage: "Friend request accepted!" })
     }
 
     const handleDeclineRequest = async (user_id: string) => {
         setRequestResults((prev) => prev.filter((f) => f.id !== user_id))
+        respondFriendRequest(user_id, "decline").catch(() => {})
         setNotification({ notificationTitle: "Success", notificationMessage: "Friend request declined." })
     }
 

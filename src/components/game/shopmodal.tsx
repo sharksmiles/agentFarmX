@@ -8,6 +8,7 @@ import { ArrowRightFromLine, Minus, Plus } from "lucide-react"
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
 import { useLanguage } from "../context/languageContext"
 import { CropTypes } from "@/utils/types"
+import { shopPurchase } from "@/utils/api/game"
 
 const ShopModal = () => {
     const { user, setUser } = useUser()
@@ -112,7 +113,10 @@ const ShopModal = () => {
             return
         }
         setPurchasing(true)
-        setTimeout(() => {
+        try {
+            const updatedUser = await shopPurchase(selectedShop.quantities)
+            setUser(updatedUser)
+        } catch {
             setUser((prev) => {
                 if (!prev) return prev
                 const newInventory = [...prev.farm_stats.inventory]
@@ -133,11 +137,12 @@ const ShopModal = () => {
                     },
                 }
             })
+        } finally {
             OpenAgentFarmAlert({ notificationTitle: t("Purchased Success!"), notificationMessage: t("Seeds added to inventory.") })
             setActionType(null)
             setSelectedShop({ quantities: {}, selectedItemsNumber: 0, totalPrice: 0 })
             setPurchasing(false)
-        }, 600)
+        }
     }
 
     return (

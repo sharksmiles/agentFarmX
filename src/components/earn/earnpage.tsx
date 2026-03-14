@@ -3,6 +3,7 @@ import { useUser } from "../context/userContext"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { MOCK_TASKS, MOCK_DAILY_REWARD } from "@/utils/mock/mockData"
+import { fetchTasks, claimGameReward } from "@/utils/api/tasks"
 import { useData } from "../context/dataContext"
 import { ArrowUpFromDot } from "lucide-react"
 import { useLanguage } from "../context/languageContext"
@@ -40,10 +41,22 @@ const EarnPage = () => {
     const [isGameWallet, setIsGameWallet] = useState<boolean>(false)
 
     const getTask = async () => {
-        setInGameTask(MOCK_TASKS)
-        setDailyRewardList(MOCK_DAILY_REWARD.daily_reward)
-        setGameReward(MOCK_DAILY_REWARD.game_reward)
-        setCompleted(MOCK_DAILY_REWARD.completed)
+        fetchTasks()
+            .then((data) => {
+                setInGameTask(data.game_tasks)
+                setDailyRewardList(data.daily_reward as any)
+                setGameReward(data.game_reward)
+                setCompleted(data.completed ? 1 : 0)
+                if (data.renaissance_tasks?.length) {
+                    setRenaissanceTask(data.renaissance_tasks)
+                }
+            })
+            .catch(() => {
+                setInGameTask(MOCK_TASKS)
+                setDailyRewardList(MOCK_DAILY_REWARD.daily_reward)
+                setGameReward(MOCK_DAILY_REWARD.game_reward)
+                setCompleted(MOCK_DAILY_REWARD.completed)
+            })
     }
 
     const scrollToTop = () => {

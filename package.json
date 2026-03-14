@@ -24,6 +24,7 @@
         "react-dom": "^18",
         "react-swipeable": "^7.0.1",
         "sharp": "^0.33.5",
+        "siwe": "^3.0.0",
         "three": "^0.165.0"
     },
     "devDependencies": {

@@ -4,12 +4,16 @@ import { useEffect } from "react"
 import { useData } from "./context/dataContext"
 import { useUser } from "./context/userContext"
 import {
-    MOCK_USER,
     MOCK_GAME_STATS,
     MOCK_FRIEND_INFO,
     MOCK_CAPILA,
     MOCK_AIRDROP,
 } from "@/utils/mock/mockData"
+import { fetchMe } from "@/utils/api/auth"
+import { fetchGameStats } from "@/utils/api/game"
+import { fetchFriendInfo } from "@/utils/api/social"
+import { fetchAirdropInfo } from "@/utils/api/airdrop"
+import { discoverWalletProviders } from "@/utils/func/walletAuth"
 
 const Init = () => {
     const {
@@ -23,7 +27,7 @@ const Init = () => {
         setFriendInfo,
         setCapilaStats,
     } = useData()
-    const { setUser, setWallet, setAirdropInfo } = useUser()
+    const { setUser, setWallet, setAirdropInfo, setAvailableProviders } = useUser()
 
     useEffect(() => {
         console.log(
@@ -47,39 +51,52 @@ const Init = () => {
         setTaskHeight(vh - 106)
         setFriendsHeight(vh - 250)
 
-        // ── Load mock user ───────────────────────────────────────────────────
-        setUser({
-            id: MOCK_USER.id,
-            td: MOCK_USER.td,
-            wallet_address_type: MOCK_USER.wallet_address_type,
-            invite_link: MOCK_USER.invite_link,
-            username: MOCK_USER.username,
-            is_active: MOCK_USER.is_active,
-            lang: MOCK_USER.lang,
-            farm_stats: MOCK_USER.farm_stats,
+        // ── Discover EIP-6963 wallet providers ───────────────────────────────
+        const stopDiscovery = discoverWalletProviders((provider) => {
+            setAvailableProviders((prev) => {
+                if (prev.find((p) => p.info.uuid === provider.info.uuid)) return prev
+                return [...prev, provider]
+            })
         })
 
-        setWallet({
-            address: MOCK_USER.wallet_address,
-            hasPrivateKey: false,
-            hasMnemonic: false,
-        })
+        // ── Try to restore existing session ──────────────────────────────────
+        fetchMe()
+            .then((me) => {
+                setUser(me)
+                setWallet({ address: me.id, hasPrivateKey: false, hasMnemonic: false })
+            })
+            .catch(() => {
+                // No active session — user must connect wallet
+            })
 
-        // ── Load mock game stats ─────────────────────────────────────────────
-        setGameStats(MOCK_GAME_STATS)
+        // ── Load game stats from real API, fall back to mock in dev ──────────
+        fetchGameStats()
+            .then((stats) => setGameStats(stats))
+            .catch(() => setGameStats(MOCK_GAME_STATS))
 
-        // ── Load mock friend info ────────────────────────────────────────────
-        setFriendInfo({
-            pendingRequest: MOCK_FRIEND_INFO.new_friend_requests_count,
-            friendsTotal: MOCK_FRIEND_INFO.friend_total,
-        })
+        // ── Load friend info from real API, fall back to mock ─────────────────
+        fetchFriendInfo()
+            .then((info) => setFriendInfo({
+                pendingRequest: info.new_friend_requests_count,
+                friendsTotal: info.friend_total,
+            }))
+            .catch(() => setFriendInfo({
+                pendingRequest: MOCK_FRIEND_INFO.new_friend_requests_count,
+                friendsTotal: MOCK_FRIEND_INFO.friend_total,
+            }))
 
-        // ── Load mock capila / airdrop ───────────────────────────────────────
+        // ── Load capila stats (mock for now, pending backend capila API) ──────
         setCapilaStats(MOCK_CAPILA)
-        setAirdropInfo(MOCK_AIRDROP)
+
+        // ── Load airdrop info from real API, fall back to mock ────────────────
+        fetchAirdropInfo()
+            .then((info) => setAirdropInfo(info))
+            .catch(() => setAirdropInfo(MOCK_AIRDROP))
 
         // ── Signal loading complete ──────────────────────────────────────────
         setIsDataFetched(true)
+
+        return () => stopDiscovery()
     }, [])
 
     return null

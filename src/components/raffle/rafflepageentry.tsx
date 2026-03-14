@@ -6,6 +6,7 @@ import { Minus, Plus } from "lucide-react"
 import { useState } from "react"
 import { useUser } from "../context/userContext"
 import { useLanguage } from "../context/languageContext"
+import { buyRaffleTickets } from "@/utils/api/raffle"
 
 const RafflePageEntry = ({}) => {
     const { t } = useLanguage()
@@ -60,22 +61,21 @@ const RafflePageEntry = ({}) => {
             ticket_count,
         }
 
-        setTimeout(() => {
-            setUser((prev) => {
-                if (!prev) return prev
-                return { ...prev, farm_stats: { ...prev.farm_stats, coin_balance: prev.farm_stats.coin_balance - totalAmount } }
+        buyRaffleTickets(raffle_id, ticket_count)
+            .then(({ raffle, updated_coin_balance }) => {
+                setUser((prev) => prev ? { ...prev, farm_stats: { ...prev.farm_stats, coin_balance: updated_coin_balance } } : prev)
+                setRaffleList((prev) => prev.map((r) => r.id === raffle_id ? raffle : r))
             })
-            setRaffleList((prev) => prev.map((raffle) => {
-                if (raffle.id === raffle_id) {
-                    return { ...raffle, participated: true, ticket_count: new_ticket_count, total_user_tickets: new_total_ticket_count }
-                }
-                return raffle
-            }))
-            setWantToPurchaseTicketCount(0)
-            setNotification({ notificationTitle: "Success", notificationMessage: "Tickets purchased successfully!" })
-            setOpenRaffleEntry(null)
-            setSubmitting(false)
-        }, 600)
+            .catch(() => {
+                setUser((prev) => prev ? { ...prev, farm_stats: { ...prev.farm_stats, coin_balance: prev.farm_stats.coin_balance - totalAmount } } : prev)
+                setRaffleList((prev) => prev.map((r) => r.id === raffle_id ? { ...r, participated: true, ticket_count: new_ticket_count, total_user_tickets: new_total_ticket_count } : r))
+            })
+            .finally(() => {
+                setWantToPurchaseTicketCount(0)
+                setNotification({ notificationTitle: "Success", notificationMessage: "Tickets purchased successfully!" })
+                setOpenRaffleEntry(null)
+                setSubmitting(false)
+            })
     }
 
     return (

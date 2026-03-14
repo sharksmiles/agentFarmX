@@ -1,6 +1,7 @@
 ﻿"use client"
 
 import { MOCK_RAFFLES } from "@/utils/mock/mockData"
+import { fetchRaffleList } from "@/utils/api/raffle"
 import { useEffect, useRef, useState } from "react"
 import Countdown from "./countdown"
 import { useData } from "../context/dataContext"
@@ -20,11 +21,17 @@ const RafflePage = ({}) => {
     const [selectedButton, setSelectedButton] = useState<"inProgress" | "ended">("inProgress")
 
     const getRaffleList = async () => {
-        if (MOCK_RAFFLES.filter((raffle: Raffle) => !raffle.ended).length === 0) {
-            setSelectedButton("ended")
-        }
-        setRaffleList(MOCK_RAFFLES)
-        setRaffleListLoading(false)
+        setRaffleListLoading(true)
+        fetchRaffleList()
+            .then((list) => {
+                if (list.filter((r) => !r.ended).length === 0) setSelectedButton("ended")
+                setRaffleList(list)
+            })
+            .catch(() => {
+                if (MOCK_RAFFLES.filter((raffle: Raffle) => !raffle.ended).length === 0) setSelectedButton("ended")
+                setRaffleList(MOCK_RAFFLES)
+            })
+            .finally(() => setRaffleListLoading(false))
     }
 
     const checkAndMaybeRefresh = () => {

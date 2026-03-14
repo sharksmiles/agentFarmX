@@ -5,6 +5,7 @@ import { useLanguage } from "../context/languageContext"
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { MOCK_FRIENDS, MOCK_FRIEND_INFO } from "@/utils/mock/mockData"
+import { fetchFriends, fetchFriendInfo } from "@/utils/api/social"
 import { FriendsData } from "./friendsearchpage"
 import { useData } from "../context/dataContext"
 import { ArrowUpFromDot } from "lucide-react"
@@ -24,7 +25,15 @@ const FriendsPage = () => {
     const [loadingFriends, setLoadingFriends] = useState<boolean>(true)
 
     const loadMoreFriend = async () => {
-        // No more pages in mock data
+        if (!cursor || loadingFriends) return
+        setLoadingFriends(true)
+        fetchFriends((friendsFilter || "all") as "need_water" | "all", cursor)
+            .then((res) => {
+                setFriendList((prev) => [...prev, ...res.friends])
+                setCursor(res.next_cursor)
+            })
+            .catch(() => {})
+            .finally(() => setLoadingFriends(false))
     }
 
     const scrollToTop = () => {
@@ -44,25 +53,26 @@ const FriendsPage = () => {
     }, [])
 
     useEffect(() => {
-        setFriendInfo({
-            pendingRequest: MOCK_FRIEND_INFO.new_friend_requests_count,
-            friendsTotal: MOCK_FRIEND_INFO.friend_total,
-        })
+        fetchFriendInfo()
+            .then((info) => setFriendInfo({ pendingRequest: info.new_friend_requests_count, friendsTotal: info.friend_total }))
+            .catch(() => setFriendInfo({ pendingRequest: MOCK_FRIEND_INFO.new_friend_requests_count, friendsTotal: MOCK_FRIEND_INFO.friend_total }))
     }, [])
 
     useEffect(() => {
         setLoadingFriends(true)
         setFriendList([])
-        const handler = setTimeout(() => {
-            let filtered = MOCK_FRIENDS as FriendsData[]
-            if (friendsFilter === "need_water") {
-                filtered = MOCK_FRIENDS.filter((f: any) => f.need_water > 0) as FriendsData[]
-            }
-            setFriendList(filtered)
-            setCursor(null)
-            setLoadingFriends(false)
-        }, 100)
-        return () => clearTimeout(handler)
+        fetchFriends((friendsFilter || "all") as "need_water" | "all")
+            .then((res) => {
+                setFriendList(res.friends)
+                setCursor(res.next_cursor)
+            })
+            .catch(() => {
+                let filtered = MOCK_FRIENDS as FriendsData[]
+                if (friendsFilter === "need_water") filtered = MOCK_FRIENDS.filter((f: any) => f.need_water > 0) as FriendsData[]
+                setFriendList(filtered)
+                setCursor(null)
+            })
+            .finally(() => setLoadingFriends(false))
     }, [friendsFilter])
 
     useEffect(() => {

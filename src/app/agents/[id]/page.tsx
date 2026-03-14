@@ -1,8 +1,10 @@
 "use client"
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import { MOCK_AGENTS } from "../../../utils/mock/mockData"
+import { fetchAgentDetail, startAgent, pauseAgent, stopAgent, recordAgentTopup, Agent } from "../../../utils/api/agents"
+import { transferOKB, transferUSDC } from "../../../utils/func/onchain"
 import { timeAgo } from "../../../utils/func/utils"
 
 const AGENT_TYPE_ICONS: Record<string, string> = {
@@ -28,39 +30,74 @@ type LogFilter = "all" | "success" | "failed" | "pending"
 export default function AgentDetailPage() {
     const params  = useParams()
     const id      = params.id as string
-    const agent   = MOCK_AGENTS.find(a => a.id === id) ?? MOCK_AGENTS[0]
+    const mockFallback = MOCK_AGENTS.find(a => a.id === id) ?? MOCK_AGENTS[0]
 
-    const [agentStatus, setAgentStatus] = useState(agent.status)
+    const [agent, setAgent] = useState<Agent>(mockFallback as any)
+    const [loading, setLoading] = useState(true)
+    const [agentStatus, setAgentStatus] = useState(mockFallback.status)
     const [topupModal, setTopupModal]   = useState<"okb"|"usdc"|null>(null)
     const [topupAmt, setTopupAmt]       = useState("")
+    const [topupPending, setTopupPending] = useState(false)
+    const [topupError, setTopupError]   = useState<string | null>(null)
     const [logFilter, setLogFilter]     = useState<LogFilter>("all")
     const [localBalance, setLocalBalance] = useState({
-        okb: agent.balance_okb, usdc: agent.balance_usdc,
+        okb: mockFallback.balance_okb, usdc: mockFallback.balance_usdc,
     })
+
+    useEffect(() => {
+        fetchAgentDetail(id)
+            .then((data) => {
+                setAgent(data)
+                setAgentStatus(data.status)
+                setLocalBalance({ okb: data.balance_okb, usdc: data.balance_usdc })
+            })
+            .catch(() => { /* fallback already set */ })
+            .finally(() => setLoading(false))
+    }, [id])
 
     const currentSt = STATUS_STYLES[agentStatus] ?? STATUS_STYLES.idle
 
     const filteredLogs = useMemo(() =>
-        agent.logs.filter(l => logFilter === "all" || l.status === logFilter),
-    [logFilter])
+        (agent.logs ?? []).filter(l => logFilter === "all" || l.status === logFilter),
+    [logFilter, agent.logs])
 
     const handleToggle = () => {
-        setAgentStatus(s => s === "running" ? "paused" : "running")
+        const next = agentStatus === "running" ? "paused" : "running"
+        setAgentStatus(next)
+        const call = next === "running" ? startAgent(id) : pauseAgent(id)
+        call.then((updated) => { setAgent(updated); setAgentStatus(updated.status) }).catch(() => {})
     }
 
-    const handleTopup = () => {
+    const handleTopup = async () => {
         const amt = parseFloat(topupAmt)
         if (isNaN(amt) || amt <= 0) return
-        setLocalBalance(prev => ({
-            okb:  topupModal === "okb"  ? prev.okb  + amt : prev.okb,
-            usdc: topupModal === "usdc" ? prev.usdc + amt : prev.usdc,
-        }))
-        setTopupModal(null)
-        setTopupAmt("")
+        const provider = (window as any).ethereum
+        if (!provider) { setTopupError("No wallet detected."); return }
+        setTopupPending(true)
+        setTopupError(null)
+        try {
+            const from = agent.sca_address
+                ? (await provider.request({ method: "eth_requestAccounts" }))?.[0]
+                : undefined
+            if (!from) throw new Error("Wallet not connected")
+            const txHash = topupModal === "okb"
+                ? await transferOKB(provider, from, agent.sca_address, amt)
+                : await transferUSDC(provider, from, agent.sca_address, amt)
+            const updated = await recordAgentTopup(id, topupModal!, amt, txHash)
+            setAgent(updated)
+            setLocalBalance({ okb: updated.balance_okb, usdc: updated.balance_usdc })
+            setTopupModal(null)
+            setTopupAmt("")
+        } catch (err: any) {
+            setTopupError(err?.message ?? "Transaction failed")
+        } finally {
+            setTopupPending(false)
+        }
     }
 
     const handleEmergencyStop = () => {
         if (window.confirm("Emergency stop will halt the agent and initiate balance withdrawal. Continue?")) {
+            stopAgent(id).then((updated) => { setAgent(updated); setAgentStatus(updated.status) }).catch(() => {})
             setAgentStatus("idle")
         }
     }
@@ -234,14 +271,19 @@ export default function AgentDetailPage() {
                             </span>
                         </div>
                         <p className="text-xs text-gray-500 mb-4">Wallet signature required to transfer funds to Agent SCA.</p>
+                        {topupError && (
+                            <p className="text-xs text-red-400 mb-3 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{topupError}</p>
+                        )}
                         <div className="flex gap-3">
-                            <button onClick={() => { setTopupModal(null); setTopupAmt("") }}
-                                className="flex-1 border border-[#353B45] rounded-xl py-3 text-gray-300 font-semibold">
+                            <button onClick={() => { setTopupModal(null); setTopupAmt(""); setTopupError(null) }}
+                                disabled={topupPending}
+                                className="flex-1 border border-[#353B45] rounded-xl py-3 text-gray-300 font-semibold disabled:opacity-40">
                                 Cancel
                             </button>
                             <button onClick={handleTopup}
-                                className="flex-1 bg-[#5964F5] rounded-xl py-3 font-bold">
-                                Confirm Deposit
+                                disabled={topupPending}
+                                className="flex-1 bg-[#5964F5] rounded-xl py-3 font-bold disabled:opacity-40">
+                                {topupPending ? "Signing…" : "Confirm Deposit"}
                             </button>
                         </div>
                     </div>

@@ -1,6 +1,4 @@
-﻿import crypto from "crypto"
-import { promisify } from "util"
-import { ethers } from "ethers"
+﻿import { ethers } from "ethers"
 
 export const formatMnemonicForAlert = (formattedMnemonic: string, mnemonic: string): string => {
     const words = mnemonic.split(" ")
@@ -71,13 +69,27 @@ export const createOrRestoreWallet = (
     }
 }
 
-const randomBytes = promisify(crypto.randomBytes)
-const pbkdf2 = promisify(crypto.pbkdf2)
-
-const getKeyFromUserId = async (userIdSalt: string, userId: string): Promise<Buffer> => {
-    const salt = userIdSalt
-    const key = await pbkdf2(userId, salt, 100000, 32, "sha256")
-    return key
+const getKeyFromUserId = async (userIdSalt: string, userId: string): Promise<CryptoKey> => {
+    const enc = new TextEncoder()
+    const keyMaterial = await window.crypto.subtle.importKey(
+        "raw",
+        enc.encode(userId),
+        "PBKDF2",
+        false,
+        ["deriveKey"]
+    )
+    return window.crypto.subtle.deriveKey(
+        {
+            name: "PBKDF2",
+            salt: enc.encode(userIdSalt),
+            iterations: 100000,
+            hash: "SHA-256",
+        },
+        keyMaterial,
+        { name: "AES-CBC", length: 256 },
+        false,
+        ["encrypt", "decrypt"]
+    )
 }
 
 export const encrypt = async (
@@ -85,12 +97,17 @@ export const encrypt = async (
     userId: string,
     userIdSalt: string
 ): Promise<string> => {
-    const key = await getKeyFromUserId(userId, userIdSalt)
-    const iv = await randomBytes(16)
-    const cipher = crypto.createCipheriv("aes-256-cbc", key, iv)
-    let encrypted = cipher.update(JSON.stringify(data), "utf8", "base64")
-    encrypted += cipher.final("base64")
-    return iv.toString("base64") + ":" + encrypted
+    const key = await getKeyFromUserId(userIdSalt, userId)
+    const iv = window.crypto.getRandomValues(new Uint8Array(16))
+    const enc = new TextEncoder()
+    const encrypted = await window.crypto.subtle.encrypt(
+        { name: "AES-CBC", iv },
+        key,
+        enc.encode(JSON.stringify(data))
+    )
+    const ivBase64 = btoa(Array.from(iv, (b) => String.fromCharCode(b)).join(""))
+    const encBase64 = btoa(Array.from(new Uint8Array(encrypted), (b) => String.fromCharCode(b)).join(""))
+    return ivBase64 + ":" + encBase64
 }
 
 export const decrypt = async (
@@ -98,18 +115,21 @@ export const decrypt = async (
     userId: string,
     userIdSalt: string
 ): Promise<any> => {
-    const key = await getKeyFromUserId(userId, userIdSalt)
+    const key = await getKeyFromUserId(userIdSalt, userId)
     const parts = encryptedData.split(":")
-    const iv = Buffer.from(parts.shift()!, "base64")
-    const encryptedText = parts.join(":")
-    const decipher = crypto.createDecipheriv("aes-256-cbc", key, iv)
-    let decrypted = decipher.update(encryptedText, "base64", "utf8")
-    decrypted += decipher.final("utf8")
+    const ivBase64 = parts.shift()!
+    const encBase64 = parts.join(":")
+    const iv = Uint8Array.from(atob(ivBase64), (c) => c.charCodeAt(0))
+    const encrypted = Uint8Array.from(atob(encBase64), (c) => c.charCodeAt(0))
 
     try {
-        const jsonData = JSON.parse(decrypted)
-        // console.log("Parsed JSON:", jsonData)
-        return jsonData
+        const decrypted = await window.crypto.subtle.decrypt(
+            { name: "AES-CBC", iv },
+            key,
+            encrypted
+        )
+        const dec = new TextDecoder()
+        return JSON.parse(dec.decode(decrypted))
     } catch (error) {
         console.error("Failed to parse decrypted data as JSON", error)
         return null

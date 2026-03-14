@@ -11,6 +11,7 @@ import { motion } from "framer-motion"
 import { DotLottiePlayer } from "@dotlottie/react-player"
 import { messages } from "@/utils/func/telegram"
 import { useLanguage } from "../context/languageContext"
+import { waterCrop, harvestCrop, boostCrop } from "@/utils/api/game"
 
 const alertWindow = "absolute h-auto z-20 -top-[40%] -left-[10%]"
 const alertSize = "w-[35px] h-[35px]"
@@ -83,20 +84,24 @@ const GamePad = ({}) => {
             return
         } else if (openBoost && user?.farm_stats.growing_crops[landId - 1]?.land_owned) {
             setBoosting(true)
-            setTimeout(() => {
-                setUser((prev) => {
-                    if (!prev) return prev
-                    const crops = prev.farm_stats.growing_crops.map((c) =>
-                        c.land_id === landId
-                            ? { ...c, crop_details: { ...c.crop_details, is_mature: true } }
-                            : c
-                    )
-                    return { ...prev, farm_stats: { ...prev.farm_stats, growing_crops: crops, boost_left: Math.max(prev.farm_stats.boost_left - 1, 0) } }
+            boostCrop(landId)
+                .then((updatedUser) => setUser(updatedUser))
+                .catch(() => {
+                    setUser((prev) => {
+                        if (!prev) return prev
+                        const crops = prev.farm_stats.growing_crops.map((c) =>
+                            c.land_id === landId
+                                ? { ...c, crop_details: { ...c.crop_details, is_mature: true } }
+                                : c
+                        )
+                        return { ...prev, farm_stats: { ...prev.farm_stats, growing_crops: crops, boost_left: Math.max(prev.farm_stats.boost_left - 1, 0) } }
+                    })
                 })
-                setHarvestCoinAmount(120)
-                setHarvestSuccess(true)
-                setBoosting(false)
-            }, 600)
+                .finally(() => {
+                    setHarvestCoinAmount(120)
+                    setHarvestSuccess(true)
+                    setBoosting(false)
+                })
         } else if (
             user?.farm_stats.growing_crops[landId - 1].land_owned &&
             !user?.farm_stats.growing_crops[landId - 1].is_planted
@@ -159,33 +164,35 @@ const GamePad = ({}) => {
                 setLandWatering((prev) =>
                     prev.includes(landId) ? prev : [...prev, landId]
                 )
-                setTimeout(() => {
-                    const now = new Date()
-                    setUser((prev) => {
-                        if (!prev) return prev
-                        const crops = prev.farm_stats.growing_crops.map((c) =>
-                            c.land_id === landId
-                                ? {
-                                      ...c,
-                                      crop_details: {
-                                          ...c.crop_details,
-                                          last_watered_time: now.toISOString(),
-                                          next_watering_due: new Date(now.getTime() + 3600000).toISOString(),
-                                      },
-                                  }
-                                : c
-                        )
-                        return {
-                            ...prev,
-                            farm_stats: {
-                                ...prev.farm_stats,
-                                growing_crops: crops,
-                                energy_left: Math.max((prev.farm_stats.energy_left ?? 0) - 1, 0),
-                            },
-                        }
+                waterCrop(landId)
+                    .then((updatedUser) => setUser(updatedUser))
+                    .catch(() => {
+                        const now = new Date()
+                        setUser((prev) => {
+                            if (!prev) return prev
+                            const crops = prev.farm_stats.growing_crops.map((c) =>
+                                c.land_id === landId
+                                    ? {
+                                          ...c,
+                                          crop_details: {
+                                              ...c.crop_details,
+                                              last_watered_time: now.toISOString(),
+                                              next_watering_due: new Date(now.getTime() + 3600000).toISOString(),
+                                          },
+                                      }
+                                    : c
+                            )
+                            return {
+                                ...prev,
+                                farm_stats: {
+                                    ...prev.farm_stats,
+                                    growing_crops: crops,
+                                    energy_left: Math.max((prev.farm_stats.energy_left ?? 0) - 1, 0),
+                                },
+                            }
+                        })
                     })
-                    setLandWatering((prev) => prev.filter((id) => id !== landId))
-                }, 800)
+                    .finally(() => setLandWatering((prev) => prev.filter((id) => id !== landId)))
             }
         } else if (
             user?.farm_stats.growing_crops[landId - 1]?.land_owned &&
@@ -193,29 +200,37 @@ const GamePad = ({}) => {
             user?.farm_stats.growing_crops[landId - 1]?.crop_details?.is_mature
         ) {
             setHarvesting(true)
+            setActionType("harvest")
             const cropType = user.farm_stats.growing_crops[landId - 1]?.crop_details?.crop_type
             const harvestPrice = gameStats?.crop_info.find((c) => c.name === cropType)?.harvest_price ?? 20
-            setTimeout(() => {
-                setUser((prev) => {
-                    if (!prev) return prev
-                    const crops = prev.farm_stats.growing_crops.map((c) =>
-                        c.land_id === landId ? { ...c, is_planted: false, crop_details: {} } : c
-                    )
-                    return {
-                        ...prev,
-                        farm_stats: {
-                            ...prev.farm_stats,
-                            growing_crops: crops,
-                            coin_balance: prev.farm_stats.coin_balance + harvestPrice,
-                        },
-                    }
+            harvestCrop(landId)
+                .then((updatedUser) => {
+                    setUser(updatedUser)
+                    const earned = updatedUser.farm_stats.coin_balance - (user?.farm_stats.coin_balance ?? 0)
+                    setHarvestCoinAmount(earned > 0 ? earned : harvestPrice)
                 })
-                setActionType(null)
-                setHarvestCoinAmount(harvestPrice)
-                setHarvestSuccess(true)
-                setHarvesting(false)
-            }, 600)
-            setActionType("harvest")
+                .catch(() => {
+                    setUser((prev) => {
+                        if (!prev) return prev
+                        const crops = prev.farm_stats.growing_crops.map((c) =>
+                            c.land_id === landId ? { ...c, is_planted: false, crop_details: {} } : c
+                        )
+                        return {
+                            ...prev,
+                            farm_stats: {
+                                ...prev.farm_stats,
+                                growing_crops: crops,
+                                coin_balance: prev.farm_stats.coin_balance + harvestPrice,
+                            },
+                        }
+                    })
+                    setHarvestCoinAmount(harvestPrice)
+                })
+                .finally(() => {
+                    setActionType(null)
+                    setHarvestSuccess(true)
+                    setHarvesting(false)
+                })
         } else if (user?.farm_stats.growing_crops[landId - 1].land_can_buy) {
             setActionType("buyland")
             setSelectedLandId(landId)

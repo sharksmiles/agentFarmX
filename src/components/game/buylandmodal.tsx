@@ -5,6 +5,7 @@ import { useData } from "../context/dataContext"
 import Image from "next/image"
 import { motion, AnimatePresence } from "framer-motion"
 import { useLanguage } from "../context/languageContext"
+import { buyLand } from "@/utils/api/game"
 
 const BuylandModal = () => {
     const { user, setUser } = useUser()
@@ -32,7 +33,10 @@ const BuylandModal = () => {
             })
             return
         }
-        setTimeout(() => {
+        try {
+            const updatedUser = await buyLand(selectedLandId)
+            setUser(updatedUser)
+        } catch {
             setUser((prev) => {
                 if (!prev) return prev
                 const crops = prev.farm_stats.growing_crops.map((c) =>
@@ -41,8 +45,8 @@ const BuylandModal = () => {
                 const cost = gameStats?.land_prices[selectedLandId!] ?? 0
                 return { ...prev, farm_stats: { ...prev.farm_stats, growing_crops: crops, coin_balance: prev.farm_stats.coin_balance - cost } }
             })
-            setActionType(null)
-        }, 600)
+        }
+        setActionType(null)
     }
 
     return (

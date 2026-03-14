@@ -8,6 +8,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { DotLottiePlayer } from "@dotlottie/react-player"
 import { ArrowUpFromDot } from "lucide-react"
 import { useLanguage } from "../context/languageContext"
+import { plantCrop as apiPlantCrop } from "@/utils/api/game"
 
 const PlantModal = () => {
     const observerRef = useRef<HTMLDivElement>(null)
@@ -64,11 +65,14 @@ const PlantModal = () => {
         }
 
         setPlanting(true)
-        const cropInfo = gameStats?.crop_info.find((c) => c.name === selectedCrop)
-        setTimeout(() => {
+        try {
+            const updatedUser = await apiPlantCrop(selectedLandId, selectedCrop)
+            setUser(updatedUser)
+        } catch {
+            const cropInfo = gameStats?.crop_info.find((c) => c.name === selectedCrop)
+            const now = new Date()
             setUser((prev) => {
                 if (!prev) return prev
-                const now = new Date()
                 const crops = prev.farm_stats.growing_crops.map((c) =>
                     c.land_id === selectedLandId
                         ? {
@@ -88,16 +92,17 @@ const PlantModal = () => {
                           }
                         : c
                 )
-                const newInventory = prev.farm_stats.inventory.map((i) =>
-                    i.crop_type === selectedCrop ? { ...i, quantity: i.quantity - 1 } : i
-                ).filter((i) => i.quantity > 0)
+                const newInventory = prev.farm_stats.inventory
+                    .map((i) => i.crop_type === selectedCrop ? { ...i, quantity: i.quantity - 1 } : i)
+                    .filter((i) => i.quantity > 0)
                 return { ...prev, farm_stats: { ...prev.farm_stats, growing_crops: crops, inventory: newInventory } }
             })
+        } finally {
             setPlanting(false)
             setSelectedCrop(null)
             setSelectedLandId(null)
             setActionType(null)
-        }, 800)
+        }
     }
 
     const scrollToTop = () => {

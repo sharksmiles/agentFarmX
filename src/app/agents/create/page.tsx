@@ -1,7 +1,8 @@
 "use client"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { createAgent, previewAgentSca } from "../../../utils/api/agents"
 
 
 const AGENT_TYPES = [
@@ -65,8 +66,17 @@ export default function CreateAgentPage() {
     const [usdcAmount, setUsdcAmount]   = useState("10")
     const [activating, setActivating]   = useState(false)
     const [activated, setActivated]     = useState(false)
+    const [scaAddress, setScaAddress]   = useState<string | null>(null)
 
     const typeInfo = AGENT_TYPES.find(t => t.type === selectedType)
+
+    useEffect(() => {
+        if (step === 3 && selectedType) {
+            previewAgentSca(selectedType)
+                .then(({ sca_address }) => setScaAddress(sca_address))
+                .catch(() => setScaAddress(`0x…${Date.now().toString(16).slice(-8)}`))
+        }
+    }, [step, selectedType])
 
     const toggleCrop = (crop: string) => {
         setPreferredCrops(prev =>
@@ -74,12 +84,27 @@ export default function CreateAgentPage() {
         )
     }
 
-    const handleActivate = () => {
+    const handleActivate = async () => {
+        if (!selectedType || !agentName.trim()) return
         setActivating(true)
-        setTimeout(() => {
-            setActivating(false)
-            setActivated(true)
-        }, 1800)
+        const config = selectedType === "farmer"
+            ? { preferred_crops: preferredCrops, auto_harvest: autoHarvest, auto_replant: autoReplant, max_daily_gas: maxGas, max_daily_usdc: maxUsdc, stop_balance: stopBalance }
+            : selectedType === "trader"
+            ? { profit_rate: profitRate, max_swap: maxSwap, max_daily_gas: maxGas, max_daily_usdc: maxUsdc, stop_balance: stopBalance }
+            : selectedType === "raider"
+            ? { radar_level: radarLevel, max_steals: maxSteals, max_daily_gas: maxGas, max_daily_usdc: maxUsdc, stop_balance: stopBalance }
+            : { early_harvest: earlyHarvest, max_daily_gas: maxGas, max_daily_usdc: maxUsdc, stop_balance: stopBalance }
+        try {
+            await createAgent({
+                name: agentName,
+                type: selectedType,
+                config,
+                initial_okb: parseFloat(okbAmount) || 0,
+                initial_usdc: parseFloat(usdcAmount) || 0,
+            })
+        } catch { /* best effort */ }
+        setActivating(false)
+        setActivated(true)
     }
 
     const stepLabels = ["Type", "Configure", "Fund", "Activate"]

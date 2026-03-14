@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react"
 import { useLanguage } from "../context/languageContext"
 import Image from "next/image"
 import { MOCK_SEARCH_RESULTS } from "@/utils/mock/mockData"
+import { searchUsers, sendFriendRequest } from "@/utils/api/social"
 import { useData } from "../context/dataContext"
 import { UserSearch, X } from "lucide-react"
 import { useRouter } from "next/navigation"
@@ -65,18 +66,28 @@ const FriendRequest = () => {
         // }
 
         const searchFriends = async () => {
-            const query = (search || "").toLowerCase()
-            const results = MOCK_SEARCH_RESULTS.filter((f) =>
-                f.user_name.toLowerCase().includes(query)
-            )
-            setSearchResults(results.length > 0 ? (results as any) : null)
-            setSearching(false)
+            const query = (search || "").trim()
+            if (!query) {
+                setSearchResults(null)
+                setSearching(false)
+                return
+            }
+            searchUsers(query)
+                .then((results) => setSearchResults(results.length > 0 ? (results as any) : null))
+                .catch(() => {
+                    const results = MOCK_SEARCH_RESULTS.filter((f) =>
+                        f.user_name.toLowerCase().includes(query.toLowerCase())
+                    )
+                    setSearchResults(results.length > 0 ? (results as any) : null)
+                })
+                .finally(() => setSearching(false))
         }
 
         searchFriends()
     }, [debouncedSearch])
 
     const handleSendFriendsRequest = async (user_id: string) => {
+        sendFriendRequest(user_id).catch(() => {})
         setNotification({ notificationTitle: "Success", notificationMessage: "Friend request sent!" })
     }
 

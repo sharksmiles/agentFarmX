@@ -1,8 +1,9 @@
 "use client"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import { MOCK_AGENTS } from "../../../../utils/mock/mockData"
+import { fetchAgentDetail, updateAgentConfig, Agent } from "../../../../utils/api/agents"
 
 const CROP_OPTIONS = ["Wheat", "Corn", "Carrot", "Potato", "Tomato", "Strawberry", "Pineapple", "Watermelon"]
 
@@ -13,8 +14,15 @@ const AGENT_TYPE_ICONS: Record<string, string> = {
 export default function AgentConfigPage() {
     const params = useParams()
     const id     = params.id as string
-    const agent  = MOCK_AGENTS.find(a => a.id === id) ?? MOCK_AGENTS[0]
+    const mockFallback = MOCK_AGENTS.find(a => a.id === id) ?? MOCK_AGENTS[0]
+    const [agent, setAgent] = useState<Agent>(mockFallback as any)
     const cfg    = agent.config as any
+
+    useEffect(() => {
+        fetchAgentDetail(id)
+            .then(setAgent)
+            .catch(() => {})
+    }, [id])
 
     // Shared fund controls
     const [maxGas,      setMaxGas]      = useState<number>(cfg.max_daily_gas_okb       ?? 0.05)
@@ -48,11 +56,21 @@ export default function AgentConfigPage() {
 
     const handleSave = () => {
         setSaving(true)
-        setTimeout(() => {
-            setSaving(false)
-            setSaved(true)
-            setTimeout(() => setSaved(false), 2000)
-        }, 900)
+        const config = agent.type === "farmer"
+            ? { preferred_crops: preferredCrops, auto_harvest: autoHarvest, auto_replant: autoReplant, max_daily_gas: maxGas, max_daily_usdc: maxUsdc, stop_balance: stopBalance }
+            : agent.type === "trader"
+            ? { profit_rate: profitRate, max_swap: maxSwap, max_daily_gas: maxGas, max_daily_usdc: maxUsdc, stop_balance: stopBalance }
+            : agent.type === "raider"
+            ? { radar_level: radarLevel, max_steals: maxSteals, max_daily_gas: maxGas, max_daily_usdc: maxUsdc, stop_balance: stopBalance }
+            : { early_harvest: earlyHarvest, max_daily_gas: maxGas, max_daily_usdc: maxUsdc, stop_balance: stopBalance }
+        updateAgentConfig(id, config)
+            .then((updated) => setAgent(updated))
+            .catch(() => {})
+            .finally(() => {
+                setSaving(false)
+                setSaved(true)
+                setTimeout(() => setSaved(false), 2000)
+            })
     }
 
     return (

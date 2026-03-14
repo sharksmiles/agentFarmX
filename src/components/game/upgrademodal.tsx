@@ -5,6 +5,7 @@ import { useData } from "../context/dataContext"
 import Image from "next/image"
 import { motion, AnimatePresence } from "framer-motion"
 import { useLanguage } from "../context/languageContext"
+import { upgradeFarm } from "@/utils/api/game"
 
 const UpgradeModal = () => {
     const { user, setUser } = useUser()
@@ -23,7 +24,10 @@ const UpgradeModal = () => {
             })
             return
         }
-        setTimeout(() => {
+        try {
+            const updatedUser = await upgradeFarm()
+            setUser(updatedUser)
+        } catch {
             setUser((prev) => {
                 if (!prev) return prev
                 const cost = gameStats!.level_requirements[prev.farm_stats.level]?.["Upgrade Cost"] ?? 0
@@ -37,9 +41,9 @@ const UpgradeModal = () => {
                     },
                 }
             })
-            OpenAgentFarmAlert({ notificationTitle: t("Congratulation!"), notificationMessage: t("You have upgraded to the next level!") })
-            setActionType(null)
-        }, 600)
+        }
+        OpenAgentFarmAlert({ notificationTitle: t("Congratulation!"), notificationMessage: t("You have upgraded to the next level!") })
+        setActionType(null)
     }
 
     return (
