@@ -1,4 +1,4 @@
-﻿﻿import { CropTypes, LandIdTypes, FarmStats, GameTask, Raffle, RenaissanceTask, GameStats } from "../types"
+﻿import { CropTypes, LandIdTypes, FarmStats, GameTask, Raffle, RenaissanceTask, GameStats } from "../types"
 
 // ─── User & Farm ────────────────────────────────────────────────────────────
 
@@ -78,7 +78,6 @@ const mockFarmStats: FarmStats = {
 
 export const MOCK_USER = {
     id: "user_12345",
-    td: "telegram_12345",
     username: "CryptoFarmer",
     wallet_address: "0x71C7656EC7ab88b098defB751B7401B5f6d8976F",
     wallet_address_type: "artela",

@@ -3,7 +3,7 @@ import type { Viewport } from "next"
 import { Baloo_Bhai_2 } from "next/font/google"
 import "./globals.css"
 import { ViewTransitions } from "next-view-transitions"
-import InitTelegram from "@/components/init"
+import AppInitializer from "@/components/init"
 import WithLoader from "@/components/loader/WithLoader"
 import { DataProvider } from "@/components/context/dataContext"
 import { UserProvider } from "@/components/context/userContext"
@@ -38,7 +38,7 @@ export default function RootLayout({
                     <DataProvider>
                         <LanguageProvider>
                             <UserProvider>
-                                    <InitTelegram />
+                                    <AppInitializer />
                                     <AgentFarmAlert />
                                     <AuthGate>
                                         <WithLoader>{children}</WithLoader>

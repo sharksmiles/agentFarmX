@@ -1,6 +1,6 @@
 export type User = {
     id: string
-    td: string
+    wallet_address: string
     wallet_address_type: string
     invite_link: string
     username: string

@@ -13,7 +13,7 @@ import { fetchFriendInfo } from "@/utils/api/social"
 import { fetchAirdropInfo } from "@/utils/api/airdrop"
 import { discoverWalletProviders } from "@/utils/func/walletAuth"
 
-const Init = () => {
+const AppInitializer = () => {
     const {
         setIsDataFetched,
         setGameStats,
@@ -102,4 +102,4 @@ const Init = () => {
     return null
 }
 
-export default Init
+export default AppInitializer

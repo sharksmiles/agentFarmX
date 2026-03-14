@@ -1,13 +1,13 @@
-﻿import init from "../../../public/artefarme"
+import init from "../../../public/artefarme"
 import { User } from "../types"
 
-const DEV_TD_LIST = ["1442418670", "1503207194"]
+const DEV_WALLET_LIST = ["0x71C7656EC7ab88b098defB751B7401B5f6d8976F"]
 
 export function devSee(user: User | null) {
     if (!user) {
         return false
     }
-    return DEV_TD_LIST.includes(user.td)
+    return DEV_WALLET_LIST.includes(user.wallet_address)
 }
 
 export function truncateText(text: string, maxLength: number) {

@@ -134,7 +134,6 @@ The application supports 13 languages:
 ### Current Status
 - ✅ Frontend is fully independent and runs without backend
 - ✅ All features use mock data for development
-- ✅ No Telegram SDK dependencies
 - ✅ Build successful with no errors
 
 ### Mock Data
