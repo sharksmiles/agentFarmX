@@ -110,4 +110,33 @@
 [32m+[m[32m   - `POST /auth/login` `{address, signature, message}` → 后端验证并设置 Session[m
 [32m+[m[32m3. **Session 管理**：HttpOnly Cookie，应用启动时通过 `GET /u/me` 尝试恢复[m
 [32m+[m[32m4. **AuthGate**（`components/auth/AuthGate.tsx`）：[m
-[32m
+[32mwarning: in the working copy of 'src/utils/api/invite.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/utils/func/imageloader.ts', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/src/utils/api/invite.ts b/src/utils/api/invite.ts[m
+[1mindex 01303cc..f11a75b 100644[m
+[1m--- a/src/utils/api/invite.ts[m
+[1m+++ b/src/utils/api/invite.ts[m
+[36m@@ -59,7 +59,6 @@[m [mexport interface ActivityRecord {[m
+     crop_name: string[m
+     action_time: string[m
+     last_login: string[m
+[31m-    capila_owner: boolean[m
+ }[m
+ [m
+ export interface ActivityResponse {[m
+[1mdiff --git a/src/utils/func/imageloader.ts b/src/utils/func/imageloader.ts[m
+[1mindex b6daf1f..9688e57 100644[m
+[1m--- a/src/utils/func/imageloader.ts[m
+[1m+++ b/src/utils/func/imageloader.ts[m
+[36m@@ -56,11 +56,6 @@[m [mexport const imagesToLoad = [[m
+     "/icon/farmtab.png",[m
+     "/icon/friendstab.png",[m
+     "/icon/wallettab.png",[m
+[31m-    "/capila/capila.webp",[m
+[31m-    "/capila/okx-logo.png",[m
+[31m-    "/capila/magiceden.png",[m
+[31m-    "/capila/opensea-logo.svg",[m
+[31m-    "/capila/capila-background.png",[m
+     "/wallet/pic_wallet.png",[m
+ ][m
+ [m
