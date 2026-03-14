@@ -50,14 +50,14 @@ export const fetchFriendRequests = async (): Promise<FriendRequest[]> => {
 }
 
 export const sendFriendRequest = async (userId: string): Promise<void> => {
-    await apiClient.post("/u/friends/request/", { user_id: userId })
+    await apiClient.post("/u/friends/", { friend_id: userId })
 }
 
 export const respondFriendRequest = async (
     requestId: string,
     action: "accept" | "decline"
 ): Promise<void> => {
-    await apiClient.post(`/u/friends/request/${requestId}/`, { action })
+    await apiClient.patch(`/u/friends/${requestId}/`, { action })
 }
 
 export const deleteFriend = async (friendId: string): Promise<void> => {
@@ -75,8 +75,8 @@ export const waterFriendCrop = async (
     landId: number
 ): Promise<{ reward: number; updatedSelf: User }> => {
     const res = await apiClient.post<{ reward: number; updatedSelf: User }>(
-        `/u/friends/${friendId}/water/`,
-        { land_id: landId }
+        "/g/fa/",
+        { action: "water", friend_id: friendId, land_id: landId }
     )
     return res.data
 }
@@ -85,7 +85,7 @@ export const checkSteal = async (
     friendId: string,
     cropId: string
 ): Promise<any> => {
-    const res = await apiClient.post("/u/friends/checksteal/", { friend_id: friendId, crop_id: cropId })
+    const res = await apiClient.post("/g/fa/", { action: "checksteal", friend_id: friendId, crop_id: cropId })
     return res.data
 }
 
@@ -94,8 +94,8 @@ export const stealCrop = async (
     cropId: string
 ): Promise<{ reward: number; success: boolean; updatedSelf: User }> => {
     const res = await apiClient.post<{ reward: number; success: boolean; updatedSelf: User }>(
-        "/u/friends/steal/",
-        { friend_id: friendId, crop_id: cropId }
+        "/g/fa/",
+        { action: "steal", friend_id: friendId, crop_id: cropId }
     )
     return res.data
 }

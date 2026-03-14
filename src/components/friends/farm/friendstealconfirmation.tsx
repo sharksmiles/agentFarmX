@@ -8,6 +8,8 @@ import StealConfirmationBackground from "./friendstealbg"
 import { truncateText } from "@/utils/func/utils"
 import { useState } from "react"
 import { useNotification } from "@/components/context/notificationContext"
+import { useUser } from "@/components/context/userContext"
+import { stealCrop as stealCropApi } from "@/utils/api/social"
 import { DotLottiePlayer } from "@dotlottie/react-player"
 
 const FriendStealConfirmation = ({
@@ -34,6 +36,7 @@ const FriendStealConfirmation = ({
     })
     const { t } = useLanguage()
     const { addNotification } = useNotification()
+    const { setUser } = useUser()
     const stealStats = {
         "Skill Gap": stealConfirmation?.success_rate_details?.level_diff || "0",
         "Buddy Boost": stealConfirmation?.success_rate_details?.friendship_diff || "0",
@@ -72,20 +75,24 @@ const FriendStealConfirmation = ({
     const stealCrop = (crop_id: string) => {
         if (crop_id === undefined) return
         setStealLoading("steal")
-        setTimeout(() => {
-            const success = Math.random() < (stealConfirmation?.success_rate_details?.final_success_rate ?? 50) / 100
-            setStealLoading(null)
-            setStealResult({ showSuccess: true, stealSuccess: success })
-            if (success) {
-                setFriendStats(prev => {
-                    if (!prev) return prev
-                    const crops = [...prev.farm_stats.growing_crops]
-                    const idx = crops.findIndex(c => c.crop_details?.crop_id === crop_id)
-                    if (idx >= 0) crops[idx] = { ...crops[idx], crop_details: { ...crops[idx].crop_details, status: "Stolen" } }
-                    return { ...prev, farm_stats: { ...prev.farm_stats, growing_crops: crops } }
-                })
-            }
-        }, 1000)
+        stealCropApi(friendStats.id, crop_id)
+            .then(({ success, updatedSelf }) => {
+                setStealResult({ showSuccess: true, stealSuccess: success })
+                if (success) {
+                    setFriendStats(prev => {
+                        if (!prev) return prev
+                        const crops = [...prev.farm_stats.growing_crops]
+                        const idx = crops.findIndex(c => c.crop_details?.crop_id === crop_id)
+                        if (idx >= 0) crops[idx] = { ...crops[idx], crop_details: { ...crops[idx].crop_details, status: "Stolen" } }
+                        return { ...prev, farm_stats: { ...prev.farm_stats, growing_crops: crops } }
+                    })
+                    setUser(updatedSelf)
+                }
+            })
+            .catch(() => {
+                setStealResult({ showSuccess: true, stealSuccess: false })
+            })
+            .finally(() => setStealLoading(null))
     }
 
     return (

@@ -24,6 +24,8 @@ interface UserContextValue {
     walletAddress: string | null
     isAuthenticated: boolean
     isAuthLoading: boolean
+    isSessionRestored: boolean
+    setIsSessionRestored: React.Dispatch<React.SetStateAction<boolean>>
     availableProviders: EIP6963Provider[]
     setAvailableProviders: React.Dispatch<React.SetStateAction<EIP6963Provider[]>>
     connectWallet: (provider: EIP6963Provider) => Promise<void>
@@ -48,6 +50,7 @@ export const UserProvider: FC<UserProviderProps> = ({ children }) => {
     const [walletAddress, setWalletAddress] = useState<string | null>(null)
     const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false)
     const [isAuthLoading, setIsAuthLoading] = useState<boolean>(false)
+    const [isSessionRestored, setIsSessionRestored] = useState<boolean>(false)
     const [availableProviders, setAvailableProviders] = useState<EIP6963Provider[]>([])
 
     const refreshUser = useCallback(async () => {
@@ -97,6 +100,8 @@ export const UserProvider: FC<UserProviderProps> = ({ children }) => {
         walletAddress,
         isAuthenticated,
         isAuthLoading,
+        isSessionRestored,
+        setIsSessionRestored,
         availableProviders,
         setAvailableProviders,
         connectWallet,

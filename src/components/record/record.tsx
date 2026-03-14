@@ -1,25 +1,13 @@
 import React, { useCallback, useEffect, useState } from "react"
 import { useLanguage } from "../context/languageContext"
 import Image from "next/image"
+import { fetchActivityRecords, ActivityRecord } from "@/utils/api/invite"
 import { MOCK_RECORDS } from "@/utils/mock/mockData"
 import { useRouter } from "next/navigation"
 import { timeAgo, timeAgoString, truncateText } from "@/utils/func/utils"
 import { ArrowUpFromDot } from "lucide-react"
 
-export type RecordData = {
-    id: string
-    user_id: string
-    user_name: string
-    user_game_level: number
-    user_coin_balance: number
-    action: string
-    user_earning: number
-    user_exp_gain: number
-    crop_name: string
-    action_time: string
-    last_login: string
-    capila_owner: boolean
-}
+export type RecordData = ActivityRecord
 
 const Record = () => {
     const { language, t } = useLanguage()
@@ -33,17 +21,28 @@ const Record = () => {
     )
     const [isVisible, setIsVisible] = useState(false)
 
-    useEffect(() => {
+    const fetchRecords = (reset: boolean, cur: string | null) => {
         setLoadingRecords(true)
-        setTimeout(() => {
-            setRecordResults(MOCK_RECORDS as any)
-            setCursor(null)
-            setLoadingRecords(false)
-        }, 200)
+        fetchActivityRecords(cur)
+            .then(({ results, next }) => {
+                setRecordResults((prev) => reset ? results : [...prev, ...results])
+                setCursor(next)
+            })
+            .catch(() => {
+                if (reset) {
+                    setRecordResults(MOCK_RECORDS as any)
+                    setCursor(null)
+                }
+            })
+            .finally(() => setLoadingRecords(false))
+    }
+
+    useEffect(() => {
+        fetchRecords(true, null)
     }, [])
 
     const loadMoreRecord = async () => {
-        // No more pages in mock data
+        if (cursor && !loadingRecords) fetchRecords(false, cursor)
     }
 
     const scrollToTop = () => {
@@ -63,17 +62,9 @@ const Record = () => {
     }, [])
 
     useEffect(() => {
-        setLoadingRecords(true)
         setRecordResults([])
-        const handler = setTimeout(() => {
-            const filtered = recordFilter
-                ? (MOCK_RECORDS as any[]).filter((r) => r.action === recordFilter)
-                : MOCK_RECORDS
-            setRecordResults(filtered as any)
-            setCursor(null)
-            setLoadingRecords(false)
-        }, 100)
-        return () => clearTimeout(handler)
+        setCursor(null)
+        fetchRecords(true, null)
     }, [recordFilter])
 
     useEffect(() => {

@@ -281,6 +281,7 @@ export type AirDropStatsInfo = {
 }
 
 export type AirDropStats = {
+    id?: string
     eligible: boolean
     airdrop_amount: number
     remarks: string[]

@@ -3,6 +3,7 @@
 import Image from "next/image"
 import { useUser } from "../context/userContext"
 import { useEffect, useRef } from "react"
+import { claimAirdrop } from "@/utils/api/airdrop"
 import { useNotification } from "../context/notificationContext"
 import { useLanguage } from "../context/languageContext"
 
@@ -118,16 +119,27 @@ export const AirdropPage = () => {
                         </div>
                         {airdropInfo.airdrops[0].airdrop_amount > 0 ? (
                             <button
-                                className="w-full font-semibold bg-[#FBB602] flex flex-col py-3 px-4 justify-center items-center rounded-2xl shadow-md mb-[34px]"
+                                className="w-full font-semibold bg-[#FBB602] flex flex-col py-3 px-4 justify-center items-center rounded-2xl shadow-md mb-[34px] disabled:opacity-50"
                                 onClick={() => {
-                                    addNotification(
-                                        {
-                                            notificationTitle: "Hang tight!",
-                                            notificationMessage:
-                                                "You will be able to claim your $FARM soon.",
-                                        },
-                                        3000
-                                    )
+                                    claimAirdrop(airdropInfo.airdrops[0].id ?? "")
+                                        .then(({ tx_hash }) => {
+                                            addNotification(
+                                                {
+                                                    notificationTitle: "Claimed!",
+                                                    notificationMessage: `TX: ${tx_hash.slice(0, 16)}...`,
+                                                },
+                                                5000
+                                            )
+                                        })
+                                        .catch(() => {
+                                            addNotification(
+                                                {
+                                                    notificationTitle: "Claim failed",
+                                                    notificationMessage: "Please try again later.",
+                                                },
+                                                3000
+                                            )
+                                        })
                                 }}
                             >
                                 <p className="text-[#543D30] font-[16px] leading-[26px]">

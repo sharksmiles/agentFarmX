@@ -2,6 +2,7 @@
 
 import { useLanguage } from "../context/languageContext"
 import { useData } from "../context/dataContext"
+import { fetchFriends } from "@/utils/api/social"
 import { MOCK_FRIENDS } from "@/utils/mock/mockData"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
@@ -12,10 +13,17 @@ const RadarModal = () => {
     const router = useRouter()
     const handleRadar = async () => {
         setRadaring(true)
-        setTimeout(() => {
-            const target = MOCK_FRIENDS[Math.floor(Math.random() * MOCK_FRIENDS.length)]
-            router.push("/friends/farm/ra/" + target.id)
-        }, 500)
+        setOpenRadarModal(false)
+        fetchFriends("all")
+            .then(({ friends }) => {
+                if (friends.length === 0) throw new Error("no friends")
+                const target = friends[Math.floor(Math.random() * friends.length)]
+                router.push("/friends/farm/ra/" + target.id)
+            })
+            .catch(() => {
+                const target = MOCK_FRIENDS[Math.floor(Math.random() * MOCK_FRIENDS.length)]
+                router.push("/friends/farm/ra/" + target.id)
+            })
     }
 
     useEffect(() => {

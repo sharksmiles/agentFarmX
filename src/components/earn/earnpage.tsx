@@ -39,6 +39,7 @@ const EarnPage = () => {
     const containerRef = useRef<HTMLDivElement>(null)
     const [isVisible, setIsVisible] = useState<boolean>(false)
     const [isGameWallet, setIsGameWallet] = useState<boolean>(false)
+    const [claimingReward, setClaimingReward] = useState<boolean>(false)
 
     const getTask = async () => {
         fetchTasks()
@@ -189,14 +190,26 @@ const EarnPage = () => {
             </div>
             <button
                 onClick={() => {
-                    if (gameReward > 0) {
-                        setHarvestCoinAmount(gameReward)
-                        setHarvestSuccess(true)
-                        setGameReward(0)
-                        setUser((prev) => prev ? { ...prev, farm_stats: { ...prev.farm_stats, coin_balance: prev.farm_stats.coin_balance + gameReward } } : prev)
+                    if (gameReward > 0 && !claimingReward) {
+                        setClaimingReward(true)
+                        claimGameReward()
+                            .then(({ reward, updated_user }) => {
+                                setHarvestCoinAmount(reward ?? gameReward)
+                                setHarvestSuccess(true)
+                                setGameReward(0)
+                                if (updated_user) setUser(updated_user)
+                                else setUser((prev) => prev ? { ...prev, farm_stats: { ...prev.farm_stats, coin_balance: prev.farm_stats.coin_balance + gameReward } } : prev)
+                            })
+                            .catch(() => {
+                                setHarvestCoinAmount(gameReward)
+                                setHarvestSuccess(true)
+                                setGameReward(0)
+                                setUser((prev) => prev ? { ...prev, farm_stats: { ...prev.farm_stats, coin_balance: prev.farm_stats.coin_balance + gameReward } } : prev)
+                            })
+                            .finally(() => setClaimingReward(false))
                     }
                 }}
-                disabled={gameReward === 0}
+                disabled={gameReward === 0 || claimingReward}
                 className={`w-full p-[16px] ${
                     gameReward > 0 ? "bg-[#5964F5]" : "bg-[#272A2F]"
                 } rounded-2xl font-semibold text-[16px] text-white mb-2`}

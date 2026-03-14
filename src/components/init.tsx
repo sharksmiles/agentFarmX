@@ -9,7 +9,6 @@ import {
     MOCK_CAPILA,
     MOCK_AIRDROP,
 } from "@/utils/mock/mockData"
-import { fetchMe } from "@/utils/api/auth"
 import { fetchGameStats } from "@/utils/api/game"
 import { fetchFriendInfo } from "@/utils/api/social"
 import { fetchAirdropInfo } from "@/utils/api/airdrop"
@@ -27,7 +26,7 @@ const Init = () => {
         setFriendInfo,
         setCapilaStats,
     } = useData()
-    const { setUser, setWallet, setAirdropInfo, setAvailableProviders } = useUser()
+    const { setAirdropInfo, setAvailableProviders, refreshUser, setIsSessionRestored } = useUser()
 
     useEffect(() => {
         console.log(
@@ -60,14 +59,7 @@ const Init = () => {
         })
 
         // ── Try to restore existing session ──────────────────────────────────
-        fetchMe()
-            .then((me) => {
-                setUser(me)
-                setWallet({ address: me.id, hasPrivateKey: false, hasMnemonic: false })
-            })
-            .catch(() => {
-                // No active session — user must connect wallet
-            })
+        refreshUser().finally(() => setIsSessionRestored(true))
 
         // ── Load game stats from real API, fall back to mock in dev ──────────
         fetchGameStats()

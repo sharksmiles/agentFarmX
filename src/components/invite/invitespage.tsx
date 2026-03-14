@@ -1,6 +1,7 @@
 ﻿"use client"
 import Image from "next/image"
 import { useUser } from "../context/userContext"
+import { fetchInviteStats, InviteFriend } from "@/utils/api/invite"
 import { MOCK_INVITES } from "@/utils/mock/mockData"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useData } from "../context/dataContext"
@@ -9,12 +10,7 @@ import { useLanguage } from "../context/languageContext"
 import { useRouter } from "next/navigation"
 import { truncateText } from "@/utils/func/utils"
 
-type FriendsData = {
-    id: string
-    invitee_name: string
-    invitee_game_level: number
-    invitee_coin_balance: number
-}
+type FriendsData = InviteFriend
 
 const levelReward = [
     {
@@ -67,12 +63,20 @@ const InvitesPage = () => {
 
     const getInvitationFriendsFriends = async () => {
         setLoadingFriend(true)
-        setTimeout(() => {
-            setTotalFriendsData(MOCK_INVITES as any)
-            setTotalFriends(MOCK_INVITES.length)
-            setPage(null)
-            setLoadingFriend(false)
-        }, 300)
+        fetchInviteStats(page)
+            .then((data) => {
+                setTotalFriendsData((prev) => page === "1" ? data.friends : [...prev, ...data.friends])
+                setTotalFriends(data.total_invites)
+                setPage(data.next_cursor ?? null)
+            })
+            .catch(() => {
+                if (page === "1") {
+                    setTotalFriendsData(MOCK_INVITES as any)
+                    setTotalFriends(MOCK_INVITES.length)
+                }
+                setPage(null)
+            })
+            .finally(() => setLoadingFriend(false))
     }
 
     const scrollToTop = () => {

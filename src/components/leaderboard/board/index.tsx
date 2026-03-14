@@ -1,6 +1,7 @@
 "use client"
 import { useUser } from "../../context/userContext"
 import { useLanguage } from "../../context/languageContext"
+import { fetchLeaderboard } from "@/utils/api/invite"
 import { MOCK_LEADERBOARD } from "@/utils/mock/mockData"
 import { useEffect, useState, useRef, useCallback, useMemo } from "react"
 import { truncateText } from "@/utils/func/utils"
@@ -61,15 +62,28 @@ const LeaderBoard = (): JSX.Element => {
 
     const loadInitial = async (): Promise<void> => {
         setLoading(true)
-        setTimeout(() => {
-            setData(MOCK_LEADERBOARD.results as LeaderboardItem[])
-            setNextCursor(null)
-            setLoading(false)
-        }, 200)
+        fetchLeaderboard("invite")
+            .then(({ results, next }) => {
+                setData(results)
+                setNextCursor(extractNextCursor(next))
+            })
+            .catch(() => {
+                setData(MOCK_LEADERBOARD.results as LeaderboardItem[])
+                setNextCursor(null)
+            })
+            .finally(() => setLoading(false))
     }
 
     const loadMore = async (): Promise<void> => {
-        // No more pages in mock data
+        if (!nextCursor || loading) return
+        setLoading(true)
+        fetchLeaderboard("invite", nextCursor)
+            .then(({ results, next }) => {
+                setData((prev) => [...prev, ...results])
+                setNextCursor(extractNextCursor(next))
+            })
+            .catch(() => setNextCursor(null))
+            .finally(() => setLoading(false))
     }
 
     const handleObserver = useCallback(

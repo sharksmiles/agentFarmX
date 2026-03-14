@@ -1,11 +1,18 @@
 import apiClient from "./client"
 
 // ── Invite ────────────────────────────────────────────────────────────────────
+export interface InviteFriend {
+    id: string
+    invitee_name: string
+    invitee_game_level: number
+    invitee_coin_balance: number
+}
+
 export interface InviteStats {
     invite_link: string
     total_invites: number
     total_rewards: number
-    friends: { id: string; user_name: string; joined_at: string }[]
+    friends: InviteFriend[]
     next_cursor: string | null
 }
 
@@ -17,20 +24,16 @@ export const fetchInviteStats = async (cursor?: string | null): Promise<InviteSt
 }
 
 // ── Leaderboard ───────────────────────────────────────────────────────────────
-export interface LeaderboardEntry {
+export interface LeaderboardItem {
     rank: number
     user_id: string
-    user_name: string
-    invite_count: number
-    coin_balance: number
-    level: number
-    capila_owner: boolean
+    name: string
+    total_invites: number
 }
 
 export interface LeaderboardResponse {
-    entries: LeaderboardEntry[]
-    my_rank: LeaderboardEntry | null
-    next_cursor: string | null
+    results: LeaderboardItem[]
+    next: string | null
 }
 
 export const fetchLeaderboard = async (
@@ -39,27 +42,34 @@ export const fetchLeaderboard = async (
 ): Promise<LeaderboardResponse> => {
     const params: Record<string, string> = { type }
     if (cursor) params.cursor = cursor
-    const res = await apiClient.get<LeaderboardResponse>("/u/leaderboard/", { params })
+    const res = await apiClient.get<LeaderboardResponse>("/u/invite/leaderboard/", { params })
     return res.data
 }
 
 // ── Activity record ───────────────────────────────────────────────────────────
 export interface ActivityRecord {
     id: string
+    user_id: string
+    user_name: string
+    user_game_level: number
+    user_coin_balance: number
     action: string
-    amount: number
-    timestamp: string
-    details: string
+    user_earning: number
+    user_exp_gain: number
+    crop_name: string
+    action_time: string
+    last_login: string
+    capila_owner: boolean
 }
 
 export interface ActivityResponse {
-    records: ActivityRecord[]
-    next_cursor: string | null
+    results: ActivityRecord[]
+    next: string | null
 }
 
 export const fetchActivityRecords = async (cursor?: string | null): Promise<ActivityResponse> => {
     const params: Record<string, string> = {}
     if (cursor) params.cursor = cursor
-    const res = await apiClient.get<ActivityResponse>("/u/activity/", { params })
+    const res = await apiClient.get<ActivityResponse>("/g/record/", { params })
     return res.data
 }

@@ -10,6 +10,7 @@ import { UserProvider } from "@/components/context/userContext"
 import BottomBar from "@/components/bottom/bottombar"
 import AgentFarmAlert from "@/components/alert"
 import { LanguageProvider } from "@/components/context/languageContext"
+import AuthGate from "@/components/auth/AuthGate"
 
 const inter = Baloo_Bhai_2({ subsets: ["latin"] })
 
@@ -39,8 +40,10 @@ export default function RootLayout({
                             <UserProvider>
                                     <InitTelegram />
                                     <AgentFarmAlert />
-                                    <WithLoader>{children}</WithLoader>
-                                    <BottomBar />
+                                    <AuthGate>
+                                        <WithLoader>{children}</WithLoader>
+                                        <BottomBar />
+                                    </AuthGate>
                             </UserProvider>
                         </LanguageProvider>
                     </DataProvider>

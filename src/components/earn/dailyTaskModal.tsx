@@ -4,6 +4,7 @@ import Image from "next/image"
 import { motion, AnimatePresence } from "framer-motion"
 import { useData } from "../context/dataContext"
 import { useEffect, useRef, useState } from "react"
+import { fetchDailyCheckIn, claimDailyReward } from "@/utils/api/tasks"
 import { MOCK_DAILY_REWARD } from "@/utils/mock/mockData"
 import { useUser } from "../context/userContext"
 import dynamic from "next/dynamic"
@@ -118,8 +119,15 @@ const DailyTaskModal = () => {
     }
 
     useEffect(() => {
-        setCheckInDays(MOCK_DAILY_REWARD.total_days_checked_in)
-        setCanCheckIn(MOCK_DAILY_REWARD.can_check_in_today)
+        fetchDailyCheckIn()
+            .then((data) => {
+                setCheckInDays(data.total_days_checked_in)
+                setCanCheckIn(data.can_check_in_today)
+            })
+            .catch(() => {
+                setCheckInDays(MOCK_DAILY_REWARD.total_days_checked_in)
+                setCanCheckIn(MOCK_DAILY_REWARD.can_check_in_today)
+            })
     }, [])
 
     useEffect(() => {
@@ -136,14 +144,22 @@ const DailyTaskModal = () => {
     const checkIn = () => {
         if (!canCheckIn) return
         setCheckingIn(true)
-        setTimeout(() => {
-            const reward = MOCK_DAILY_REWARD.daily_reward[checkInDays] ?? 500
-            setHarvestCoinAmount(reward)
-            setHarvestSuccess(true)
-            setCheckInDays((prev) => prev + 1)
-            setCanCheckIn(false)
-            setCheckingIn(false)
-        }, 600)
+        claimDailyReward()
+            .then(({ reward, updated_user }) => {
+                setHarvestCoinAmount(reward)
+                setHarvestSuccess(true)
+                setCheckInDays((prev) => prev + 1)
+                setCanCheckIn(false)
+                if (updated_user) setUser(updated_user)
+            })
+            .catch(() => {
+                const reward = MOCK_DAILY_REWARD.daily_reward[checkInDays] ?? 500
+                setHarvestCoinAmount(reward)
+                setHarvestSuccess(true)
+                setCheckInDays((prev) => prev + 1)
+                setCanCheckIn(false)
+            })
+            .finally(() => setCheckingIn(false))
     }
     const pointerProps = {
         src: "/raffle/pointer.png",

@@ -86,17 +86,17 @@ export const updateAgentConfig = async (
 
 // ── Agent control ─────────────────────────────────────────────────────────────
 export const startAgent = async (agentId: string): Promise<Agent> => {
-    const res = await apiClient.post<Agent>(`/api/agents/${agentId}/start/`)
+    const res = await apiClient.post<Agent>(`/api/agents/${agentId}/control/`, { action: "start" })
     return res.data
 }
 
 export const pauseAgent = async (agentId: string): Promise<Agent> => {
-    const res = await apiClient.post<Agent>(`/api/agents/${agentId}/pause/`)
+    const res = await apiClient.post<Agent>(`/api/agents/${agentId}/control/`, { action: "pause" })
     return res.data
 }
 
 export const stopAgent = async (agentId: string): Promise<Agent> => {
-    const res = await apiClient.post<Agent>(`/api/agents/${agentId}/stop/`)
+    const res = await apiClient.post<Agent>(`/api/agents/${agentId}/control/`, { action: "stop" })
     return res.data
 }
 

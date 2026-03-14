@@ -6,7 +6,7 @@ import { useEffect, useState } from "react"
 import { ActionTypes, FriendStats, LandIdTypes, StealConfirmationTypes } from "@/utils/types"
 import { motion } from "framer-motion"
 import { DotLottiePlayer } from "@dotlottie/react-player"
-import { MOCK_STEAL_CONFIRMATION } from "@/utils/mock/mockData"
+import { waterFriendCrop, checkSteal } from "@/utils/api/social"
 import { messages } from "@/utils/func/telegram"
 import { useLanguage } from "@/components/context/languageContext"
 import { useData } from "@/components/context/dataContext"
@@ -130,34 +130,49 @@ const FriendGamePad = ({
                     if (!prev.includes(landId)) return [...prev, landId]
                     return prev
                 })
-                setTimeout(() => {
-                    const newNextWatering = new Date(Date.now() + 3600000).toISOString()
-                    setFriendStats((prev) => {
-                        if (!prev) return prev
-                        const crops = [...prev.farm_stats.growing_crops]
-                        crops[landId - 1] = {
-                            ...crops[landId - 1],
-                            crop_details: {
-                                ...crops[landId - 1].crop_details,
-                                last_watered_time: new Date().toISOString(),
-                                next_watering_due: newNextWatering,
-                            },
-                        }
-                        return { ...prev, farm_stats: { ...prev.farm_stats, growing_crops: crops } }
+                waterFriendCrop(friendStats.id, landId)
+                    .then(({ reward, updatedSelf }) => {
+                        const newNextWatering = new Date(Date.now() + 3600000).toISOString()
+                        setFriendStats((prev) => {
+                            if (!prev) return prev
+                            const crops = [...prev.farm_stats.growing_crops]
+                            crops[landId - 1] = {
+                                ...crops[landId - 1],
+                                crop_details: {
+                                    ...crops[landId - 1].crop_details,
+                                    last_watered_time: new Date().toISOString(),
+                                    next_watering_due: newNextWatering,
+                                },
+                            }
+                            return { ...prev, farm_stats: { ...prev.farm_stats, growing_crops: crops } }
+                        })
+                        setUser(updatedSelf)
+                        addNotification({ notificationTitle: "Watered!", notificationMessage: `You helped water their crop +${reward} COIN`, reward, friend_name: friendStats.user_name, action: "Harvest" } as any, 3000)
                     })
-                    setUser((prev) => {
-                        if (!prev) return prev
-                        return {
-                            ...prev,
-                            farm_stats: {
-                                ...prev.farm_stats,
-                                energy_left: Math.max((prev.farm_stats.energy_left ?? 0) - 1, 0),
-                            },
-                        }
+                    .catch(() => {
+                        const newNextWatering = new Date(Date.now() + 3600000).toISOString()
+                        setFriendStats((prev) => {
+                            if (!prev) return prev
+                            const crops = [...prev.farm_stats.growing_crops]
+                            crops[landId - 1] = {
+                                ...crops[landId - 1],
+                                crop_details: {
+                                    ...crops[landId - 1].crop_details,
+                                    last_watered_time: new Date().toISOString(),
+                                    next_watering_due: newNextWatering,
+                                },
+                            }
+                            return { ...prev, farm_stats: { ...prev.farm_stats, growing_crops: crops } }
+                        })
+                        setUser((prev) => {
+                            if (!prev) return prev
+                            return { ...prev, farm_stats: { ...prev.farm_stats, energy_left: Math.max((prev.farm_stats.energy_left ?? 0) - 1, 0) } }
+                        })
+                        addNotification({ notificationTitle: "Watered!", notificationMessage: "You helped water their crop +5 COIN", reward: 5, friend_name: friendStats.user_name, action: "Harvest" } as any, 3000)
                     })
-                    addNotification({ notificationTitle: "Watered!", notificationMessage: "You helped water their crop +5 COIN", reward: 5, friend_name: friendStats.user_name, action: "Harvest" } as any, 3000)
-                    setLandWatering((prev) => prev.filter((i) => i !== landId))
-                }, 800)
+                    .finally(() => {
+                        setLandWatering((prev) => prev.filter((i) => i !== landId))
+                    })
             }
         } else if (
             friendStats?.farm_stats.growing_crops[landId - 1]?.land_owned &&
@@ -181,16 +196,11 @@ const FriendGamePad = ({
                 const maturityExceededTime = currentGrowthTime - growthDuration
                 if (maturityExceededTime > 15) {
                     if (crop_id === undefined) return
-                    let postData = {
-                        crop_id: crop_id,
-                        friend_id: friendStats.id,
-                        action: "checksteal" as ActionTypes,
-                    }
                     setStealLoading("caculate")
-                    setTimeout(() => {
-                        setStealConfirmation(MOCK_STEAL_CONFIRMATION as any)
-                        setStealLoading(null)
-                    }, 600)
+                    checkSteal(friendStats.id, crop_id)
+                        .then((data) => setStealConfirmation(data))
+                        .catch(() => setNotification({ notificationTitle: "Error", notificationMessage: "Failed to calculate steal odds" }))
+                        .finally(() => setStealLoading(null))
                 } else {
                     setNotification({
                         notificationTitle: "Hang tight!",
