@@ -85,9 +85,10 @@ export interface ActivityResponse {
     next: string | null
 }
 
-export const fetchActivityRecords = async (cursor?: string | null): Promise<ActivityResponse> => {
-    const params: Record<string, string> = {}
+export const fetchActivityRecords = async (userId: string, filter?: string, cursor?: string | null): Promise<ActivityResponse> => {
+    const params: Record<string, string> = { userId }
+    if (filter) params.filter = filter
     if (cursor) params.cursor = cursor
-    const res = await apiClient.get<ActivityResponse>("/g/record/", { params })
+    const res = await apiClient.get<ActivityResponse>("/api/social/record", { params })
     return res.data
 }

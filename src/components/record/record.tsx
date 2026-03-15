@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react"
 import { useLanguage } from "../context/languageContext"
+import { useUser } from "../context/userContext"
 import Image from "next/image"
 import { fetchActivityRecords, ActivityRecord } from "@/utils/api/invite"
 import { useRouter } from "next/navigation"
@@ -10,6 +11,7 @@ export type RecordData = ActivityRecord
 
 const Record = () => {
     const { language, t } = useLanguage()
+    const { user } = useUser()
     const router = useRouter()
     const [loadingRecords, setLoadingRecords] = useState<boolean>(true)
     const [recordResults, setRecordResults] = useState<RecordData[]>([])
@@ -21,8 +23,9 @@ const Record = () => {
     const [isVisible, setIsVisible] = useState(false)
 
     const fetchRecords = useCallback((reset: boolean, cur: string | null) => {
+        if (!user?.id) return
         setLoadingRecords(true)
-        fetchActivityRecords(cur)
+        fetchActivityRecords(user.id, recordFilter, cur)
             .then(({ results, next }) => {
                 setRecordResults((prev) => reset ? results : [...prev, ...results])
                 setCursor(next)
@@ -34,15 +37,17 @@ const Record = () => {
                 }
             })
             .finally(() => setLoadingRecords(false))
-    }, [])
+    }, [user?.id])
 
     useEffect(() => {
-        fetchRecords(true, null)
-    }, [fetchRecords])
+        if (user?.id) {
+            fetchRecords(true, null)
+        }
+    }, [fetchRecords, user?.id])
 
     const loadMoreRecord = useCallback(async () => {
-        if (cursor && !loadingRecords) fetchRecords(false, cursor)
-    }, [cursor, loadingRecords, fetchRecords])
+        if (cursor && !loadingRecords && user?.id) fetchRecords(false, cursor)
+    }, [cursor, loadingRecords, fetchRecords, user?.id])
 
     const scrollToTop = () => {
         observerRef.current?.scrollTo({
@@ -117,7 +122,7 @@ const Record = () => {
                 className="h-full w-full px-4 py-6 flex flex-col text-white gap-3 overflow-auto"
                 ref={observerRef}
             >
-                {recordResults ? (
+                {recordResults && recordResults.length > 0 ? (
                     recordResults.map((record, index) => {
                         if (record.user_coin_balance && record.user_game_level) {
                             let last_login = timeAgo(record.last_login)
@@ -237,18 +242,56 @@ const Record = () => {
                             )
                         }
                     })
-                ) : (
-                    <div>
-                        <div className="flex w-full justify-center items-center text-white font-semibold text-md py-2 max-h-[60px]">
-                            {t("No scarecrow notes found...")}
+                ) : !loadingRecords ? (
+                    <div className="flex flex-col items-center justify-center h-full py-12 gap-4">
+                        <div className="relative w-32 h-32 opacity-50">
+                            <Image
+                                src="/game/record.png"
+                                fill
+                                alt="record"
+                                className="object-contain grayscale"
+                            />
                         </div>
+                        <div className="text-center px-6">
+                            <h3 className="text-xl font-bold text-white mb-2">
+                                {t("Your notes are empty")}
+                            </h3>
+                            <p className="text-gray-400 text-sm">
+                                {recordFilter === ""
+                                    ? t("When other farmers interact with your farm, their activities will appear here.")
+                                    : t("No activities found for this filter.")}
+                            </p>
+                        </div>
+                        {recordFilter !== "" && (
+                            <button
+                                onClick={() => setRecordFilter("")}
+                                className="mt-2 px-4 py-2 bg-[#252A31] rounded-xl text-sm font-semibold border border-white/10 hover:bg-white/5"
+                            >
+                                {t("Clear Filter")}
+                            </button>
+                        )}
                     </div>
-                )}
+                ) : null}
                 <>
-                    {loadingRecords &&
-                        Array.from({ length: 20 }).map((_, index) => (
-                            <div className="skeleton min-h-[54px]" key={index} />
-                        ))}
+                    {loadingRecords && (
+                        <div className="flex flex-col gap-3">
+                            {Array.from({ length: 8 }).map((_, index) => (
+                                <div 
+                                    key={index} 
+                                    className="w-full bg-[#252A31]/50 h-[60px] rounded-2xl animate-pulse flex items-center px-4 justify-between"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 bg-white/5 rounded-full" />
+                                        <div className="flex flex-col gap-2">
+                                            <div className="w-24 h-3 bg-white/5 rounded" />
+                                            <div className="w-32 h-2 bg-white/5 rounded" />
+                                        </div>
+                                    </div>
+                                    <div className="w-8 h-8 bg-white/5 rounded-lg" />
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </>
             </div>
             {isVisible && (

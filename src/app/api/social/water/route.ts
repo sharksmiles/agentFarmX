@@ -54,6 +54,7 @@ export async function POST(request: NextRequest) {
           metadata: {
             plotIndex,
             reward: WATER_REWARD,
+            cropId: plot.cropId,
           },
         },
       }),
