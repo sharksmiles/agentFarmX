@@ -11,7 +11,15 @@ export const siweLogin = async (payload: {
     signature: string
     message: string
 }): Promise<void> => {
-    await apiClient.post("/api/auth/login", payload)
+    try {
+        const response = await apiClient.post("/api/auth/login", payload)
+        if (response.data.sessionToken && typeof window !== 'undefined') {
+            localStorage.setItem('sessionToken', response.data.sessionToken)
+        }
+    } catch (error: any) {
+        console.error('SIWE login failed:', error.response?.data || error.message)
+        throw new Error(error.response?.data?.error || 'Login failed')
+    }
 }
 
 // New API: Login with SIWE and get session token

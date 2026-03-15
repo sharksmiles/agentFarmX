@@ -71,22 +71,22 @@ const GameStats = ({}) => {
     }, [currentEnergy, user?.farm_stats?.max_energy, setUser])
 
     useEffect(() => {
-        if (user?.farm_stats.next_restore_time) {
+        if (user?.farm_stats?.next_restore_time) {
             return setupNextRestore(user.farm_stats.next_restore_time)
         }
-    }, [user?.farm_stats.next_restore_time, setupNextRestore])
+    }, [user?.farm_stats?.next_restore_time, setupNextRestore])
 
     useEffect(() => {
         setPrevEnergy(currentEnergy)
-        setCurrentEnergy(user?.farm_stats.energy_left || 0)
-    }, [user?.farm_stats.energy_left, currentEnergy])
+        setCurrentEnergy(user?.farm_stats?.energy_left || 0)
+    }, [user?.farm_stats?.energy_left, currentEnergy])
 
     useEffect(() => {
         setPrevBalance(currentBalance)
-        setCurrentBalance(user?.farm_stats.coin_balance || 0)
-    }, [user?.farm_stats.coin_balance, currentBalance])
+        setCurrentBalance(user?.farm_stats?.coin_balance || 0)
+    }, [user?.farm_stats?.coin_balance, currentBalance])
 
-    const currentLevel = user?.farm_stats.level || 1
+    const currentLevel = user?.farm_stats?.level || 1
     const requiredExp = gameStats?.level_requirements[currentLevel]
         ? gameStats?.level_requirements[currentLevel]["Require Experience"]
         : "max"
@@ -188,7 +188,7 @@ const GameStats = ({}) => {
 
                             <span className="absolute top-1/2 -translate-y-1/2 right-[12px] text-nowrap flex">
                                 <span className="text-[#1b3d1c] text-[16px] font-bold flex whitespace-nowrap">
-                                    <span>{user?.farm_stats.boost_left}/3</span>
+                                    <span>{user?.farm_stats?.boost_left}/3</span>
                                 </span>
                             </span>
                         </button>

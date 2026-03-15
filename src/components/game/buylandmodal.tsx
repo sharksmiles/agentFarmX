@@ -16,7 +16,7 @@ const BuylandModal = () => {
         if (selectedLandId === undefined) {
             return
         }
-        const unownedLandIndex = user?.farm_stats.growing_crops.findIndex(
+        const unownedLandIndex = user?.farm_stats?.growing_crops?.findIndex(
             (crop) => !crop.land_owned
         )
         if (unownedLandIndex! + 1 !== selectedLandId!) {
@@ -26,7 +26,7 @@ const BuylandModal = () => {
         if (gameStats?.land_prices[selectedLandId!] === undefined) {
             return
         }
-        if (Number(user?.farm_stats.coin_balance) < gameStats?.land_prices[selectedLandId!]) {
+        if (Number(user?.farm_stats?.coin_balance) < gameStats?.land_prices[selectedLandId!]) {
             OpenAgentFarmAlert({
                 notificationTitle: "Oops!",
                 notificationMessage: "Insufficient balance",
@@ -39,11 +39,11 @@ const BuylandModal = () => {
         } catch {
             setUser((prev) => {
                 if (!prev) return prev
-                const crops = prev.farm_stats.growing_crops.map((c) =>
+                const crops = prev.farm_stats?.growing_crops?.map((c) =>
                     c.land_id === selectedLandId ? { ...c, land_owned: true, land_can_buy: false } : c
                 )
                 const cost = gameStats?.land_prices[selectedLandId!] ?? 0
-                return { ...prev, farm_stats: { ...prev.farm_stats, growing_crops: crops, coin_balance: prev.farm_stats.coin_balance - cost } }
+                return { ...prev, farm_stats: { ...prev.farm_stats, growing_crops: crops, coin_balance: prev.farm_stats?.coin_balance - cost } }
             })
         }
         setActionType(null)

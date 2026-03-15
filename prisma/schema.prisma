@@ -26,8 +26,8 @@ model User {
   farmCoins     Int      @default(1000)
   
   // 社交数据
-  inviteCode    String   @unique @default(cuid()) @db.VarChar(20)
-  invitedBy     String?  @db.VarChar(20)
+  inviteCode    String   @unique @default(cuid()) @db.VarChar(30)
+  invitedBy     String?  @db.VarChar(30)
   inviteCount   Int      @default(0)
   
   // 时间戳

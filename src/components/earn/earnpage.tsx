@@ -198,13 +198,13 @@ const EarnPage = () => {
                                 setHarvestSuccess(true)
                                 setGameReward(0)
                                 if (updated_user) setUser(updated_user)
-                                else setUser((prev) => prev ? { ...prev, farm_stats: { ...prev.farm_stats, coin_balance: prev.farm_stats.coin_balance + gameReward } } : prev)
+                                else setUser((prev) => prev ? { ...prev, farm_stats: { ...prev.farm_stats, coin_balance: prev.farm_stats?.coin_balance + gameReward } } : prev)
                             })
                             .catch(() => {
                                 setHarvestCoinAmount(gameReward)
                                 setHarvestSuccess(true)
                                 setGameReward(0)
-                                setUser((prev) => prev ? { ...prev, farm_stats: { ...prev.farm_stats, coin_balance: prev.farm_stats.coin_balance + gameReward } } : prev)
+                                setUser((prev) => prev ? { ...prev, farm_stats: { ...prev.farm_stats, coin_balance: prev.farm_stats?.coin_balance + gameReward } } : prev)
                             })
                             .finally(() => setClaimingReward(false))
                     }

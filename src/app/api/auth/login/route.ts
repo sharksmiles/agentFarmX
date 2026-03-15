@@ -84,12 +84,66 @@ export async function POST(request: NextRequest) {
       })
     ).toString('base64');
 
+    // Transform database structure to frontend expected format
+    const farmState = user.farmState;
+    
+    // Generate growing_crops array from landPlots or create default
+    let growing_crops;
+    if (farmState?.landPlots && farmState.landPlots.length > 0) {
+      growing_crops = farmState.landPlots.map((plot) => ({
+        coin_balance: user.farmCoins,
+        land_id: plot.plotIndex + 1,
+        land_owned: plot.isUnlocked,
+        land_can_buy: !plot.isUnlocked && plot.plotIndex < (farmState.unlockedLands + 3),
+        is_planted: !!plot.cropId,
+        crop_details: plot.cropId ? {
+          crop_id: plot.cropId,
+          crop_type: plot.cropId,
+          planted_time: plot.plantedAt,
+          is_mature: plot.growthStage === 4,
+          status: plot.growthStage === 4 ? 'mature' : 'growing',
+          maturing_time: plot.harvestAt ? new Date(plot.harvestAt).getTime() : undefined,
+          growth_time_hours: 2,
+          last_watered_time: plot.plantedAt,
+          next_watering_due: plot.plantedAt ? new Date(new Date(plot.plantedAt).getTime() + 30 * 60 * 1000).toISOString() : undefined,
+        } : {},
+      }));
+    } else {
+      // Create default 9 land plots (6 owned, 3 can buy)
+      growing_crops = Array.from({ length: 9 }, (_, i) => ({
+        coin_balance: user.farmCoins,
+        land_id: i + 1,
+        land_owned: i < 6,
+        land_can_buy: i >= 6 && i < 9,
+        is_planted: false,
+        crop_details: {},
+      }));
+    }
+
+    const userData = {
+      id: user.id,
+      wallet_address: user.walletAddress,
+      wallet_address_type: 'evm',
+      invite_link: user.inviteCode || '',
+      username: user.username || '',
+      is_active: true,
+      lang: 'en',
+      farm_stats: {
+        inventory: [],
+        growing_crops,
+        level: user.level,
+        level_exp: user.experience,
+        coin_balance: user.farmCoins,
+        boost_left: 3,
+        energy_left: farmState?.energy || 100,
+        max_energy: farmState?.maxEnergy || 100,
+        next_restore_time: farmState?.lastEnergyUpdate || null,
+      },
+    };
+
     return NextResponse.json({
       success: true,
-      user: {
-        id: user.id,
-        walletAddress: user.walletAddress,
-      },
+      user: userData,
       sessionToken,
     });
   } catch (error) {

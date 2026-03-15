@@ -38,8 +38,8 @@ const PlantModal = () => {
 
         if (
             !selectedLandId ||
-            !user?.farm_stats.growing_crops[selectedLandId - 1].land_owned ||
-            user?.farm_stats.growing_crops[selectedLandId - 1].is_planted
+            !user?.farm_stats?.growing_crops?.[selectedLandId - 1]?.land_owned ||
+            user?.farm_stats?.growing_crops?.[selectedLandId - 1]?.is_planted
         ) {
             OpenAgentFarmAlert({
                 notificationTitle: "Oops!",
@@ -69,7 +69,7 @@ const PlantModal = () => {
             const updatedUser = await apiPlantCrop(selectedLandId, selectedCrop)
             setUser(updatedUser)
         } catch {
-            const cropInfo = gameStats?.crop_info.find((c) => c.name === selectedCrop)
+            const cropInfo = gameStats?.crop_info?.find((c) => c.name === selectedCrop)
             const now = new Date()
             setUser((prev) => {
                 if (!prev) return prev
@@ -136,10 +136,10 @@ const PlantModal = () => {
 
     useEffect(() => {
         if (actionType !== "plant") return
-        if (user?.farm_stats.inventory && user?.farm_stats.inventory.length > 0) {
-            setSelectedCrop(user?.farm_stats.inventory[0].crop_type)
+        if (user?.farm_stats?.inventory && user?.farm_stats?.inventory.length > 0) {
+            setSelectedCrop(user?.farm_stats?.inventory[0].crop_type)
         }
-    }, [actionType, user?.farm_stats.inventory, setSelectedCrop])
+    }, [actionType, user?.farm_stats?.inventory, setSelectedCrop])
 
     return (
         <AnimatePresence>
@@ -195,7 +195,7 @@ const PlantModal = () => {
                                 {t("Bag")}
                             </div>
                             {/* sub title */}
-                            {user?.farm_stats.inventory.some((crop) => crop.quantity > 0) && (
+                            {user?.farm_stats?.inventory?.some((crop) => crop.quantity > 0) && (
                                 <div className="font-semibod text-white text-[14px] text-center w-full flex justify-between px-[12px]">
                                     <p className="flex justify-start items-center w-full">
                                         {t("Select item")}
@@ -214,10 +214,10 @@ const PlantModal = () => {
                                 className="w-full min-h-[50px] max-h-[220px] overflow-y-auto"
                             >
                                 <div className="font text-white text-center w-full flex justify-between gap-[8px] flex-col">
-                                    {user?.farm_stats.inventory.some(
+                                    {user?.farm_stats?.inventory?.some(
                                         (crop) => crop.quantity > 0
                                     ) ? (
-                                        user?.farm_stats.inventory.map((crop, index) => {
+                                        user?.farm_stats?.inventory?.map((crop, index) => {
                                             if (crop.quantity <= 0) return null
                                             return (
                                                 <div
@@ -276,7 +276,7 @@ const PlantModal = () => {
                             <button
                                 onClick={() => {
                                     if (
-                                        user?.farm_stats.inventory.some(
+                                        user?.farm_stats?.inventory?.some(
                                             (crop) => crop.quantity > 0
                                         ) &&
                                         selectedCrop
@@ -290,7 +290,7 @@ const PlantModal = () => {
                                 }}
                                 className="rounded-[16px] bg-[#5964F5] w-full h-[50px] py-[12px] px-[16px] font-semibold text-[16px] text-white"
                             >
-                                {user?.farm_stats.inventory.some((crop) => crop.quantity > 0)
+                                {user?.farm_stats?.inventory?.some((crop) => crop.quantity > 0)
                                     ? planting
                                         ? `${t("planting")} ${t(selectedCrop!)}...`
                                         : `${t("Select")} ${

@@ -1,4 +1,5 @@
 import { SiweMessage } from "siwe"
+import { getAddress } from "ethers"
 import { fetchNonce, siweLogin } from "../api/auth"
 
 export interface EIP6963ProviderInfo {
@@ -30,33 +31,47 @@ export function discoverWalletProviders(
 export async function connectAndSign(
     provider: any
 ): Promise<{ address: string; signature: string; message: string }> {
-    const accounts: string[] = await provider.request({ method: "eth_requestAccounts" })
-    if (!accounts.length) throw new Error("No accounts returned from wallet")
+    try {
+        const accounts: string[] = await provider.request({ method: "eth_requestAccounts" })
+        if (!accounts.length) throw new Error("No accounts returned from wallet")
 
-    const address = accounts[0]
-    const nonce = await fetchNonce()
+        // Convert to EIP-55 checksummed address
+        const address = getAddress(accounts[0])
+        const nonce = await fetchNonce()
 
-    const siweMessage = new SiweMessage({
-        domain: window.location.host,
-        address,
-        statement: "Welcome to AgentFarm X. Sign this message to authenticate.",
-        uri: window.location.origin,
-        version: "1",
-        chainId: X_LAYER_CHAIN_ID,
-        nonce,
-    })
+        const siweMessage = new SiweMessage({
+            domain: window.location.host,
+            address,
+            statement: "Welcome to AgentFarm X. Sign this message to authenticate.",
+            uri: window.location.origin,
+            version: "1",
+            chainId: X_LAYER_CHAIN_ID,
+            nonce,
+        })
 
-    const message = siweMessage.prepareMessage()
-    const signature: string = await provider.request({
-        method: "personal_sign",
-        params: [message, address],
-    })
+        const message = siweMessage.prepareMessage()
+        const signature: string = await provider.request({
+            method: "personal_sign",
+            params: [message, address],
+        })
 
-    return { address, signature, message }
+        return { address, signature, message }
+    } catch (error: any) {
+        console.error('Connect and sign failed:', error)
+        if (error.code === 4001) {
+            throw new Error('User rejected the connection request')
+        }
+        throw error
+    }
 }
 
 export async function performSiweLogin(provider: any): Promise<string> {
     const { address, signature, message } = await connectAndSign(provider)
     await siweLogin({ address, signature, message })
+    
+    if (typeof window !== 'undefined') {
+        localStorage.setItem('walletAddress', address)
+    }
+    
     return address
 }

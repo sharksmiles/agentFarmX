@@ -25,12 +25,14 @@ interface UserContextValue {
     isAuthenticated: boolean
     isAuthLoading: boolean
     isSessionRestored: boolean
+    authError: string | null
     setIsSessionRestored: React.Dispatch<React.SetStateAction<boolean>>
     availableProviders: EIP6963Provider[]
     setAvailableProviders: React.Dispatch<React.SetStateAction<EIP6963Provider[]>>
     connectWallet: (provider: EIP6963Provider) => Promise<void>
     disconnectWallet: () => Promise<void>
     refreshUser: () => Promise<void>
+    clearAuthError: () => void
 }
 
 // Create the context
@@ -51,6 +53,7 @@ export const UserProvider: FC<UserProviderProps> = ({ children }) => {
     const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false)
     const [isAuthLoading, setIsAuthLoading] = useState<boolean>(false)
     const [isSessionRestored, setIsSessionRestored] = useState<boolean>(false)
+    const [authError, setAuthError] = useState<string | null>(null)
     const [availableProviders, setAvailableProviders] = useState<EIP6963Provider[]>([])
 
     const refreshUser = useCallback(async () => {
@@ -66,11 +69,33 @@ export const UserProvider: FC<UserProviderProps> = ({ children }) => {
 
     const connectWallet = useCallback(async (providerDetail: EIP6963Provider) => {
         setIsAuthLoading(true)
+        setAuthError(null)
         try {
             const address = await performSiweLogin(providerDetail.provider)
             setWalletAddress(address)
             setWallet({ address, hasPrivateKey: false, hasMnemonic: false })
+            
+            if (typeof window !== 'undefined') {
+                localStorage.setItem('walletAddress', address)
+            }
+            
             await refreshUser()
+        } catch (error: any) {
+            console.error('Wallet connection failed:', error)
+            let errorMessage = 'Failed to connect wallet'
+            
+            if (error?.message?.includes('User rejected')) {
+                errorMessage = 'You rejected the connection request'
+            } else if (error?.message?.includes('User denied')) {
+                errorMessage = 'You denied the signature request'
+            } else if (error?.message?.includes('No accounts')) {
+                errorMessage = 'No accounts found in wallet'
+            } else if (error?.message) {
+                errorMessage = error.message
+            }
+            
+            setAuthError(errorMessage)
+            throw error
         } finally {
             setIsAuthLoading(false)
         }
@@ -84,6 +109,15 @@ export const UserProvider: FC<UserProviderProps> = ({ children }) => {
         setWallet(null)
         setWalletAddress(null)
         setIsAuthenticated(false)
+        setAuthError(null)
+        
+        if (typeof window !== 'undefined') {
+            localStorage.removeItem('walletAddress')
+        }
+    }, [])
+
+    const clearAuthError = useCallback(() => {
+        setAuthError(null)
     }, [])
 
     const value = {
@@ -101,12 +135,14 @@ export const UserProvider: FC<UserProviderProps> = ({ children }) => {
         isAuthenticated,
         isAuthLoading,
         isSessionRestored,
+        authError,
         setIsSessionRestored,
         availableProviders,
         setAvailableProviders,
         connectWallet,
         disconnectWallet,
         refreshUser,
+        clearAuthError,
     }
 
     return <UserContext.Provider value={value}>{children}</UserContext.Provider>

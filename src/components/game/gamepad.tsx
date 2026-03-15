@@ -73,27 +73,27 @@ const GamePad = ({}) => {
             setOnBoardingStep(4)
         }
         if (
-            !user?.farm_stats.growing_crops[landId - 1].land_owned &&
-            !user?.farm_stats.growing_crops[landId - 1].land_can_buy
+            !user?.farm_stats?.growing_crops?.[landId - 1]?.land_owned &&
+            !user?.farm_stats?.growing_crops?.[landId - 1]?.land_can_buy
         ) {
             OpenAgentFarmAlert({
                 notificationTitle: "Oops!",
                 notificationMessage: "Land not owned, level up to buy this land.",
             })
             return
-        } else if (openBoost && user?.farm_stats.growing_crops[landId - 1]?.land_owned) {
+        } else if (openBoost && user?.farm_stats?.growing_crops?.[landId - 1]?.land_owned) {
             setBoosting(true)
             boostCrop(landId)
                 .then((updatedUser) => setUser(updatedUser))
                 .catch(() => {
                     setUser((prev) => {
                         if (!prev) return prev
-                        const crops = prev.farm_stats.growing_crops.map((c) =>
+                        const crops = prev.farm_stats?.growing_crops?.map((c) =>
                             c.land_id === landId
                                 ? { ...c, crop_details: { ...c.crop_details, is_mature: true } }
                                 : c
                         )
-                        return { ...prev, farm_stats: { ...prev.farm_stats, growing_crops: crops, boost_left: Math.max(prev.farm_stats.boost_left - 1, 0) } }
+                        return { ...prev, farm_stats: { ...prev.farm_stats, growing_crops: crops, boost_left: Math.max(prev.farm_stats?.boost_left - 1, 0) } }
                     })
                 })
                 .finally(() => {
@@ -102,20 +102,20 @@ const GamePad = ({}) => {
                     setBoosting(false)
                 })
         } else if (
-            user?.farm_stats.growing_crops[landId - 1].land_owned &&
-            !user?.farm_stats.growing_crops[landId - 1].is_planted
+            user?.farm_stats?.growing_crops?.[landId - 1]?.land_owned &&
+            !user?.farm_stats?.growing_crops?.[landId - 1]?.is_planted
         ) {
             setActionType("plant")
             setSelectedLandId(landId)
         } else if (
-            user?.farm_stats.growing_crops[landId - 1]?.land_owned &&
-            user?.farm_stats.growing_crops[landId - 1]?.is_planted &&
-            user?.farm_stats.growing_crops[landId - 1]?.crop_details?.next_watering_due &&
-            !user?.farm_stats.growing_crops[landId - 1]?.crop_details?.is_mature
+            user?.farm_stats?.growing_crops?.[landId - 1]?.land_owned &&
+            user?.farm_stats?.growing_crops?.[landId - 1]?.is_planted &&
+            user?.farm_stats?.growing_crops?.[landId - 1]?.crop_details?.next_watering_due &&
+            !user?.farm_stats?.growing_crops?.[landId - 1]?.crop_details?.is_mature
         ) {
             if (crop_id === undefined) return
             const nextWateringDue = new Date(
-                user.farm_stats.growing_crops[landId - 1].crop_details.next_watering_due ??
+                user?.farm_stats?.growing_crops?.[landId - 1]?.crop_details?.next_watering_due ??
                     new Date().toISOString()
             )
             if (nextWateringDue > new Date()) {
@@ -127,7 +127,7 @@ const GamePad = ({}) => {
                 const randomIndex = Math.floor(Math.random() * messages.length)
                 const randomMessage = t(messages[randomIndex]).replace(
                     "[crop]",
-                    t(user?.farm_stats.growing_crops[landId - 1]?.crop_details.crop_type!)
+                    t(user?.farm_stats?.growing_crops?.[landId - 1]?.crop_details?.crop_type!)
                 )
                 const { crop_details } = user?.farm_stats?.growing_crops[landId - 1]
                 if (
@@ -174,7 +174,7 @@ const GamePad = ({}) => {
                         const now = new Date()
                         setUser((prev) => {
                             if (!prev) return prev
-                            const crops = prev.farm_stats.growing_crops.map((c) =>
+                            const crops = prev.farm_stats?.growing_crops?.map((c) =>
                                 c.land_id === landId
                                     ? {
                                           ...c,
@@ -191,7 +191,7 @@ const GamePad = ({}) => {
                                 farm_stats: {
                                     ...prev.farm_stats,
                                     growing_crops: crops,
-                                    energy_left: Math.max((prev.farm_stats.energy_left ?? 0) - 1, 0),
+                                    energy_left: Math.max((prev.farm_stats?.energy_left ?? 0) - 1, 0),
                                 },
                             }
                         })
@@ -199,24 +199,24 @@ const GamePad = ({}) => {
                     .finally(() => setLandWatering((prev) => prev.filter((id) => id !== landId)))
             }
         } else if (
-            user?.farm_stats.growing_crops[landId - 1]?.land_owned &&
-            user?.farm_stats.growing_crops[landId - 1]?.is_planted &&
-            user?.farm_stats.growing_crops[landId - 1]?.crop_details?.is_mature
+            user?.farm_stats?.growing_crops?.[landId - 1]?.land_owned &&
+            user?.farm_stats?.growing_crops?.[landId - 1]?.is_planted &&
+            user?.farm_stats?.growing_crops?.[landId - 1]?.crop_details?.is_mature
         ) {
             setHarvesting(true)
             setActionType("harvest")
-            const cropType = user.farm_stats.growing_crops[landId - 1]?.crop_details?.crop_type
-            const harvestPrice = gameStats?.crop_info.find((c) => c.name === cropType)?.harvest_price ?? 20
+            const cropType = user?.farm_stats?.growing_crops?.[landId - 1]?.crop_details?.crop_type
+            const harvestPrice = gameStats?.crop_info?.find((c) => c.name === cropType)?.harvest_price ?? 20
             harvestCrop(landId)
                 .then((updatedUser) => {
                     setUser(updatedUser)
-                    const earned = updatedUser.farm_stats.coin_balance - (user?.farm_stats.coin_balance ?? 0)
+                    const earned = updatedUser.farm_stats?.coin_balance - (user?.farm_stats?.coin_balance ?? 0)
                     setHarvestCoinAmount(earned > 0 ? earned : harvestPrice)
                 })
                 .catch(() => {
                     setUser((prev) => {
                         if (!prev) return prev
-                        const crops = prev.farm_stats.growing_crops.map((c) =>
+                        const crops = prev.farm_stats?.growing_crops?.map((c) =>
                             c.land_id === landId ? { ...c, is_planted: false, crop_details: {} } : c
                         )
                         return {
@@ -224,7 +224,7 @@ const GamePad = ({}) => {
                             farm_stats: {
                                 ...prev.farm_stats,
                                 growing_crops: crops,
-                                coin_balance: prev.farm_stats.coin_balance + harvestPrice,
+                                coin_balance: prev.farm_stats?.coin_balance + harvestPrice,
                             },
                         }
                     })
@@ -235,7 +235,7 @@ const GamePad = ({}) => {
                     setHarvestSuccess(true)
                     setHarvesting(false)
                 })
-        } else if (user?.farm_stats.growing_crops[landId - 1].land_can_buy) {
+        } else if (user?.farm_stats?.growing_crops?.[landId - 1]?.land_can_buy) {
             setActionType("buyland")
             setSelectedLandId(landId)
         }
@@ -248,7 +248,7 @@ const GamePad = ({}) => {
             >
                 <div className="flex overflow-x-auto px-6 pt-40 gap-5 hide-scrollbar w-full justify-center">
                     <div className="grid grid-cols-3 gap-x-3 gap-y-7  min-w-max">
-                        {user?.farm_stats.growing_crops.map((land, index) => {
+                        {user?.farm_stats?.growing_crops?.map((land, index) => {
                             const { crop_details } = land
                             let cropStage: number = 0
                             let needWater: boolean = false

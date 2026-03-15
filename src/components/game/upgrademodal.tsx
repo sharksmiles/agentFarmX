@@ -14,7 +14,7 @@ const UpgradeModal = () => {
 
     const upgrade = async () => {
         if (
-            Number(user?.farm_stats.coin_balance) <
+            Number(user?.farm_stats?.coin_balance) <
             gameStats!.level_requirements[user?.farm_stats?.level!]?.["Upgrade Cost"]
         ) {
             OpenAgentFarmAlert({
@@ -83,7 +83,7 @@ const UpgradeModal = () => {
                             {/* title */}
                             <div className="font-extrabold text-white text-[28px] text-center w-full">
                                 {t("Upgrade Lv")}
-                                {user?.farm_stats.level && user?.farm_stats.level + 1}
+                                {user?.farm_stats?.level && user?.farm_stats?.level + 1}
                             </div>
                             {/* requirement */}
                             <div className="font-semibod text-white text-[16px] text-center w-full flex justify-between px-[12px] h-[39px]">

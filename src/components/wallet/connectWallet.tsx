@@ -1,6 +1,6 @@
 "use client"
 import { useUser } from "@/components/context/userContext"
-import { Loader2, Wallet, X } from "lucide-react"
+import { Loader2, Wallet, X, AlertCircle } from "lucide-react"
 import Image from "next/image"
 
 interface ConnectWalletProps {
@@ -8,7 +8,7 @@ interface ConnectWalletProps {
 }
 
 export default function ConnectWallet({ onClose }: ConnectWalletProps) {
-    const { availableProviders, connectWallet, isAuthLoading } = useUser()
+    const { availableProviders, connectWallet, isAuthLoading, authError, clearAuthError } = useUser()
 
     return (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60">
@@ -24,6 +24,21 @@ export default function ConnectWallet({ onClose }: ConnectWalletProps) {
                         </button>
                     )}
                 </div>
+
+                {authError && (
+                    <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-xl flex items-start gap-2">
+                        <AlertCircle size={18} className="text-red-400 mt-0.5 flex-shrink-0" />
+                        <div className="flex-1">
+                            <p className="text-red-400 text-sm">{authError}</p>
+                        </div>
+                        <button 
+                            onClick={clearAuthError}
+                            className="text-red-400 hover:text-red-300"
+                        >
+                            <X size={16} />
+                        </button>
+                    </div>
+                )}
 
                 {isAuthLoading ? (
                     <div className="flex flex-col items-center py-8 gap-3">

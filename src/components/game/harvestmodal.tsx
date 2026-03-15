@@ -20,19 +20,19 @@ const HarvestModal = () => {
 
     const harvestCrop = async () => {
         setHarvesting(true)
-        const cropType = user?.farm_stats.growing_crops.find(
+        const cropType = user?.farm_stats?.growing_crops?.find(
             (c) => c.crop_details.crop_id === selectedCropId
         )?.crop_details.crop_type
-        const harvestPrice = gameStats?.crop_info.find((c) => c.name === cropType)?.harvest_price ?? 20
+        const harvestPrice = gameStats?.crop_info?.find((c) => c.name === cropType)?.harvest_price ?? 20
         setTimeout(() => {
             setUser((prev) => {
                 if (!prev) return prev
-                const crops = prev.farm_stats.growing_crops.map((c) =>
+                const crops = prev.farm_stats?.growing_crops?.map((c) =>
                     c.crop_details.crop_id === selectedCropId
                         ? { ...c, is_planted: false, crop_details: {} }
                         : c
                 )
-                return { ...prev, farm_stats: { ...prev.farm_stats, growing_crops: crops, coin_balance: prev.farm_stats.coin_balance + harvestPrice } }
+                return { ...prev, farm_stats: { ...prev.farm_stats, growing_crops: crops, coin_balance: prev.farm_stats?.coin_balance + harvestPrice } }
             })
             setHarvestCoinAmount(harvestPrice)
             setHarvestSuccess(true)
@@ -82,7 +82,7 @@ const HarvestModal = () => {
                                 <p>Harvest</p>
                                 <p>
                                     {
-                                        user?.farm_stats.growing_crops.find(
+                                        user?.farm_stats?.growing_crops?.find(
                                             (crop) => crop.crop_details.crop_id === selectedCropId
                                         )?.crop_details.crop_type
                                     }
@@ -90,7 +90,7 @@ const HarvestModal = () => {
                                 <Image
                                     className="w-[48px] h-[72px] -mt-[16px] -ml-4"
                                     src={`/crop/${
-                                        user?.farm_stats.growing_crops.find(
+                                        user?.farm_stats?.growing_crops?.find(
                                             (crop) => crop.crop_details.crop_id === selectedCropId
                                         )?.crop_details.crop_type
                                     }.png`}
@@ -117,10 +117,10 @@ const HarvestModal = () => {
                                     />
                                     <p className="text-[24px] text-[#FBB602] font-semibold">
                                         {
-                                            gameStats?.crop_info.find(
+                                            gameStats?.crop_info?.find(
                                                 (crop_info) =>
                                                     crop_info.name ==
-                                                    user?.farm_stats.growing_crops.find(
+                                                    user?.farm_stats?.growing_crops?.find(
                                                         (crop) =>
                                                             crop.crop_details.crop_id ===
                                                             selectedCropId

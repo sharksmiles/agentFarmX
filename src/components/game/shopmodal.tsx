@@ -57,9 +57,9 @@ const ShopModal = () => {
     }, [toggleVisibility])
 
     useEffect(() => {
-        if (!gameStats?.crop_info) return
+        if (!gameStats?.crop_info || !Array.isArray(gameStats.crop_info)) return
 
-        const newTotalPrice = gameStats.crop_info.reduce((total, crop) => {
+        const newTotalPrice = gameStats.crop_info?.reduce((total, crop) => {
             const quantity = selectedShop.quantities[crop.name] || 0
             return total + quantity * crop.seed_price
         }, 0)
@@ -103,8 +103,8 @@ const ShopModal = () => {
         }
 
         if (
-            user?.farm_stats.coin_balance == 0 ||
-            Number(user?.farm_stats.coin_balance) < selectedShop.totalPrice
+            user?.farm_stats?.coin_balance == 0 ||
+            Number(user?.farm_stats?.coin_balance) < selectedShop.totalPrice
         ) {
             OpenAgentFarmAlert({
                 notificationTitle: "Oops!",
@@ -189,9 +189,9 @@ const ShopModal = () => {
                             >
                                 {/* shop item */}
                                 {gameStats?.crop_info
-                                    .slice()
-                                    .reverse()
-                                    .map(
+                                    ?.slice()
+                                    ?.reverse()
+                                    ?.map(
                                         (crop, index) =>
                                             user?.farm_stats?.level != undefined &&
                                             user?.farm_stats?.level >= crop.unlock_level - 1 && (
