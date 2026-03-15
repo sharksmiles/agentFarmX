@@ -231,10 +231,6 @@ const GameStats = ({}) => {
                                     {t("live now")} [{gameStats.raffle_live}]
                                 </div>
                             )}
-                            {/*  hover:opacity-85 */}
-                            {/* <div className="absolute w-full h-[37.69px] border-[1px] border-white bg-[rgba(213,81,81,0.5)] rounded-[10.5px] -z-1 top-[2px]" /> */}
-                            {/* <div className="absolute w-full h-[35.74px] border-[1px] border-white rounded-[10.5px] -z-1 -top-[2px] left-0" /> */}
-                            {/* <div className="absolute w-full h-[37.69px] border-[1px] border-white bg-[rgba(148,231,109,0.8)] rounded-[10.5px] z-1 -top-[2px] left-0" /> */}
                             <div className="text-[rgba(81,53,20,0.82)] w-full h-full flex justify-center items-center text-[16px] font-bold whitespace-nowrap z-10 border-[1px] border-transparent gap-[4px]">
                                 <Image
                                     className="w-[30px] h-[30px] mr-1"
@@ -366,13 +362,13 @@ const GameStats = ({}) => {
                             </div>
                         )}
 
-                        <button
+                        {/* <button
                             onClick={() => {
                                 setOpenLeaderBoardPopupModal(true)
                             }}
                             className="top-1/2 -translate-y-1/2 left-[166px] absolute w-auto pl-3 pr-3 h-[37.69px] text-white rounded-[10.5px] z-0 flex justify-center items-center bg-[rgba(37,42,49,0.5)] hover:opacity-85"
                         >
-                            <div className="text-whitew-full h-full flex justify-center items-center text-[16px] font-bold whitespace-nowrap z-10 border-[1px] border-transparent">
+                            <div className="text-whitew-full h-full flex justify-center items-center text-[16px] font-bold whitespace-nowrap z-10 border-[1px] border-transparent p-2">
                                 <Image
                                     className="w-6 h-6 mr-1"
                                     src="/game/crown.png"
@@ -383,7 +379,7 @@ const GameStats = ({}) => {
                                 />
                                 {t("LeaderBoard")}
                             </div>
-                        </button>
+                        </button> */}
                     </div>
                 </div>
                 <div className="flex flex-col gap-[14.4px]">
