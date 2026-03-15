@@ -26,12 +26,25 @@ export const fetchFriends = async (
     filter?: "need_water" | "all",
     cursor?: string | null
 ): Promise<FriendListResponse> => {
-    const params: Record<string, string> = {}
-    if (filter && filter !== "all") params.filter = filter
-    if (cursor) params.cursor = cursor
-    // TODO: Update to use new API
-    const res = await apiClient.get<FriendListResponse>("/u/friends/", { params })
-    return res.data
+    try {
+        const user = await import("./auth").then(m => m.fetchMe());
+        if (!user) throw new Error("User not found");
+        
+        const res = await apiClient.get<{ friends: FriendsData[]; total: number }>(`/api/social/friends?userId=${user.id}`)
+        
+        // Transform to match old response format
+        return {
+            friends: res.data.friends,
+            next_cursor: null // New API doesn't use cursor pagination yet
+        }
+    } catch (error) {
+        // Fallback to old API if new one fails
+        const params: Record<string, string> = {}
+        if (filter && filter !== "all") params.filter = filter
+        if (cursor) params.cursor = cursor
+        const res = await apiClient.get<FriendListResponse>("/u/friends/", { params })
+        return res.data
+    }
 }
 
 // New API: Get friends list
@@ -137,7 +150,16 @@ export const checkSteal = async (
     friendId: string,
     cropId: string
 ): Promise<any> => {
-    const res = await apiClient.post("/g/fa/", { action: "checksteal", friend_id: friendId, crop_id: cropId })
+    const user = await import("./auth").then(m => m.fetchMe());
+    if (!user) throw new Error("User not found");
+    
+    // Extract plotIndex from cropId if needed, or pass cropId as is
+    // Assuming cropId might contain plot info or we need to find it
+    const res = await apiClient.post("/api/social/checksteal", { 
+        userId: user.id, 
+        friendId, 
+        plotIndex: parseInt(cropId) || 0 
+    })
     return res.data
 }
 

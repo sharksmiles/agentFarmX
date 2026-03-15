@@ -45,6 +45,9 @@ export const logout = async () => {
     }
 }
 
+// Alias for backward compatibility
+export const siweLogout = logout
+
 export const fetchMe = async (): Promise<User> => {
     // Get wallet address from window.ethereum or localStorage
     const address = typeof window !== 'undefined' 

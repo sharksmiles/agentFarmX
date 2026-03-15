@@ -13,6 +13,27 @@ export const AirdropPage = () => {
     const { t } = useLanguage()
     const containerRef = useRef<HTMLDivElement | null>(null)
 
+    const handleClaim = async (airdropId: string) => {
+        try {
+            await claimAirdrop(airdropId)
+            addNotification(
+                {
+                    notificationTitle: "Success",
+                    notificationMessage: "Airdrop claimed successfully!",
+                },
+                5000
+            )
+        } catch (error) {
+            addNotification(
+                {
+                    notificationTitle: "Claim failed",
+                    notificationMessage: "Please try again later.",
+                },
+                3000
+            )
+        }
+    }
+
     useEffect(() => {
         if (airdropInfo && containerRef.current) {
             requestAnimationFrame(() => {
@@ -54,9 +75,9 @@ export const AirdropPage = () => {
                                     className="absolute -left-[31px] bottom-[2px] w-[50px] h-[50px]"
                                 />
                                 <p className="text-[#FBB602] text-[28px] font-bold">
-                                    {airdropInfo.airdrops[0].airdrop_amount.toLocaleString(
+                                    {airdropInfo.airdrops?.[0]?.airdrop_amount?.toLocaleString(
                                         "en-US"
-                                    )}
+                                    ) || "0"}
                                 </p>
                             </div>
                             <div className="flex justify-center items-start gap-[10px] mt-[18px] ml-1">
@@ -100,9 +121,9 @@ export const AirdropPage = () => {
                                     </p>
                                 </div>
                             </div>
-                            {airdropInfo.airdrops[0].remarks.map && (
+                            {airdropInfo.airdrops?.[0]?.remarks?.map && (
                                 <div className="ml-1 flex flex-wrap gap-[11px] mt-5">
-                                    {airdropInfo.airdrops[0].remarks.map((remark, index) => {
+                                    {airdropInfo.airdrops?.[0]?.remarks?.map((remark: string, index: number) => {
                                         return (
                                             <div
                                                 key={index}
@@ -117,30 +138,10 @@ export const AirdropPage = () => {
                                 </div>
                             )}
                         </div>
-                        {airdropInfo.airdrops[0].airdrop_amount > 0 ? (
+                        {airdropInfo.airdrops?.[0]?.eligible ? (
                             <button
                                 className="w-full font-semibold bg-[#FBB602] flex flex-col py-3 px-4 justify-center items-center rounded-2xl shadow-md mb-[34px] disabled:opacity-50"
-                                onClick={() => {
-                                    claimAirdrop(airdropInfo.airdrops[0].id ?? "")
-                                        .then(({ tx_hash }) => {
-                                            addNotification(
-                                                {
-                                                    notificationTitle: "Claimed!",
-                                                    notificationMessage: `TX: ${tx_hash.slice(0, 16)}...`,
-                                                },
-                                                5000
-                                            )
-                                        })
-                                        .catch(() => {
-                                            addNotification(
-                                                {
-                                                    notificationTitle: "Claim failed",
-                                                    notificationMessage: "Please try again later.",
-                                                },
-                                                3000
-                                            )
-                                        })
-                                }}
+                                onClick={() => handleClaim(airdropInfo.airdrops?.[0]?.id || "")}
                             >
                                 <p className="text-[#543D30] font-[16px] leading-[26px]">
                                     {t("Claim $FARM")}

@@ -59,6 +59,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Find user
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
+      );
+    }
+
+    // Calculate new balance
+    const newBalance = user.farmCoins + sellPrice;
+
     // Sell item
     const [updatedInventory, updatedUser, transaction] = await prisma.$transaction([
       prisma.inventory.update({
@@ -70,7 +85,7 @@ export async function POST(request: NextRequest) {
       prisma.user.update({
         where: { id: userId },
         data: {
-          farmCoins: { increment: sellPrice },
+          farmCoins: newBalance,
         },
       }),
       prisma.transaction.create({
@@ -79,6 +94,7 @@ export async function POST(request: NextRequest) {
           type: 'earn',
           category: 'sell',
           amount: sellPrice,
+          balance: newBalance,
           description: `Sold ${quantity}x ${itemId}`,
         },
       }),

@@ -101,13 +101,30 @@ export const farmAction = async (payload: FarmActionPayload): Promise<User> => {
         return res.data;
     }
 
-    // Fallback for other actions not yet implemented in new API
-    // or keep using old endpoint if they are different services
-    // For now, let's assume everything should move to /api/farm/*
-    
-    console.warn(`Action ${payload.action} not fully migrated to new API`);
-    const res = await apiClient.post<User>("/g/a/", payload)
-    return res.data
+    if (payload.action === 'upgrade') {
+        const res = await apiClient.post<User>('/api/farm/upgrade', { 
+            userId: user.id 
+        });
+        return res.data;
+    }
+
+    if (payload.action === 'buy_energy') {
+        const res = await apiClient.post<User>('/api/energy/buy', { 
+            userId: user.id,
+            pack: payload.pack
+        });
+        return res.data;
+    }
+
+    if (payload.action === 'shop') {
+        const res = await apiClient.post<User>('/api/shop/buy', { 
+            userId: user.id,
+            quantities: payload.quantities
+        });
+        return res.data;
+    }
+
+    throw new Error(`Unknown action: ${(payload as any).action}`);
 }
 
 // ── Convenience wrappers ──────────────────────────────────────────────────────

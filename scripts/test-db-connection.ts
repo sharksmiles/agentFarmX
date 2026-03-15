@@ -34,7 +34,7 @@ async function testConnection() {
     ]
     
     for (const table of tables) {
-      const count = await table.model.count()
+      const count = await (table.model as any).count()
       console.log(`  ✓ ${table.name}: ${count} records`)
     }
     

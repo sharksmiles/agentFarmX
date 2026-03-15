@@ -4,17 +4,23 @@ import { AirDropStatsInfo } from "../types"
 export const fetchAirdropInfo = async (): Promise<AirDropStatsInfo> => {
     // Return mock data for now - can be replaced with real API later
     return {
+        eligible: false,
+        airdrop_amount: 0,
+        remarks: [],
         total_airdrop: "0",
         claimed_airdrop: "0",
         unclaimed_airdrop: "0",
         airdrops: [],
-    } as AirDropStatsInfo
+    }
 }
 
 // New API: Get airdrop info
 export const fetchAirdropInfoNew = async (userId: string): Promise<AirDropStatsInfo> => {
     const res = await apiClient.get(`/api/airdrop?userId=${userId}`)
     return {
+        eligible: res.data.airdrops?.[0]?.eligible || false,
+        airdrop_amount: res.data.airdrops?.[0]?.airdrop_amount || 0,
+        remarks: res.data.airdrops?.[0]?.remarks || [],
         total_airdrop: res.data.totalAirdrops.toString(),
         claimed_airdrop: res.data.claimedCount.toString(),
         unclaimed_airdrop: (res.data.totalAirdrops - res.data.claimedCount).toString(),

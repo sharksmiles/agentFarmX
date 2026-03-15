@@ -1,5 +1,49 @@
 import apiClient from "./client"
 
+// ── Agent SCA Top-up ──────────────────────────────────────────────────────────
+
+export interface AgentTopUpRequest {
+  userId: string;
+  amount: number;
+  txHash: string;
+  currency?: string;
+}
+
+export interface AgentTopUpResponse {
+  success: boolean;
+  agent: {
+    id: string;
+    name: string;
+    scaAddress: string;
+    balanceUsdc: number;
+    balanceOkb: number;
+  };
+  topUp: {
+    amount: number;
+    currency: string;
+    txHash: string;
+    previousBalance: number;
+    newBalance: number;
+  };
+  message: string;
+}
+
+export const topUpAgentSCA = async (
+  agentId: string,
+  data: AgentTopUpRequest
+): Promise<AgentTopUpResponse> => {
+  const res = await apiClient.post(`/api/agents/${agentId}/topup`, data);
+  return res.data;
+};
+
+export const getAgentTopUpHistory = async (
+  agentId: string,
+  userId: string
+) => {
+  const res = await apiClient.get(`/api/agents/${agentId}/topup?userId=${userId}`);
+  return res.data;
+};
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 export interface AgentLog {
     id: string

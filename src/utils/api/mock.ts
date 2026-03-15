@@ -8,9 +8,9 @@ export const getMockGameStats = (): GameStats => {
         total_crops_planted: 5000,
         total_crops_harvested: 3000,
         total_coins_earned: 100000,
-        crop_info: {},
+        crop_info: [],
         land_prices: {},
         level_requirements: {},
-        raffle_live: null,
+        raffle_live: 0,
     } as GameStats
 }

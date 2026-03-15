@@ -410,8 +410,15 @@ export const MOCK_INVITES = [
 // ─── Airdrop ──────────────────────────────────────────────────────────────────
 
 export const MOCK_AIRDROP = {
+    eligible: false,
+    airdrop_amount: 0,
+    remarks: [],
     airdrops: [
-        { eligible: true, airdrop_amount: 12500, remarks: ["Early Adopter", "Top Farmer", "Agent Pioneer"] },
+        {
+            eligible: false,
+            airdrop_amount: 0,
+            remarks: [],
+        },
     ],
 }
 

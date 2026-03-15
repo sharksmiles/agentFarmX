@@ -269,7 +269,13 @@ export type StealConfirmationTypes = {
 }
 
 export type AirDropStatsInfo = {
-    airdrops: AirDropStats[]
+    eligible: boolean
+    airdrop_amount: number
+    remarks: string[]
+    total_airdrop?: string
+    claimed_airdrop?: string
+    unclaimed_airdrop?: string
+    airdrops?: any[]
 }
 
 export type AirDropStats = {
