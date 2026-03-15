@@ -35,6 +35,40 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Daily boost reset logic
+    let boostItem = user.inventory.find(i => i.itemType === 'boost');
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    if (!boostItem) {
+      // Create initial boost if missing
+      boostItem = await prisma.inventory.create({
+        data: {
+          userId: user.id,
+          itemType: 'boost',
+          itemId: 'daily_boost',
+          quantity: 3,
+        }
+      });
+      user.inventory.push(boostItem);
+    } else {
+      const lastUpdate = new Date(boostItem.updatedAt);
+      const lastUpdateDay = new Date(lastUpdate.getFullYear(), lastUpdate.getMonth(), lastUpdate.getDate());
+
+      if (lastUpdateDay < today) {
+        // Reset to 3 if it was last updated on a previous day
+        const updatedBoost = await prisma.inventory.update({
+          where: { id: boostItem.id },
+          data: {
+            quantity: 3,
+          }
+        });
+        // Update the in-memory user object
+        const index = user.inventory.findIndex(i => i.id === boostItem!.id);
+        user.inventory[index] = updatedBoost;
+      }
+    }
+
     return NextResponse.json(mapUserToFrontend(user));
   } catch (error) {
     console.error('GET /api/users error:', error);
@@ -90,6 +124,15 @@ export async function POST(request: NextRequest) {
             },
           },
         },
+        inventory: {
+          create: [
+            {
+              itemType: 'boost',
+              itemId: 'daily_boost',
+              quantity: 3,
+            }
+          ]
+        }
       },
       include: {
         farmState: {

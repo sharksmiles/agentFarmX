@@ -121,8 +121,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 检查能量
-    if ((stealer.farmState?.energy || 0) < STEAL_ENERGY_COST) {
+    // Check energy and handle recovery
+    const now = new Date();
+    let currentEnergy = stealer.farmState?.energy || 0;
+    let lastEnergyUpdate = new Date(stealer.farmState?.lastEnergyUpdate || now);
+
+    if (currentEnergy < (stealer.farmState?.maxEnergy || 100)) {
+      const msPassed = now.getTime() - lastEnergyUpdate.getTime();
+      const config = await prisma.systemConfig.findUnique({
+        where: { key: 'energy_recovery_rate' },
+      });
+      const recoveryIntervalMinutes = (config?.value as any)?.intervalMinutes || 5;
+      const msPerEnergy = recoveryIntervalMinutes * 60 * 1000;
+      
+      const energyToRecover = Math.floor(msPassed / msPerEnergy);
+      if (energyToRecover > 0) {
+        const actualRecovery = Math.min(energyToRecover, (stealer.farmState?.maxEnergy || 100) - currentEnergy);
+        currentEnergy += actualRecovery;
+        lastEnergyUpdate = new Date(lastEnergyUpdate.getTime() + actualRecovery * msPerEnergy);
+      }
+    }
+
+    if (currentEnergy < STEAL_ENERGY_COST) {
       return NextResponse.json(
         { error: 'Not enough energy' },
         { status: 400 }
@@ -222,7 +242,8 @@ export async function POST(request: NextRequest) {
     await prisma.farmState.update({
       where: { userId: userId },
       data: {
-        energy: { decrement: STEAL_ENERGY_COST },
+        energy: currentEnergy - STEAL_ENERGY_COST,
+        lastEnergyUpdate: currentEnergy - STEAL_ENERGY_COST >= (stealer.farmState?.maxEnergy || 100) ? now : lastEnergyUpdate,
       },
     });
 

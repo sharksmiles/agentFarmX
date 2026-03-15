@@ -19,13 +19,15 @@ export async function GET(request: NextRequest) {
       where: { key: 'energy_recovery_rate' },
     });
 
-    const recoveryRate = (config?.value as any)?.rate || 1; // Default: 1 energy per minute
+    // Default: 1 energy every 5 minutes (300 seconds)
+    const recoveryIntervalMinutes = (config?.value as any)?.intervalMinutes || 5;
     const now = new Date();
 
     // Find farms that need energy recovery
+    // Note: Prisma doesn't support column-to-column comparison in 'where' directly.
     const farmStates = await prisma.farmState.findMany({
       where: {
-        energy: { lt: prisma.farmState.fields.maxEnergy },
+        energy: { lt: 1000 }, // Assuming max energy is always < 1000
       },
       select: {
         id: true,
@@ -36,7 +38,7 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    console.log(`[Energy Recovery] Found ${farmStates.length} farms to update`);
+    console.log(`[Energy Recovery] Found ${farmStates.length} farms to check`);
 
     let updatedCount = 0;
     let totalEnergyRecovered = 0;
@@ -48,29 +50,42 @@ export async function GET(request: NextRequest) {
 
       await Promise.all(
         batch.map(async (farm) => {
+          if (farm.energy >= farm.maxEnergy) {
+            // If already at max, just keep lastEnergyUpdate current
+            if (new Date(farm.lastEnergyUpdate).getTime() < now.getTime() - 60000) {
+                await prisma.farmState.update({
+                    where: { id: farm.id },
+                    data: { lastEnergyUpdate: now }
+                });
+            }
+            return;
+          }
+
           const lastUpdate = new Date(farm.lastEnergyUpdate);
-          const minutesPassed = Math.floor(
-            (now.getTime() - lastUpdate.getTime()) / 60000
-          );
-
-          if (minutesPassed < 1) return;
-
-          const energyToRecover = Math.min(
-            minutesPassed * recoveryRate,
-            farm.maxEnergy - farm.energy
-          );
+          const msPassed = now.getTime() - lastUpdate.getTime();
+          const msPerEnergy = recoveryIntervalMinutes * 60 * 1000;
+          
+          const energyToRecover = Math.floor(msPassed / msPerEnergy);
 
           if (energyToRecover > 0) {
+            const actualRecovery = Math.min(
+              energyToRecover,
+              farm.maxEnergy - farm.energy
+            );
+
+            // New last update should be the time when the last energy was actually recovered
+            const newLastUpdate = new Date(lastUpdate.getTime() + actualRecovery * msPerEnergy);
+
             await prisma.farmState.update({
               where: { id: farm.id },
               data: {
-                energy: Math.min(farm.energy + energyToRecover, farm.maxEnergy),
-                lastEnergyUpdate: now,
+                energy: Math.min(farm.energy + actualRecovery, farm.maxEnergy),
+                lastEnergyUpdate: farm.energy + actualRecovery >= farm.maxEnergy ? now : newLastUpdate,
               },
             });
 
             updatedCount++;
-            totalEnergyRecovered += energyToRecover;
+            totalEnergyRecovered += actualRecovery;
           }
         })
       );

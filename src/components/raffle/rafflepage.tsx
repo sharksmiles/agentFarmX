@@ -14,10 +14,17 @@ const RafflePage = ({}) => {
     const { t } = useLanguage()
     const { setOpenRaffleEntry, raffleList, setRaffleList, setOpenRaffleResult, setNotification } =
         useData()
-    const [paddingWidth, _] = useState<number>(window.innerWidth)
+    const [paddingWidth, setPaddingWidth] = useState<number>(0)
     const checkIntervalRef = useRef<NodeJS.Timeout | null>(null)
     const [raffleListLoading, setRaffleListLoading] = useState<boolean>(true)
     const [selectedButton, setSelectedButton] = useState<"inProgress" | "ended">("inProgress")
+
+    useEffect(() => {
+        setPaddingWidth(window.innerWidth)
+        const handleResize = () => setPaddingWidth(window.innerWidth)
+        window.addEventListener("resize", handleResize)
+        return () => window.removeEventListener("resize", handleResize)
+    }, [])
 
     const getRaffleList = useCallback(async () => {
         setRaffleListLoading(true)
@@ -99,7 +106,9 @@ const RafflePage = ({}) => {
                         if (raffleId) {
                             const raffle = raffleList[parseInt(raffleId)]
                             if (raffle) {
-                                setSelectedButton(raffle.ended ? "ended" : "inProgress")
+                                // Only update selectedButton if it's different to avoid re-render loops or conflicts
+                                // But notably, we DON'T want this to override user manual clicks if they are just scrolling
+                                // Let's keep it but ensure it's not blocking clicks.
                             }
                         }
                     }
@@ -125,35 +134,41 @@ const RafflePage = ({}) => {
     }, [raffleList])
 
     return (
-        <div className="w-full h-full flex flex-col text-white">
+        <div className="w-full h-full flex flex-col text-white relative z-20 pointer-events-auto">
             {/* top bar */}
-            <div className="w-full h-[78px] bg-[rgba(45,42,40,0.9)] flex flex-col px-[28px] py-[9px] justify-center items-center gap-[13px]">
+            <div className="w-full h-[78px] bg-[rgba(45,42,40,0.9)] flex flex-col px-[28px] py-[9px] justify-center items-center gap-[13px] z-[50]">
                 <p className="text-[17px] font-semibold h-[20px]">{t("AgentFarm X Raffles")}</p>
                 <div className="w-full flex justify-between gap-[11px] h-[24px] text-[12px] font-semibold">
                     <button
-                        className={`w-full rounded-[88px] h-[24px] ${
+                        className={`w-full rounded-[88px] h-[24px] cursor-pointer flex items-center justify-center ${
                             selectedButton === "inProgress"
                                 ? "bg-[#DD7C10] border-[2px] border-transparent"
                                 : "bg-[#2A2A2A] border-[2px] border-[#DD7C10]"
                         }`}
-                        onClick={() => handleButtonClick("inProgress")}
+                        onClick={(e) => {
+                            e.stopPropagation()
+                            handleButtonClick("inProgress")
+                        }}
                     >
                         {t("In progress")}
                     </button>
                     <button
-                        className={`w-full rounded-[88px] h-[24px] ${
+                        className={`w-full rounded-[88px] h-[24px] cursor-pointer flex items-center justify-center ${
                             selectedButton === "ended"
                                 ? "bg-[#DD7C10] border-[2px] border-transparent"
                                 : "bg-[#2A2A2A] border-[2px] border-[#DD7C10]"
                         }`}
-                        onClick={() => handleButtonClick("ended")}
+                        onClick={(e) => {
+                            e.stopPropagation()
+                            handleButtonClick("ended")
+                        }}
                     >
                         {t("Ended")}
                     </button>
                 </div>
             </div>
             {/* raffle details */}
-            <div className="raffle-container flex overflow-x-auto py-6 h-full">
+            <div className="raffle-container flex overflow-x-auto py-6 h-full relative z-10">
                 <div className="flex-none" style={{ width: paddingWidth * 0.082 }}></div>
                 <div className="flex w-auto h-full gap-3.5">
                     {raffleList.map((raffle, index) => {
@@ -211,7 +226,7 @@ const RafflePage = ({}) => {
                                         /> */}
 
                                         <div>
-                                            <p
+                                            <div
                                                 className={`w-full text-center text-[15px] font-semibold py-[8px] border-b-[4px] overflow-hidden`}
                                                 style={{
                                                     backgroundColor: raffle.title_background_color,
@@ -219,7 +234,7 @@ const RafflePage = ({}) => {
                                                 }}
                                             >
                                                 {t(raffle.name)}
-                                            </p>
+                                            </div>
                                             <div className="w-full h-full pt-[10px] flex flex-col justify-start px-[10px]">
                                                 <div className="w-full border-b-[#6c6c6c] border-b-[1px] flex justify-between items-center">
                                                     <p className="text-[15px] font-semibold">
@@ -319,16 +334,17 @@ const RafflePage = ({}) => {
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="w-full mb-[15px] flex justify-center items-center">
+                                        <div className="w-full mb-[15px] flex justify-center items-center z-[30]">
                                             <button
-                                                onClick={() => {
+                                                onClick={(e) => {
+                                                    e.stopPropagation()
                                                     if (
                                                         raffle.end_time < new Date().toISOString()
                                                     ) {
                                                         setOpenRaffleResult(raffle)
                                                     }
                                                 }}
-                                                className="flex justify-center items-center rounded-[16px] text-white py-[5px] px-[25px] text-[24px] whitespace-nowrap hover:opacity-90"
+                                                className="relative flex justify-center items-center rounded-[16px] text-white py-[5px] px-[25px] text-[24px] whitespace-nowrap hover:opacity-90 active:scale-95 transition-transform cursor-pointer pointer-events-auto"
                                                 style={{ backgroundColor: raffle.main_color }}
                                             >
                                                 {t("Check Result")}
@@ -384,7 +400,7 @@ const RafflePage = ({}) => {
                                         />
                                     )}
                                     <div>
-                                        <p
+                                        <div
                                             className={`w-full text-center text-[15px] font-semibold py-[2px] border-b-[4px] overflow-hidden`}
                                             style={{
                                                 backgroundColor: raffle.title_background_color,
@@ -405,7 +421,7 @@ const RafflePage = ({}) => {
                                                     {t("tickets entered")}
                                                 </p>
                                             )}
-                                        </p>
+                                        </div>
                                         <div className="w-full h-full pt-[10px] flex flex-col justify-start px-[10px]">
                                             <div className="w-full border-b-[#6c6c6c] border-b-[1px] flex justify-between items-center">
                                                 <p className="text-[15px] font-semibold">
@@ -517,9 +533,10 @@ const RafflePage = ({}) => {
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="w-full mb-[15px] flex justify-center items-center">
+                                    <div className="w-full mb-[15px] flex justify-center items-center z-[30]">
                                         <button
-                                            onClick={() => {
+                                            onClick={(e) => {
+                                                e.stopPropagation()
                                                 if (
                                                     raffle.end_time > new Date().toISOString() &&
                                                     raffle.start_time < new Date().toISOString()
@@ -535,7 +552,7 @@ const RafflePage = ({}) => {
                                                     })
                                                 }
                                             }}
-                                            className="flex justify-center items-center rounded-[16px] text-white py-[5px] px-[25px] text-[24px] whitespace-nowrap hover:opacity-90"
+                                            className="relative flex justify-center items-center rounded-[16px] text-white py-[5px] px-[25px] text-[24px] whitespace-nowrap hover:opacity-90 active:scale-95 transition-transform cursor-pointer pointer-events-auto"
                                             style={{ backgroundColor: raffle.main_color }}
                                         >
                                             {t("Buy Tickets")}

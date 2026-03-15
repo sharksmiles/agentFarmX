@@ -5,6 +5,7 @@ import { useData } from "../context/dataContext"
 import { ArrowUpFromDot } from "lucide-react"
 import { useUser } from "../context/userContext"
 import { useLanguage } from "../context/languageContext"
+import { fetchRaffleWinners } from "@/utils/api/raffle"
 
 type ParticipantsType = {
     id: string
@@ -51,25 +52,25 @@ const RafflePageResult = ({}) => {
         }
     }, [toggleVisibility, participantList.length])
 
-    const MOCK_WINNERS: ParticipantsType[] = [
-        { id: "w1", username: "TopFarmer",   level: 18 },
-        { id: "w2", username: "LuckyPlanter", level: 12 },
-        { id: "w3", username: "CryptoHarvest", level: 9 },
-    ]
-    const MOCK_PARTICIPANTS: ParticipantsType[] = [
-        { id: "p1", username: "AliceGrower",   level: 12 },
-        { id: "p2", username: "BobTheFarmer",  level: 7  },
-        { id: "p3", username: "CharlieXYZ",    level: 18 },
-        { id: "p4", username: "Diana_Web3",    level: 4  },
-        { id: "p5", username: "Eve_Planter",   level: 10 },
-    ]
-
-    const getRaffleWinner = useCallback((_raffle_id: number) => {
-        setTimeout(() => { setWinnerList(MOCK_WINNERS); setWinnerLoading(false) }, 300)
+    const getRaffleWinner = useCallback((raffle_id: number) => {
+        setWinnerLoading(true)
+        fetchRaffleWinners(raffle_id)
+            .then((data) => {
+                const mappedWinners = data.winners.map(w => ({
+                    id: w.user_id,
+                    username: w.user_name,
+                    level: 1 // Default if not available
+                }))
+                setWinnerList(mappedWinners)
+            })
+            .catch(() => setWinnerList([]))
+            .finally(() => setWinnerLoading(false))
     }, [])
 
     const getRaffleParticipants = useCallback((_raffle_id: number) => {
-        setTimeout(() => { setParticipantList(MOCK_PARTICIPANTS); setParticipantLoading(false) }, 300)
+        // Mocking participants for now as there's no backend route yet
+        setParticipantList([]) 
+        setParticipantLoading(false)
     }, [])
 
     useEffect(() => {

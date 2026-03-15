@@ -33,17 +33,24 @@ export async function GET(request: NextRequest) {
     // Calculate energy recovery since last update
     const now = new Date();
     const lastUpdate = new Date(farmState.lastEnergyUpdate);
-    const minutesPassed = Math.floor((now.getTime() - lastUpdate.getTime()) / 60000);
-    const energyRecovered = Math.min(minutesPassed, farmState.maxEnergy - farmState.energy);
+    const msPassed = now.getTime() - lastUpdate.getTime();
 
-    const currentEnergy = Math.min(farmState.energy + energyRecovered, farmState.maxEnergy);
+    // Get recovery config
+    const config = await prisma.systemConfig.findUnique({
+      where: { key: 'energy_recovery_rate' },
+    });
+    const recoveryIntervalMinutes = (config?.value as any)?.intervalMinutes || 5;
+    const msPerEnergy = recoveryIntervalMinutes * 60 * 1000;
+
+    const energyToRecover = Math.floor(msPassed / msPerEnergy);
+    const currentEnergy = Math.min(farmState.energy + energyToRecover, farmState.maxEnergy);
 
     return NextResponse.json({
       energy: currentEnergy,
       maxEnergy: farmState.maxEnergy,
-      recoveryRate: 1, // 1 energy per minute
+      recoveryRate: 1 / recoveryIntervalMinutes, // energy per minute
       nextRecoveryAt: currentEnergy < farmState.maxEnergy 
-        ? new Date(now.getTime() + 60000) 
+        ? new Date(lastUpdate.getTime() + (energyToRecover + 1) * msPerEnergy) 
         : null,
     });
   } catch (error) {

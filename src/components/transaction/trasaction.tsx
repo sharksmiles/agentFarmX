@@ -139,7 +139,7 @@ const TransactionPage: FC<{ action: ActionTypes; id: string }> = ({ action, id: 
                             <p className="px-[12px] py-[16px] text-white text-[16px] font-medium">
                                 Details
                             </p>
-                            <p className="py-[8px] px-[28px] flex gap-1 w-full text-[16px] text-white justify-between items-center">
+                            <div className="py-[8px] px-[28px] flex gap-1 w-full text-[16px] text-white justify-between items-center">
                                 <p>Wallet Change</p>
                                 <div className="flex justify-center items-center gap-1">
                                     {trasactionDetails.walletResult == "+" ? (
@@ -157,8 +157,8 @@ const TransactionPage: FC<{ action: ActionTypes; id: string }> = ({ action, id: 
                                         {trasactionDetails.coinAmount} $COIN
                                     </p>
                                 </div>
-                            </p>
-                            <p className="py-[8px] px-[28px] flex gap-1 w-full text-[16px] text-white justify-between items-center">
+                            </div>
+                            <div className="py-[8px] px-[28px] flex gap-1 w-full text-[16px] text-white justify-between items-center">
                                 <p>Gas Price</p>
                                 {fetchingGas ? (
                                     <SingleLineSkeleton />
@@ -169,8 +169,8 @@ const TransactionPage: FC<{ action: ActionTypes; id: string }> = ({ action, id: 
                                             : `failed gas estimation`}
                                     </div>
                                 )}
-                            </p>
-                            <p className="py-[8px] px-[28px] flex gap-1 w-full text-[16px] text-white justify-between items-center">
+                            </div>
+                            <div className="py-[8px] px-[28px] flex gap-1 w-full text-[16px] text-white justify-between items-center">
                                 <p>Transaction Fee</p>
                                 {fetchingGas ? (
                                     <SingleLineSkeleton />
@@ -183,8 +183,8 @@ const TransactionPage: FC<{ action: ActionTypes; id: string }> = ({ action, id: 
                                         </p>
                                     </div>
                                 )}
-                            </p>
-                            <p className="px-[12px] py-[16px] text-white text-[16px] font-medium flex items-center justify-between">
+                            </div>
+                            <div className="px-[12px] py-[16px] text-white text-[16px] font-medium flex items-center justify-between">
                                 <p>Total (including fees)</p>
                                 {fetchingGas ? (
                                     <SingleLineSkeleton />
@@ -197,7 +197,7 @@ const TransactionPage: FC<{ action: ActionTypes; id: string }> = ({ action, id: 
                                         </p>
                                     </div>
                                 )}
-                            </p>
+                            </div>
                             {coinBalance && enoughBalance ? (
                                 <div className="p-[16px] flex">
                                     <div className="p-[16px] border-2 border-[#F6A112] bg-light-orange w-full h-auto flex gap-[8px] justify-start items-start">

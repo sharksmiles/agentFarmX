@@ -23,7 +23,7 @@ const Record = () => {
     const [isVisible, setIsVisible] = useState(false)
 
     const fetchRecords = useCallback((reset: boolean, cur: string | null) => {
-        if (!user?.id) return
+        if (!user?.id || loadingRecords && !reset) return
         setLoadingRecords(true)
         fetchActivityRecords(user.id, recordFilter, cur)
             .then(({ results, next }) => {
@@ -37,16 +37,20 @@ const Record = () => {
                 }
             })
             .finally(() => setLoadingRecords(false))
-    }, [user?.id])
+    }, [user?.id, recordFilter])
 
     useEffect(() => {
         if (user?.id) {
+            setRecordResults([])
+            setCursor(null)
             fetchRecords(true, null)
         }
-    }, [fetchRecords, user?.id])
+    }, [user?.id, recordFilter])
 
     const loadMoreRecord = useCallback(async () => {
-        if (cursor && !loadingRecords && user?.id) fetchRecords(false, cursor)
+        if (cursor && !loadingRecords && user?.id) {
+            fetchRecords(false, cursor)
+        }
     }, [cursor, loadingRecords, fetchRecords, user?.id])
 
     const scrollToTop = () => {
@@ -64,12 +68,6 @@ const Record = () => {
             setIsVisible(false)
         }
     }, [])
-
-    useEffect(() => {
-        setRecordResults([])
-        setCursor(null)
-        fetchRecords(true, null)
-    }, [recordFilter, fetchRecords])
 
     useEffect(() => {
         const handleScroll = () => {
@@ -92,15 +90,16 @@ const Record = () => {
                 currentRef.removeEventListener("scroll", handleScroll)
             }
         }
-    }, [cursor, recordFilter, loadingRecords, loadMoreRecord])
+    }, [cursor, loadingRecords, loadMoreRecord])
 
     useEffect(() => {
         const container = observerRef.current
-        container?.addEventListener("scroll", toggleVisibility)
+        if (!container) return
+        container.addEventListener("scroll", toggleVisibility)
         return () => {
-            container?.removeEventListener("scroll", toggleVisibility)
+            container.removeEventListener("scroll", toggleVisibility)
         }
-    }, [toggleVisibility, cursor])
+    }, [toggleVisibility])
 
     const formatDateHeader = (dateString: string) => {
         const today = new Date().toDateString()

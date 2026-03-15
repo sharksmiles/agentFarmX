@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { mapUserToFrontend } from '@/utils/func/userMapper';
 
-const WATER_ENERGY_COST = 5;
+const WATER_ENERGY_COST = 1;
 const WATER_BOOST_MULTIPLIER = 1.1;
 
 export async function POST(request: NextRequest) {
@@ -32,29 +32,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check energy
-    if (farmState.energy < WATER_ENERGY_COST) {
+    // Check energy and handle recovery
+    const now = new Date();
+    let currentEnergy = farmState.energy;
+    let lastEnergyUpdate = new Date(farmState.lastEnergyUpdate);
+
+    if (currentEnergy < farmState.maxEnergy) {
+      const msPassed = now.getTime() - lastEnergyUpdate.getTime();
+      const config = await prisma.systemConfig.findUnique({
+        where: { key: 'energy_recovery_rate' },
+      });
+      const recoveryIntervalMinutes = (config?.value as any)?.intervalMinutes || 5;
+      const msPerEnergy = recoveryIntervalMinutes * 60 * 1000;
+      
+      const energyToRecover = Math.floor(msPassed / msPerEnergy);
+      if (energyToRecover > 0) {
+        const actualRecovery = Math.min(energyToRecover, farmState.maxEnergy - currentEnergy);
+        currentEnergy += actualRecovery;
+        lastEnergyUpdate = new Date(lastEnergyUpdate.getTime() + actualRecovery * msPerEnergy);
+      }
+    }
+
+    if (currentEnergy < WATER_ENERGY_COST) {
       return NextResponse.json(
         { error: 'Insufficient energy' },
-        { status: 400 }
-      );
-    }
-
-    // Find the plot
-    // Handle 1-based vs 0-based index
-    const dbPlotIndex = plotIndex > 0 ? plotIndex - 1 : plotIndex;
-    const plot = farmState.landPlots.find((p) => p.plotIndex === dbPlotIndex);
-
-    if (!plot) {
-      return NextResponse.json(
-        { error: 'Plot not found' },
-        { status: 404 }
-      );
-    }
-
-    if (!plot.cropId) {
-      return NextResponse.json(
-        { error: 'No crop to water' },
         { status: 400 }
       );
     }
@@ -73,7 +74,8 @@ export async function POST(request: NextRequest) {
       prisma.farmState.update({
         where: { id: farmState.id },
         data: {
-          energy: { decrement: WATER_ENERGY_COST },
+          energy: currentEnergy - WATER_ENERGY_COST,
+          lastEnergyUpdate: currentEnergy - WATER_ENERGY_COST >= farmState.maxEnergy ? now : lastEnergyUpdate,
         },
       }),
     ]);

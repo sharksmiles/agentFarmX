@@ -12,7 +12,8 @@ export default function Home() {
     }, [setCurrentTab])
 
     return (
-        <main className="h-screen w-full z-10 raffle-background-image">
+        <main className="h-screen w-full z-10 flex flex-col relative overflow-hidden">
+            <div className="raffle-background-image" />
             <RafflePageEntry />
             <RafflePageResult />
             <RafflePage />

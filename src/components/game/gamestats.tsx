@@ -25,6 +25,7 @@ const GameStats = ({}) => {
         onBoardingStep,
         setOnBoardingStep,
         setOpenLeaderBoardPopupModal,
+        OpenAgentFarmAlert,
     } = useData()
     const [prevBalance, setPrevBalance] = useState<number>(0)
     const [currentBalance, setCurrentBalance] = useState<number>(0)
@@ -61,14 +62,6 @@ const GameStats = ({}) => {
             }, timeUntilRestore)
 
             return () => clearTimeout(timer)
-        } else {
-            setUser((prev) => {
-                if (!prev) return prev
-                return {
-                    ...prev,
-                    farm_stats: { ...prev.farm_stats, energy_left: prev.farm_stats.max_energy ?? 50 },
-                }
-            })
         }
     }, [currentEnergy, user?.farm_stats?.max_energy, setUser])
 
@@ -87,12 +80,12 @@ const GameStats = ({}) => {
     useEffect(() => {
         setPrevEnergy(currentEnergy)
         setCurrentEnergy(user?.farm_stats?.energy_left || 0)
-    }, [user?.farm_stats?.energy_left, currentEnergy])
+    }, [user?.farm_stats?.energy_left])
 
     useEffect(() => {
         setPrevBalance(currentBalance)
         setCurrentBalance(user?.farm_stats?.coin_balance || 0)
-    }, [user?.farm_stats?.coin_balance, currentBalance])
+    }, [user?.farm_stats?.coin_balance])
 
     const currentLevel = user?.farm_stats?.level || 1
     const requiredExp = gameStats?.level_requirements[currentLevel]
@@ -205,9 +198,20 @@ const GameStats = ({}) => {
                     ) : (
                         <button
                             onClick={() => {
-                                setOpenBoost(true)
+                                if ((user?.farm_stats?.boost_left || 0) > 0) {
+                                    setOpenBoost(true)
+                                } else {
+                                    OpenAgentFarmAlert({
+                                        notificationTitle: t("No Boosts"),
+                                        notificationMessage: t("You have used all your daily boosts. Come back tomorrow!"),
+                                    })
+                                }
                             }}
-                            className="relative w-full h-[40px] rounded-[10.5px] z-0 flex justify-center items-center hover:brightness-110 active:translate-y-[2px] active:shadow-none transition-all bg-gradient-to-b from-[#ffcd4d] to-[#e69b00] border-[2px] border-white shadow-[0_2px_0_#d14d2e]"
+                            className={`relative w-full h-[40px] rounded-[10.5px] z-0 flex justify-center items-center transition-all border-[2px] border-white shadow-[0_2px_0_#d14d2e] ${
+                                (user?.farm_stats?.boost_left || 0) > 0 
+                                    ? "bg-gradient-to-b from-[#ffcd4d] to-[#e69b00] hover:brightness-110 active:translate-y-[2px] active:shadow-none" 
+                                    : "bg-gray-400 grayscale cursor-not-allowed"
+                            }`}
                         >
                             <Image
                                 className="absolute left-[8px] top-1/2 -translate-y-1/2"
@@ -259,7 +263,7 @@ const GameStats = ({}) => {
                             </div>
                         </button>
                         {openMoreButtons && (
-                            <div className="w-[156px] h-[160px] absolute top-[46px] bg-[rgba(37,42,49,0.8)] bg-blur rounded-[10px] px-[10px] flex flex-col">
+                            <div className="w-[156px] h-[120px] absolute top-[46px] bg-[rgba(37,42,49,0.8)] bg-blur rounded-[10px] px-[10px] flex flex-col">
                                 <button
                                     className="w-full h-10 flex gap-2 items-center hover:opacity-80"
                                     onClick={() => {
@@ -339,7 +343,7 @@ const GameStats = ({}) => {
                                         {t("Notes")}
                                     </div>
                                 </button>
-                                <span className="w-full h-px min-h-[1px] bg-[rgba(255,255,255,0.1)]" />
+                                {/* <span className="w-full h-px min-h-[1px] bg-[rgba(255,255,255,0.1)]" />
                                 <button
                                     className="w-full h-10 flex gap-2 items-center relative hover:opacity-80"
                                     onClick={() => {
@@ -361,7 +365,7 @@ const GameStats = ({}) => {
                                     <div className="text-[17px] text-white font-semibold">
                                         {t("Raffles")}
                                     </div>
-                                </button>
+                                </button> */}
                             </div>
                         )}
 

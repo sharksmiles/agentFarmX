@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import Image from "next/image"
 import { useUser } from "../context/userContext"
@@ -82,23 +82,28 @@ const GamePad = ({}) => {
             })
             return
         } else if (openBoost && user?.farm_stats?.growing_crops?.[landId - 1]?.land_owned) {
+            if ((user?.farm_stats?.boost_left || 0) <= 0) {
+                setOpenBoost(false)
+                OpenAgentFarmAlert({
+                    notificationTitle: t("No Boosts"),
+                    notificationMessage: t("You have used all your daily boosts. Come back tomorrow!"),
+                })
+                return
+            }
             setBoosting(true)
             boostCrop(landId)
-                .then((updatedUser) => setUser(updatedUser))
-                .catch(() => {
-                    setUser((prev) => {
-                        if (!prev) return prev
-                        const crops = prev.farm_stats?.growing_crops?.map((c) =>
-                            c.land_id === landId
-                                ? { ...c, crop_details: { ...c.crop_details, is_mature: true } }
-                                : c
-                        )
-                        return { ...prev, farm_stats: { ...prev.farm_stats, growing_crops: crops, boost_left: Math.max(prev.farm_stats?.boost_left - 1, 0) } }
+                .then((updatedUser) => {
+                    setUser(updatedUser)
+                    // If boosting instantly matures, you might want to show some feedback here
+                })
+                .catch((err) => {
+                    console.error("Boosting error:", err)
+                    OpenAgentFarmAlert({
+                        notificationTitle: t("Error"),
+                        notificationMessage: err.response?.data?.error || t("Failed to boost crop. Please try again."),
                     })
                 })
                 .finally(() => {
-                    setHarvestCoinAmount(120)
-                    setHarvestSuccess(true)
                     setBoosting(false)
                 })
         } else if (
@@ -165,35 +170,23 @@ const GamePad = ({}) => {
                     })
                 }
             } else {
+                if ((user?.farm_stats?.energy_left || 0) < 1) {
+                    OpenAgentFarmAlert({
+                        notificationTitle: t("No Energy"),
+                        notificationMessage: t("You don't have enough energy to water crops. Please wait or buy more energy!"),
+                    })
+                    return
+                }
                 setLandWatering((prev) =>
                     prev.includes(landId) ? prev : [...prev, landId]
                 )
                 waterCrop(landId)
                     .then((updatedUser) => setUser(updatedUser))
-                    .catch(() => {
-                        const now = new Date()
-                        setUser((prev) => {
-                            if (!prev) return prev
-                            const crops = prev.farm_stats?.growing_crops?.map((c) =>
-                                c.land_id === landId
-                                    ? {
-                                          ...c,
-                                          crop_details: {
-                                              ...c.crop_details,
-                                              last_watered_time: now.toISOString(),
-                                              next_watering_due: new Date(now.getTime() + 3600000).toISOString(),
-                                          },
-                                      }
-                                    : c
-                            )
-                            return {
-                                ...prev,
-                                farm_stats: {
-                                    ...prev.farm_stats,
-                                    growing_crops: crops,
-                                    energy_left: Math.max((prev.farm_stats?.energy_left ?? 0) - 1, 0),
-                                },
-                            }
+                    .catch((err) => {
+                        console.error("Watering error:", err)
+                        OpenAgentFarmAlert({
+                            notificationTitle: t("Error"),
+                            notificationMessage: err.response?.data?.error || t("Failed to water crop. Please try again."),
                         })
                     })
                     .finally(() => setLandWatering((prev) => prev.filter((id) => id !== landId)))
@@ -212,27 +205,17 @@ const GamePad = ({}) => {
                     setUser(updatedUser)
                     const earned = updatedUser.farm_stats?.coin_balance - (user?.farm_stats?.coin_balance ?? 0)
                     setHarvestCoinAmount(earned > 0 ? earned : harvestPrice)
+                    setHarvestSuccess(true)
                 })
-                .catch(() => {
-                    setUser((prev) => {
-                        if (!prev) return prev
-                        const crops = prev.farm_stats?.growing_crops?.map((c) =>
-                            c.land_id === landId ? { ...c, is_planted: false, crop_details: {} } : c
-                        )
-                        return {
-                            ...prev,
-                            farm_stats: {
-                                ...prev.farm_stats,
-                                growing_crops: crops,
-                                coin_balance: prev.farm_stats?.coin_balance + harvestPrice,
-                            },
-                        }
+                .catch((err) => {
+                    console.error("Harvesting error:", err)
+                    OpenAgentFarmAlert({
+                        notificationTitle: t("Error"),
+                        notificationMessage: err.response?.data?.error || t("Failed to harvest crop. Please try again."),
                     })
-                    setHarvestCoinAmount(harvestPrice)
                 })
                 .finally(() => {
                     setActionType(null)
-                    setHarvestSuccess(true)
                     setHarvesting(false)
                 })
         } else if (user?.farm_stats?.growing_crops?.[landId - 1]?.land_can_buy) {

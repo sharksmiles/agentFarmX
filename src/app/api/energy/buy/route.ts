@@ -71,13 +71,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check energy and handle recovery
+    const now = new Date();
+    let currentEnergy = user.farmState.energy;
+    let lastEnergyUpdate = new Date(user.farmState.lastEnergyUpdate);
+
+    if (currentEnergy < user.farmState.maxEnergy) {
+      const msPassed = now.getTime() - lastEnergyUpdate.getTime();
+      const config = await prisma.systemConfig.findUnique({
+        where: { key: 'energy_recovery_rate' },
+      });
+      const recoveryIntervalMinutes = (config?.value as any)?.intervalMinutes || 5;
+      const msPerEnergy = recoveryIntervalMinutes * 60 * 1000;
+      
+      const energyToRecover = Math.floor(msPassed / msPerEnergy);
+      if (energyToRecover > 0) {
+        const actualRecovery = Math.min(energyToRecover, user.farmState.maxEnergy - currentEnergy);
+        currentEnergy += actualRecovery;
+        lastEnergyUpdate = new Date(lastEnergyUpdate.getTime() + actualRecovery * msPerEnergy);
+      }
+    }
+
     // Calculate actual cost and energy for 'full' pack
     let actualCost = packInfo.cost;
     let actualEnergy = packInfo.energy;
 
     if (pack === 'full') {
-      const energyNeeded = user.farmState.maxEnergy - user.farmState.energy;
-      actualCost = energyNeeded * packInfo.cost; // 100 coins per energy point
+      const energyNeeded = Math.max(0, user.farmState.maxEnergy - currentEnergy);
+      actualCost = energyNeeded * 100; // 100 coins per energy point
       actualEnergy = energyNeeded;
     }
 
@@ -102,9 +123,10 @@ export async function POST(request: NextRequest) {
         where: { id: user.farmState.id },
         data: {
           energy: Math.min(
-            user.farmState.energy + actualEnergy,
+            currentEnergy + actualEnergy,
             user.farmState.maxEnergy
           ),
+          lastEnergyUpdate: currentEnergy + actualEnergy >= user.farmState.maxEnergy ? now : lastEnergyUpdate,
         },
       }),
       prisma.transaction.create({

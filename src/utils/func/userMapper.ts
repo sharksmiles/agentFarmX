@@ -11,11 +11,13 @@ type UserWithRelations = PrismaUser & {
 export function mapUserToFrontend(user: UserWithRelations): FrontendUser {
   const farmState = user.farmState;
   
-  // Map inventories
-  const inventory: CropItem[] = user.inventory?.map((item: Inventory) => ({
-    crop_type: item.itemId as any,
-    quantity: item.quantity
-  })) || [];
+  // Map inventories (only crops)
+  const inventory: CropItem[] = user.inventory
+    ?.filter((item: Inventory) => item.itemType === 'crop' || !item.itemType || item.itemType === '')
+    .map((item: Inventory) => ({
+      crop_type: item.itemId as any,
+      quantity: item.quantity
+    })) || [];
 
   // Map growing crops / land plots
   let growing_crops: GrowingCrop[] = [];
@@ -81,7 +83,7 @@ export function mapUserToFrontend(user: UserWithRelations): FrontendUser {
       level: user.level,
       level_exp: user.experience,
       coin_balance: user.farmCoins,
-      boost_left: 3, // Mock
+      boost_left: user.inventory?.filter(i => i.itemType === 'boost').reduce((sum, item) => sum + item.quantity, 0) || 0,
       energy_left: farmState?.energy || 100,
       max_energy: farmState?.maxEnergy || 100,
       next_restore_time: farmState?.lastEnergyUpdate?.toISOString() || null,

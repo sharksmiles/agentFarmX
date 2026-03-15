@@ -52,8 +52,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check energy
-    if (farmState.energy < crop.energyCost) {
+    // Check energy and handle recovery
+    const now = new Date();
+    let currentEnergy = farmState.energy;
+    let lastEnergyUpdate = new Date(farmState.lastEnergyUpdate);
+
+    if (currentEnergy < farmState.maxEnergy) {
+      const msPassed = now.getTime() - lastEnergyUpdate.getTime();
+      const config = await prisma.systemConfig.findUnique({
+        where: { key: 'energy_recovery_rate' },
+      });
+      const recoveryIntervalMinutes = (config?.value as any)?.intervalMinutes || 5;
+      const msPerEnergy = recoveryIntervalMinutes * 60 * 1000;
+      
+      const energyToRecover = Math.floor(msPassed / msPerEnergy);
+      if (energyToRecover > 0) {
+        const actualRecovery = Math.min(energyToRecover, farmState.maxEnergy - currentEnergy);
+        currentEnergy += actualRecovery;
+        lastEnergyUpdate = new Date(lastEnergyUpdate.getTime() + actualRecovery * msPerEnergy);
+      }
+    }
+
+    if (currentEnergy < crop.energyCost) {
       return NextResponse.json(
         { error: 'Insufficient energy' },
         { status: 400 }
@@ -104,7 +124,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Plant the crop
-    const now = new Date();
     const harvestAt = new Date(now.getTime() + crop.growTime * 60 * 1000);
 
     await prisma.$transaction([
@@ -122,8 +141,9 @@ export async function POST(request: NextRequest) {
       prisma.farmState.update({
         where: { id: farmState.id },
         data: {
-          energy: { decrement: crop.energyCost },
+          energy: currentEnergy - crop.energyCost,
           totalPlants: { increment: 1 },
+          lastEnergyUpdate: currentEnergy - crop.energyCost >= farmState.maxEnergy ? now : lastEnergyUpdate,
         },
       }),
       // Reduce inventory if needed? Frontend checks inventory but backend doesn't seem to enforce it yet.

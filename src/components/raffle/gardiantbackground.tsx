@@ -36,7 +36,7 @@ const BackgroundGuradian: FC<{ id: number; baseColor: string }> = ({ id, baseCol
     return (
         <>
             <div className={`absolute bg-[rgba(26,24,24,0.7)] w-full h-full -z-[10]`}></div>
-            <div className={`absolute background-raffle-${id}  w-full h-full z-1 opacity-30`}>
+            <div className={`absolute background-raffle-${id}  w-full h-full -z-[1] opacity-30`}>
                 <style>
                     {`
             @keyframes skeleton-loading {
