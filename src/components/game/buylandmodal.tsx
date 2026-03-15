@@ -6,14 +6,16 @@ import Image from "next/image"
 import { motion, AnimatePresence } from "framer-motion"
 import { useLanguage } from "../context/languageContext"
 import { buyLand } from "@/utils/api/game"
+import { useState } from "react"
 
 const BuylandModal = () => {
     const { user, setUser } = useUser()
     const { actionType, setActionType, gameStats, selectedLandId, OpenAgentFarmAlert } = useData()
     const { t } = useLanguage()
+    const [isLoading, setIsLoading] = useState(false)
 
     const buyland = async () => {
-        if (selectedLandId === undefined) {
+        if (selectedLandId === undefined || isLoading) {
             return
         }
         const unownedLandIndex = user?.farm_stats?.growing_crops?.findIndex(
@@ -34,8 +36,10 @@ const BuylandModal = () => {
             return
         }
         try {
+            setIsLoading(true)
             const updatedUser = await buyLand(selectedLandId)
             setUser(updatedUser)
+            setActionType(null)
         } catch {
             setUser((prev) => {
                 if (!prev) return prev
@@ -45,8 +49,10 @@ const BuylandModal = () => {
                 const cost = gameStats?.land_prices[selectedLandId!] ?? 0
                 return { ...prev, farm_stats: { ...prev.farm_stats, growing_crops: crops, coin_balance: prev.farm_stats?.coin_balance - cost } }
             })
+            setActionType(null)
+        } finally {
+            setIsLoading(false)
         }
-        setActionType(null)
     }
 
     return (
@@ -114,9 +120,13 @@ const BuylandModal = () => {
                                 onClick={() => {
                                     buyland()
                                 }}
-                                className="rounded-[16px] bg-[#5964F5] w-full h-[50px] py-[12px] px-[16px] font-semibold text-[16px] text-white"
+                                disabled={isLoading}
+                                className={`rounded-[16px] w-full h-[50px] py-[12px] px-[16px] font-semibold text-[16px] text-white flex items-center justify-center gap-2 ${isLoading ? 'bg-[#5964F5]/70 cursor-not-allowed' : 'bg-[#5964F5]'}`}
                             >
-                                {t("Purchase")}
+                                {isLoading && (
+                                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                )}
+                                {isLoading ? t("Purchasing...") : t("Purchase")}
                             </button>
                         </div>
                     </motion.div>
