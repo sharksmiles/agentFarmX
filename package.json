@@ -16,7 +16,14 @@
         "db:studio": "prisma studio",
         "db:test": "tsx scripts/test-db-connection.ts",
         "db:seed": "tsx scripts/seed-skills.ts",
-        "postinstall": "prisma generate"
+        "postinstall": "prisma generate",
+        "compile": "hardhat compile",
+        "deploy:testnet": "hardhat run scripts/deploy.js --network xlayerTestnet",
+        "deploy:mainnet": "hardhat run scripts/deploy.js --network xlayerMainnet",
+        "verify:testnet": "hardhat verify --network xlayerTestnet",
+        "verify:mainnet": "hardhat verify --network xlayerMainnet",
+        "console:testnet": "hardhat console --network xlayerTestnet",
+        "console:mainnet": "hardhat console --network xlayerMainnet"
     },
     "dependencies": {
         "@dotlottie/react-player": "^1.6.19",

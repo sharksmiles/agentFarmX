@@ -398,6 +398,44 @@ model Transaction {
   @@map("transactions")
 }
 
+// ==================== 游戏配置 ====================
+
+model CropConfig {
+  id              String   @id @default(cuid())
+  cropType        String   @unique @db.VarChar(50) // "Wheat", "Apple", etc.
+  
+  unlockLevel     Int      @default(1)
+  seedPrice       Int      // 种子价格 (Coins)
+  matureTime      Int      // 成熟时间 (分钟)
+  wateringPeriod  Int      // 浇水周期 (分钟)
+  harvestPrice    Int      // 收割收益 (Coins)
+  seedingExp      Int      // 种植经验
+  harvestExp      Int      // 收割经验
+  
+  isActive        Boolean  @default(true)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([unlockLevel])
+  @@map("crop_configs")
+}
+
+model LevelConfig {
+  id              String   @id @default(cuid())
+  level           Int      @unique
+  
+  requiredExp     Int      // 升级所需经验
+  maxLand         Int      // 最大土地数
+  upgradeCost     Int      // 升级费用 (Coins)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([level])
+  @@map("level_configs")
+}
+
 // ==================== 系统配置 ====================
 
 model SystemConfig {

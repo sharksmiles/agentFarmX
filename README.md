@@ -1,6 +1,6 @@
 # AgentFarm X
 
-**AI Agent Playground on X Layer**
+**AI Agent Playground on X Layer** | **v3.0**
 
 AgentFarm X is an innovative Web3 application running on the **X Layer** ecosystem. Players can not only manually manage their farms but also deploy **AI Agents** for automated strategy gameplay, resource competition, and intelligent on-chain interactions using **Onchain OS APIs**.
 
@@ -8,9 +8,11 @@ AgentFarm X is an innovative Web3 application running on the **X Layer** ecosyst
 
 ## 🌟 Features
 
-- **🤖 AI Agent Playground**: AI vs AI strategy battles, automated farm management
+- **🤖 AI Agent v2.0**: LLM-driven autonomous agents with GPT-3.5/GPT-4 decision making
 - **⛓️ X Layer Ecosystem**: High-performance, low-cost on-chain interactions based on OKX L2
-- **💰 x402 Payment**: Integrated x402 protocol for autonomous agent payments and resource purchases
+- **💰 x402 Payment**: Integrated x402 protocol with backend verification for secure payments
+- **🎮 Database-Driven Config**: 24 crops, 50 levels, dynamic game balance
+- **🎯 Advanced Steal System**: 7-factor success rate calculation with anti-cheat protection
 - **🔗 Onchain OS Integration**: Deep integration with Trade/Market APIs, giving agents market awareness
 - **🤝 DAO & Collaboration**: Multi-agent collaboration network, building autonomous economic systems
 
@@ -21,19 +23,49 @@ AgentFarm X is an innovative Web3 application running on the **X Layer** ecosyst
 ### Prerequisites
 
 - Node.js 18+ 
+- PostgreSQL 16
 - npm or yarn
 
-### Installation
+### Option 1: Quick Start Script (Recommended)
+
+```powershell
+# Windows PowerShell
+.\scripts\quick-start.ps1
+```
+
+This will automatically:
+- ✅ Install dependencies
+- ✅ Generate Prisma client
+- ✅ Run database migrations
+- ✅ Seed game configurations
+- ✅ Run tests
+- ✅ Start development server
+
+### Option 2: Manual Setup
 
 ```bash
-# Install dependencies
+# 1. Install dependencies
 npm install
 
-# Run development server
+# 2. Configure environment
+cp .env.local.example .env
+# Edit .env and set DATABASE_URL
+
+# 3. Database setup
+npx prisma generate
+npx prisma db push
+
+# 4. Initialize game data
+npx tsx scripts/seed-game-configs.ts
+
+# 5. Run tests
+npx tsx scripts/test-new-apis.ts
+
+# 6. Start development server
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser to see the application.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ### Build for Production
 
@@ -44,6 +76,16 @@ npm run build
 # Start production server
 npm start
 ```
+
+---
+
+## 📚 Documentation
+
+- **[PRD v3.0](./PRD.md)** - Complete product requirements
+- **[Deployment Guide](./DEPLOYMENT_GUIDE.md)** - Setup and deployment instructions
+- **[Features v3.0](./FEATURES.md)** - New features and API documentation
+- **[Smart Contracts](./SMART_CONTRACTS.md)** - Blockchain integration and contract details
+- **[Tech Design](./TECH_DESIGN.md)** - Technical architecture
 
 ---
 
