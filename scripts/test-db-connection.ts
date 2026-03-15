@@ -31,11 +31,36 @@ async function testConnection() {
       { name: 'raffle_entries', model: prisma.raffleEntry },
       { name: 'transactions', model: prisma.transaction },
       { name: 'system_configs', model: prisma.systemConfig },
+      { name: 'crop_configs', model: prisma.cropConfig },
+      { name: 'level_configs', model: prisma.levelConfig },
     ]
     
     for (const table of tables) {
       const count = await (table.model as any).count()
       console.log(`  ✓ ${table.name}: ${count} records`)
+    }
+
+    // Test Agent specific fields
+    console.log('\n🔍 Testing Agent fields...')
+    const agent = await prisma.agent.findFirst()
+    if (agent) {
+      console.log('✅ Successfully queried first Agent')
+    } else {
+      console.log('ℹ️ No agents found, creating a test agent...')
+      const user = await prisma.user.findFirst()
+      if (user) {
+        await prisma.agent.create({
+          data: {
+            userId: user.id,
+            scaAddress: '0x' + Math.random().toString(16).slice(2, 42),
+            name: 'Test Agent',
+            personality: 'balanced',
+            strategyType: 'farming',
+            strategyConfig: { some: 'config' },
+          }
+        })
+        console.log('✅ Successfully created test agent with strategyConfig')
+      }
     }
     
     console.log('\n✅ All tables accessible!')

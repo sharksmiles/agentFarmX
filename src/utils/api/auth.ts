@@ -58,8 +58,8 @@ export const fetchMe = async (): Promise<User> => {
         throw new Error('No wallet address found')
     }
     
-    const res = await apiClient.get<{ user: User }>(`/api/users?walletAddress=${address}`)
-    return res.data.user
+    const res = await apiClient.get<User>(`/api/users?walletAddress=${address}`)
+    return res.data
 }
 
 export const updateLanguage = async (lang: string): Promise<User> => {

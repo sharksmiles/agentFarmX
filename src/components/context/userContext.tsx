@@ -60,7 +60,7 @@ export const UserProvider: FC<UserProviderProps> = ({ children }) => {
         try {
             const me = await fetchMe()
             setUser(me)
-            setWallet({ address: me.id, hasPrivateKey: false, hasMnemonic: false })
+            setWallet({ address: me.wallet_address, hasPrivateKey: false, hasMnemonic: false })
             setIsAuthenticated(true)
         } catch {
             setIsAuthenticated(false)
