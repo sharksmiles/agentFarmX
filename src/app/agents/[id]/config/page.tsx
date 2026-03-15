@@ -16,7 +16,7 @@ export default function AgentConfigPage() {
     const id     = params.id as string
     const mockFallback = MOCK_AGENTS.find(a => a.id === id) ?? MOCK_AGENTS[0]
     const [agent, setAgent] = useState<Agent>(mockFallback as any)
-    const cfg    = agent.config as any
+    const cfg    = (agent as any).strategyConfig || (agent as any).config || {}
 
     useEffect(() => {
         fetchAgentDetail(id)
@@ -56,11 +56,12 @@ export default function AgentConfigPage() {
 
     const handleSave = () => {
         setSaving(true)
-        const config = agent.type === "farmer"
+        const type = (agent.strategyType || (agent as any).type) as string
+        const config = type === "farming" || type === "farmer"
             ? { preferred_crops: preferredCrops, auto_harvest: autoHarvest, auto_replant: autoReplant, max_daily_gas: maxGas, max_daily_usdc: maxUsdc, stop_balance: stopBalance }
-            : agent.type === "trader"
+            : type === "trading" || type === "trader"
             ? { profit_rate: profitRate, max_swap: maxSwap, max_daily_gas: maxGas, max_daily_usdc: maxUsdc, stop_balance: stopBalance }
-            : agent.type === "raider"
+            : type === "social" || type === "raider"
             ? { radar_level: radarLevel, max_steals: maxSteals, max_daily_gas: maxGas, max_daily_usdc: maxUsdc, stop_balance: stopBalance }
             : { early_harvest: earlyHarvest, max_daily_gas: maxGas, max_daily_usdc: maxUsdc, stop_balance: stopBalance }
         updateAgentConfig(id, config)
@@ -83,17 +84,17 @@ export default function AgentConfigPage() {
                     </svg>
                 </Link>
                 <div className="flex items-center gap-2">
-                    <span className="text-xl">{AGENT_TYPE_ICONS[agent.type] ?? "🤖"}</span>
+                    <span className="text-xl">{AGENT_TYPE_ICONS[agent.strategyType || (agent as any).type] ?? "🤖"}</span>
                     <div>
                         <h1 className="text-xl font-extrabold leading-tight">{agent.name}</h1>
-                        <p className="text-xs text-gray-400 capitalize">{agent.type} agent · Strategy Config</p>
+                        <p className="text-xs text-gray-400 capitalize">{agent.strategyType || (agent as any).type} agent · Strategy Config</p>
                     </div>
                 </div>
             </div>
 
             <div className="flex-1 px-4 pb-32 overflow-y-auto space-y-4">
                 {/* Farmer-specific */}
-                {agent.type === "farmer" && (
+                {((agent.strategyType || (agent as any).type) === "farming" || (agent.strategyType || (agent as any).type) === "farmer") && (
                     <Section title="Farmer Strategy" icon="🌾">
                         <div>
                             <p className="text-xs text-gray-400 mb-2">Preferred Crops</p>
@@ -115,56 +116,60 @@ export default function AgentConfigPage() {
                 )}
 
                 {/* Trader-specific */}
-                {agent.type === "trader" && (
+                {((agent.strategyType || (agent as any).type) === "trading" || (agent.strategyType || (agent as any).type) === "trader") && (
                     <Section title="Trader Strategy" icon="📈">
-                        <div>
-                            <div className="flex justify-between mb-1">
-                                <label className="text-sm text-gray-300">Profit Trigger Rate</label>
-                                <span className="text-sm text-[#5964F5] font-bold">{profitRate}%</span>
-                            </div>
-                            <input type="range" min={5} max={50} value={profitRate}
-                                onChange={e => setProfitRate(+e.target.value)}
-                                className="w-full accent-[#5964F5]" />
-                            <p className="text-xs text-gray-600 mt-1">Execute swap when profit exceeds {profitRate}%</p>
+                        <div className="flex items-center justify-between">
+                            <p className="text-xs text-gray-400">Profit Threshold (%)</p>
+                            <input
+                                type="number"
+                                value={profitRate}
+                                onChange={e => setProfitRate(Number(e.target.value))}
+                                className="bg-transparent text-right w-16 focus:outline-none text-[#56FFAD]"
+                            />
                         </div>
-                        <NumberInput label="Max Single Swap (USDC)" value={maxSwap} step={1} onChange={setMaxSwap} />
+                        <div className="flex items-center justify-between mt-3">
+                            <p className="text-xs text-gray-400">Max Swap (USDC)</p>
+                            <input
+                                type="number"
+                                value={maxSwap}
+                                onChange={e => setMaxSwap(Number(e.target.value))}
+                                className="bg-transparent text-right w-16 focus:outline-none text-[#56FFAD]"
+                            />
+                        </div>
                     </Section>
                 )}
 
                 {/* Raider-specific */}
-                {agent.type === "raider" && (
+                {((agent.strategyType || (agent as any).type) === "social" || (agent.strategyType || (agent as any).type) === "raider") && (
                     <Section title="Raider Strategy" icon="⚔️">
                         <div>
-                            <p className="text-xs text-gray-400 mb-2">Radar Scan Level</p>
+                            <p className="text-xs text-gray-400 mb-2">Radar Range</p>
                             <div className="flex gap-2">
-                                {([1,2,3] as const).map(l => (
-                                    <button key={l} onClick={() => setRadarLevel(l)}
-                                        className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition-all
-                                            ${radarLevel === l ? "border-red-500 bg-red-500/20 text-red-400" : "border-[#353B45] text-gray-400"}`}>
-                                        {l === 1 ? "Basic" : l === 2 ? "Advanced" : "Precision"}
+                                {[1, 2, 3].map(lv => (
+                                    <button
+                                        key={lv}
+                                        onClick={() => setRadarLevel(lv as 1|2|3)}
+                                        className={`flex-1 py-2 rounded-lg text-xs transition-colors ${radarLevel === lv ? "bg-[#56FFAD] text-black" : "bg-white/5 text-gray-400"}`}
+                                    >
+                                        Level {lv}
                                     </button>
                                 ))}
                             </div>
-                            <p className="text-xs text-gray-600 mt-1">
-                                {radarLevel === 1 ? "Standard range, lower cost" :
-                                 radarLevel === 2 ? "Extended range, moderate cost" :
-                                 "Maximum range, highest accuracy"}
-                            </p>
                         </div>
-                        <div>
-                            <div className="flex justify-between mb-1">
-                                <label className="text-sm text-gray-300">Max Daily Steals</label>
-                                <span className="text-sm text-red-400 font-bold">{maxSteals}</span>
-                            </div>
-                            <input type="range" min={1} max={20} value={maxSteals}
-                                onChange={e => setMaxSteals(+e.target.value)}
-                                className="w-full accent-red-500" />
+                        <div className="flex items-center justify-between mt-4">
+                            <p className="text-xs text-gray-400">Max Daily Steals</p>
+                            <input
+                                type="number"
+                                value={maxSteals}
+                                onChange={e => setMaxSteals(Number(e.target.value))}
+                                className="bg-transparent text-right w-16 focus:outline-none text-[#56FFAD]"
+                            />
                         </div>
                     </Section>
                 )}
 
                 {/* Defender-specific */}
-                {agent.type === "defender" && (
+                {((agent.strategyType || (agent as any).type) === "defender") && (
                     <Section title="Defender Strategy" icon="🛡️">
                         <div>
                             <div className="flex justify-between mb-1">
@@ -198,8 +203,8 @@ export default function AgentConfigPage() {
 
                 {/* Agent Info (readonly) */}
                 <Section title="Agent Info" icon="ℹ️">
-                    <InfoRow label="SCA Address" value={agent.sca_address ?? "—"} mono />
-                    <InfoRow label="Created" value={new Date(agent.created_at).toLocaleDateString()} />
+                    <InfoRow label="SCA Address" value={agent.scaAddress || (agent as any).sca_address || "—"} mono />
+                    <InfoRow label="Created" value={new Date(agent.createdAt || (agent as any).created_at).toLocaleDateString()} />
                     <InfoRow label="Agent ID" value={agent.id} mono />
                 </Section>
             </div>

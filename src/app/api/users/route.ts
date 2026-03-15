@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { mapUserToFrontend } from '@/utils/func/userMapper';
 
 // GET /api/users - Get user by wallet address
 export async function GET(request: NextRequest) {
@@ -34,7 +35,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({ user });
+    return NextResponse.json(mapUserToFrontend(user));
   } catch (error) {
     console.error('GET /api/users error:', error);
     return NextResponse.json(
@@ -96,10 +97,11 @@ export async function POST(request: NextRequest) {
             landPlots: true,
           },
         },
+        inventory: true,
       },
     });
 
-    return NextResponse.json({ user }, { status: 201 });
+    return NextResponse.json(mapUserToFrontend(user));
   } catch (error) {
     console.error('POST /api/users error:', error);
     return NextResponse.json(

@@ -32,9 +32,9 @@ export default function AgentsPage() {
             .catch(() => setAgents(MOCK_AGENTS as any))
     }, [setCurrentTab])
 
-    const totalEarned  = agents.reduce((s, a) => s + a.stats.total_earned_coin, 0)
-    const totalGas     = agents.reduce((s, a) => s + a.stats.total_spent_gas, 0)
-    const totalUsdc    = agents.reduce((s, a) => s + a.stats.total_spent_usdc, 0)
+    const totalEarned  = agents.reduce((s, a) => s + ((a as any).totalProfit || (a as any).stats?.total_earned_coin || 0), 0)
+    const totalGas     = agents.reduce((s, a) => s + ((a as any).balanceOkb || (a as any).stats?.total_spent_gas || 0), 0)
+    const totalUsdc    = agents.reduce((s, a) => s + ((a as any).balanceUsdc || (a as any).stats?.total_spent_usdc || 0), 0)
     const activeCount  = agents.filter(a => a.status === "running").length
 
     return (
@@ -79,20 +79,21 @@ export default function AgentsPage() {
                         </div>
                     )}
                     {agents.map(agent => {
+                        const type = agent.strategyType || (agent as any).type
                         const st = STATUS_STYLES[agent.status] ?? STATUS_STYLES.idle
                         const lastLog = agent.logs?.[0]
-                        return (
+                        return (    
                             <Link href={`/agents/${agent.id}`} key={agent.id}>
                                 <div className="bg-[#252A31] rounded-2xl p-4 border border-[#353B45] hover:border-[#5964F5] transition-colors cursor-pointer mb-3">
                                     {/* Top row */}
                                     <div className="flex items-start justify-between mb-3">
                                         <div className="flex items-center gap-3">
                                             <div className="w-11 h-11 rounded-xl bg-[#1A1F25] flex items-center justify-center text-2xl">
-                                                {AGENT_TYPE_ICONS[agent.type] ?? "🤖"}
+                                                {AGENT_TYPE_ICONS[type] ?? "🤖"}
                                             </div>
                                             <div>
                                                 <h3 className="font-bold text-base leading-tight">{agent.name}</h3>
-                                                <p className="text-gray-400 text-xs capitalize mt-0.5">{agent.type} agent</p>
+                                                <p className="text-gray-400 text-xs capitalize mt-0.5">{type} agent</p>
                                             </div>
                                         </div>
                                         <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full ${st.bg}`}>
@@ -100,43 +101,35 @@ export default function AgentsPage() {
                                             <span className={`text-xs font-medium ${st.text}`}>{st.label}</span>
                                         </div>
                                     </div>
-
-                                    {/* Balance row */}
-                                    <div className="flex gap-3 mb-3">
-                                        <div className="flex-1 bg-[#1A1F25] rounded-lg px-3 py-1.5">
-                                            <p className="text-[10px] text-gray-500">OKB</p>
-                                            <p className="text-sm font-bold">{agent.balance_okb.toFixed(3)}</p>
+                                    
+                                    {/* Stats grid */}
+                                    <div className="grid grid-cols-2 gap-3 mb-4">
+                                        <div className="bg-[#1A1F25] rounded-xl p-2.5">
+                                            <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Total Profit</p>
+                                            <p className="text-[#FBB602] font-bold text-sm leading-none">
+                                                {(agent.totalProfit || (agent as any).stats?.total_earned_coin || 0).toLocaleString()} <span className="text-[9px] text-[#FBB602]/60 ml-0.5">$COIN</span>
+                                            </p>
                                         </div>
-                                        <div className="flex-1 bg-[#1A1F25] rounded-lg px-3 py-1.5">
-                                            <p className="text-[10px] text-gray-500">USDC</p>
-                                            <p className="text-sm font-bold">{agent.balance_usdc.toFixed(2)}</p>
-                                        </div>
-                                        <div className="flex-1 bg-[#1A1F25] rounded-lg px-3 py-1.5">
-                                            <p className="text-[10px] text-gray-500">Win Rate</p>
-                                            <p className="text-sm font-bold text-green-400">{agent.stats.win_rate}%</p>
+                                        <div className="bg-[#1A1F25] rounded-xl p-2.5">
+                                            <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Success Rate</p>
+                                            <p className="text-white font-bold text-sm leading-none">
+                                                {((agent.successRate || (agent as any).stats?.win_rate || 0) * 100).toFixed(1)}%
+                                            </p>
                                         </div>
                                     </div>
 
-                                    {/* Last log */}
-                                    {lastLog && (
-                                        <div className="bg-[#1A1F25] rounded-lg px-3 py-2 flex items-center gap-2">
-                                            <span className={`text-xs font-semibold ${
-                                                lastLog.status === "success" ? "text-green-400" :
-                                                lastLog.status === "failed"  ? "text-red-400"   : "text-yellow-400"
-                                            }`}>
-                                                {lastLog.status === "success" ? "✓" : lastLog.status === "failed" ? "✗" : "⏳"}
-                                            </span>
-                                            <p className="text-xs text-gray-400 truncate flex-1">{lastLog.detail}</p>
-                                            <p className="text-[10px] text-gray-600 whitespace-nowrap">{timeAgo(lastLog.timestamp)}</p>
+                                    {/* Bottom status line */}
+                                    <div className="flex items-center justify-between border-t border-[#353B45] pt-3 mt-1">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-gray-600" />
+                                            <p className="text-[11px] text-gray-500 truncate max-w-[180px]">
+                                                {lastLog ? lastLog.message : "Waiting for next action..."}
+                                            </p>
                                         </div>
-                                    )}
-
-                                    {/* Out-of-funds warning */}
-                                    {agent.status === "out_of_funds" && (
-                                        <div className="mt-2 bg-orange-500/10 border border-orange-500/30 rounded-lg px-3 py-2 text-xs text-orange-400">
-                                            ⚠️ Agent paused — low balance. Top up to resume.
-                                        </div>
-                                    )}
+                                        <p className="text-[10px] text-gray-600 whitespace-nowrap">
+                                            {agent.lastActiveAt ? timeAgo(new Date(agent.lastActiveAt).toISOString()) : "Never active"}
+                                        </p>
+                                    </div>
                                 </div>
                             </Link>
                         )

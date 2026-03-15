@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { mapUserToFrontend } from '@/utils/func/userMapper';
 
 const ENERGY_PACKS = {
   small: { energy: 10, cost: 500, dailyLimit: 10 },
@@ -90,7 +91,7 @@ export async function POST(request: NextRequest) {
 
     // Buy energy pack and update purchase count
     const newBalance = user.farmCoins - actualCost;
-    const [updatedUser, updatedFarmState, transaction, _] = await prisma.$transaction([
+    await prisma.$transaction([
       prisma.user.update({
         where: { id: userId },
         data: {
@@ -129,17 +130,24 @@ export async function POST(request: NextRequest) {
       }),
     ]);
 
-    return NextResponse.json({
-      user: updatedUser,
-      farmState: updatedFarmState,
-      energyGained: actualEnergy,
-      transaction,
-      dailyPurchases: {
-        count: purchaseCount + 1,
-        limit: dailyLimit,
-        remaining: dailyLimit - purchaseCount - 1,
+    // Fetch updated user with relations
+    const updatedUser = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        farmState: {
+          include: {
+            landPlots: true,
+          },
+        },
+        inventory: true,
       },
     });
+
+    if (!updatedUser) {
+      throw new Error('User not found after update');
+    }
+
+    return NextResponse.json(mapUserToFrontend(updatedUser));
   } catch (error) {
     console.error('POST /api/energy/buy error:', error);
     return NextResponse.json(

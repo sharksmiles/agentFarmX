@@ -19,6 +19,7 @@ import {
     FriendInfoStats,
     openDeleteFriendModelData,
 } from "../friends/friendsearchpage"
+import { fetchMockData } from "@/utils/api/mock"
 
 // Define the type for the context value
 interface DataContextValue {
@@ -198,6 +199,17 @@ export const DataProvider: FC<DataProviderProps> = ({ children }) => {
     const [openRadarModal, setOpenRadarModal] = useState<boolean>(false)
     const [radaring, setRadaring] = useState<boolean>(false)
     useEffect(() => {
+        const initData = async () => {
+            try {
+                const { gameStats } = await fetchMockData()
+                setGameStats(gameStats)
+                setIsDataFetched(true)
+            } catch (error) {
+                console.error("Failed to fetch mock data:", error)
+            }
+        }
+        initData()
+        
         Promise.all(imagesToLoad.map(preloadImage))
             .then(() => {})
             .catch(() => {})

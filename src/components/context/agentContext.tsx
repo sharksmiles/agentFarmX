@@ -1,66 +1,9 @@
 "use client"
 
 import React, { createContext, useContext, useState, ReactNode, FC, useCallback } from "react"
+import { Agent, AgentDecision, AgentLog, AgentSkill } from "@/utils/types/agent"
 
-// Agent 类型定义
-export interface Agent {
-    id: string
-    userId: string
-    name: string
-    scaAddress: string
-    nftTokenId?: string
-    personality: "aggressive" | "conservative" | "balanced"
-    strategyType: "farming" | "trading" | "social"
-    aiModel: string
-    customPrompt?: string
-    temperature: number
-    status: "idle" | "running" | "paused" | "error"
-    isActive: boolean
-    totalProfit: number
-    totalTasks: number
-    successRate: number
-    createdAt: string
-    updatedAt: string
-    lastActiveAt?: string
-}
-
-export interface AgentDecision {
-    id: string
-    agentId: string
-    model: string
-    prompt: string
-    response: string
-    decisions: any[]
-    reasoning?: string
-    tokensUsed: number
-    cost: number
-    latency: number
-    executed: boolean
-    success: boolean
-    createdAt: string
-}
-
-export interface AgentLog {
-    id: string
-    agentId: string
-    level: "info" | "warning" | "error"
-    message: string
-    metadata?: any
-    createdAt: string
-}
-
-export interface AgentSkill {
-    id: string
-    name: string
-    displayName: string
-    description: string
-    category: "farming" | "trading" | "social" | "strategy"
-    parameters: any
-    energyCost: number
-    cooldown: number
-    requiredLevel: number
-    isActive: boolean
-}
+export type { Agent, AgentDecision, AgentLog, AgentSkill }
 
 interface AgentContextValue {
     // Agent 列表

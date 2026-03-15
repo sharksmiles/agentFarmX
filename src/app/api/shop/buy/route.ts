@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { mapUserToFrontend } from '@/utils/func/userMapper';
 
 // Crop seed prices (should match game config)
 const CROP_PRICES: Record<string, number> = {
@@ -103,7 +104,7 @@ export async function POST(request: NextRequest) {
 
     // Process purchase in transaction
     const newBalance = user.farmCoins - totalCost;
-    const operations = [];
+    const operations: any[] = [];
 
     // Deduct coins
     operations.push(
@@ -155,21 +156,33 @@ export async function POST(request: NextRequest) {
           amount: totalCost,
           balance: newBalance,
           description: `Purchased seeds: ${Object.entries(quantities)
-            .filter(([_, q]) => typeof q === 'number' && q > 0)
+            .filter(([_, q]) => typeof q === 'number' && (q as number) > 0)
             .map(([crop, q]) => `${crop} x${q}`)
             .join(', ')}`,
         },
       })
     );
 
-    const results = await prisma.$transaction(operations);
-    const updatedUser = results[0];
+    await prisma.$transaction(operations);
 
-    return NextResponse.json({
-      user: updatedUser,
-      totalCost,
-      itemsPurchased: quantities,
+    // Fetch updated user with relations
+    const updatedUser = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        farmState: {
+          include: {
+            landPlots: true,
+          },
+        },
+        inventory: true,
+      },
     });
+
+    if (!updatedUser) {
+      throw new Error('User not found after update');
+    }
+
+    return NextResponse.json(mapUserToFrontend(updatedUser));
   } catch (error) {
     console.error('POST /api/shop/buy error:', error);
     return NextResponse.json(

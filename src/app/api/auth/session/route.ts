@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { mapUserToFrontend } from '@/utils/func/userMapper';
 
 export async function GET(request: NextRequest) {
   try {
@@ -37,13 +38,13 @@ export async function GET(request: NextRequest) {
     // Get user
     const user = await prisma.user.findUnique({
       where: { id: session.userId },
-      select: {
-        id: true,
-        walletAddress: true,
-        username: true,
-        level: true,
-        experience: true,
-        farmCoins: true,
+      include: {
+        farmState: {
+          include: {
+            landPlots: true,
+          },
+        },
+        inventory: true,
       },
     });
 
@@ -55,7 +56,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({
-      user,
+      user: mapUserToFrontend(user),
       expiresAt: new Date(session.timestamp + 24 * 60 * 60 * 1000),
     });
   } catch (error) {

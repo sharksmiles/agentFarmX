@@ -142,6 +142,7 @@ model Agent {
   name          String   @db.VarChar(100)
   personality   String   @db.VarChar(50) // "aggressive" | "conservative" | "balanced"
   strategyType  String   @db.VarChar(50) // "farming" | "trading" | "social"
+  strategyConfig Json?   // 策略配置 (JSONB)
   
   // AI 配置 (v2.0)
   aiModel       String   @default("gpt-3.5-turbo") @db.VarChar(50) // LLM 模型
@@ -156,6 +157,10 @@ model Agent {
   totalProfit   Int      @default(0) // 累计收益 (FarmCoins)
   totalTasks    Int      @default(0) // 执行任务数
   successRate   Float    @default(0.0) // 成功率
+  
+  // 资金余额 (SCA)
+  balanceUsdc   Float    @default(0.0) // USDC 余额
+  balanceOkb    Float    @default(0.0) // OKB 余额
   
   // 时间戳
   createdAt     DateTime @default(now())

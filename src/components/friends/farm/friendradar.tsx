@@ -1,7 +1,7 @@
 "use client"
 import Image from "next/image"
 import React from "react"
-import { MOCK_FRIENDS } from "@/utils/mock/mockData"
+import { fetchMockFriends } from "@/utils/api/mock"
 import { useRouter } from "next/navigation"
 import { useData } from "@/components/context/dataContext"
 
@@ -10,11 +10,19 @@ export const FriendRadar = () => {
     const { setRadaring, setNotification } = useData()
     const handleRadar = async () => {
         setRadaring(true)
-        setTimeout(() => {
-            const target = MOCK_FRIENDS[Math.floor(Math.random() * MOCK_FRIENDS.length)]
-            router.push("/friends/farm/ra/" + target.id)
+        try {
+            const mockFriends = await fetchMockFriends()
+            setTimeout(() => {
+                const target = mockFriends[Math.floor(Math.random() * mockFriends.length)]
+                if (target) {
+                    router.push("/friends/farm/ra/" + target.id)
+                }
+                setRadaring(false)
+            }, 600)
+        } catch (error) {
+            console.error("Radar failed", error)
             setRadaring(false)
-        }, 600)
+        }
     }
 
     return (

@@ -51,7 +51,6 @@ export async function POST(
     // Get agent
     const agent = await prisma.agent.findUnique({
       where: { id: agentId },
-      include: { owner: true },
     });
 
     if (!agent) {
@@ -62,7 +61,7 @@ export async function POST(
     }
 
     // Verify ownership
-    if (agent.ownerAddress.toLowerCase() !== userId.toLowerCase()) {
+    if (agent.userId !== userId) {
       return NextResponse.json(
         { error: 'Unauthorized: You do not own this agent' },
         { status: 403 }
@@ -176,7 +175,7 @@ export async function GET(
     }
 
     // Verify ownership
-    if (agent.ownerAddress.toLowerCase() !== userId.toLowerCase()) {
+    if (agent.userId !== userId) {
       return NextResponse.json(
         { error: 'Unauthorized: You do not own this agent' },
         { status: 403 }

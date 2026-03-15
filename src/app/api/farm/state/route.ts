@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { mapUserToFrontend } from '@/utils/func/userMapper';
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,30 +14,30 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const farmState = await prisma.farmState.findUnique({
-      where: { userId },
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
       include: {
-        landPlots: {
-          orderBy: { plotIndex: 'asc' },
-        },
-        user: {
-          select: {
-            level: true,
-            experience: true,
-            farmCoins: true,
+        farmState: {
+          include: {
+            landPlots: {
+              orderBy: { plotIndex: 'asc' },
+            },
           },
         },
+        inventory: true,
       },
     });
 
-    if (!farmState) {
+    if (!user) {
       return NextResponse.json(
-        { error: 'Farm state not found' },
+        { error: 'User not found' },
         { status: 404 }
       );
     }
 
-    return NextResponse.json({ farmState });
+    const mappedUser = mapUserToFrontend(user);
+
+    return NextResponse.json({ farmState: mappedUser.farm_stats });
   } catch (error) {
     console.error('GET /api/farm/state error:', error);
     return NextResponse.json(

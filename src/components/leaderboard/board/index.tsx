@@ -2,7 +2,7 @@
 import { useUser } from "../../context/userContext"
 import { useLanguage } from "../../context/languageContext"
 import { fetchLeaderboard } from "@/utils/api/invite"
-import { MOCK_LEADERBOARD } from "@/utils/mock/mockData"
+import { fetchMockLeaderboard } from "@/utils/api/mock"
 import { useEffect, useState, useRef, useCallback, useMemo } from "react"
 import { truncateText } from "@/utils/func/utils"
 import { CrownIcon, GoIcon, InvitesIcon } from "../icon"
@@ -67,9 +67,16 @@ const LeaderBoard = (): JSX.Element => {
                 setData(results)
                 setNextCursor(extractNextCursor(next))
             })
-            .catch(() => {
-                setData(MOCK_LEADERBOARD.results as LeaderboardItem[])
-                setNextCursor(null)
+            .catch(async () => {
+                try {
+                    const { results, next } = await fetchMockLeaderboard()
+                    setData(results)
+                    setNextCursor(extractNextCursor(next))
+                } catch (error) {
+                    console.error("Failed to fetch mock leaderboard", error)
+                    setData([])
+                    setNextCursor(null)
+                }
             })
             .finally(() => setLoading(false))
     }, [extractNextCursor])

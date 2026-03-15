@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from "react"
 import { useLanguage } from "../context/languageContext"
 import Image from "next/image"
 import { fetchActivityRecords, ActivityRecord } from "@/utils/api/invite"
-import { MOCK_RECORDS } from "@/utils/mock/mockData"
+import { fetchMockRecords } from "@/utils/api/mock"
 import { useRouter } from "next/navigation"
 import { timeAgo, timeAgoString, truncateText } from "@/utils/func/utils"
 import { ArrowUpFromDot } from "lucide-react"
@@ -28,10 +28,16 @@ const Record = () => {
                 setRecordResults((prev) => reset ? results : [...prev, ...results])
                 setCursor(next)
             })
-            .catch(() => {
+            .catch(async () => {
                 if (reset) {
-                    setRecordResults(MOCK_RECORDS as any)
-                    setCursor(null)
+                    try {
+                        const mockRecords = await fetchMockRecords()
+                        setRecordResults(mockRecords as any)
+                        setCursor(null)
+                    } catch (error) {
+                        console.error("Failed to fetch mock records", error)
+                        setRecordResults([])
+                    }
                 }
             })
             .finally(() => setLoadingRecords(false))

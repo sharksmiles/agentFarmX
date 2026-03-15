@@ -104,7 +104,7 @@ async function testDatabaseSchema() {
     ];
     
     for (const table of tables) {
-      const count = await table.model.count();
+      const count = await (table.model as any).count();
       console.log(`✅ ${table.name}: ${count} 条记录`);
     }
     

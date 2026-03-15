@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { useData } from "../context/dataContext"
 import { useEffect, useRef, useState } from "react"
 import { fetchDailyCheckIn, claimDailyReward } from "@/utils/api/tasks"
+import { fetchMockTasks } from "@/utils/api/mock"
 import { MOCK_DAILY_REWARD } from "@/utils/mock/mockData"
 import { useUser } from "../context/userContext"
 import dynamic from "next/dynamic"
@@ -124,9 +125,16 @@ const DailyTaskModal = () => {
                 setCheckInDays(data.total_days_checked_in)
                 setCanCheckIn(data.can_check_in_today)
             })
-            .catch(() => {
-                setCheckInDays(MOCK_DAILY_REWARD.total_days_checked_in)
-                setCanCheckIn(MOCK_DAILY_REWARD.can_check_in_today)
+            .catch(async () => {
+                try {
+                    const mockTasks = await fetchMockTasks()
+                    setCheckInDays(mockTasks.total_days_checked_in)
+                    setCanCheckIn(mockTasks.can_check_in_today)
+                } catch (error) {
+                    console.error("Failed to fetch mock daily reward", error)
+                    setCheckInDays(0)
+                    setCanCheckIn(false)
+                }
             })
     }, [])
 

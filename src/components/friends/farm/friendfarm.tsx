@@ -5,13 +5,13 @@ import FriendGameStats from "./friendgamestats"
 import FriendGamePad from "./friendgamepad"
 import { useData } from "@/components/context/dataContext"
 import { useRouter } from "next/navigation"
-import { MOCK_FRIENDS } from "@/utils/mock/mockData"
 import Loader from "@/components/loader/Loader"
 import { AnimatePresence } from "framer-motion"
 import { motion } from "framer-motion"
 import { FriendStats, StealConfirmationTypes } from "@/utils/types"
 import FriendStealConfirmation from "./friendstealconfirmation"
 import { FriendRadar } from "@/components/friends/farm/friendradar"
+import { fetchMockFriends } from "@/utils/api/mock"
 
 const FriendFarm = ({
     id,
@@ -28,13 +28,21 @@ const FriendFarm = ({
 
     useEffect(() => {
         setCurrentTab(null)
-        const mockFriend = MOCK_FRIENDS.find(f => f.id === id) ?? MOCK_FRIENDS[0]
-        setFriendStats({
-            id: mockFriend.id,
-            user_name: mockFriend.user_name,
-            if_friend_status: mockFriend.if_friend_status as any,
-            farm_stats: mockFriend.farm_stats,
-        } as any)
+        const loadFriend = async () => {
+            try {
+                const friends = await fetchMockFriends()
+                const mockFriend = friends.find((f: any) => f.id === id) ?? friends[0]
+                setFriendStats({
+                    id: mockFriend.id,
+                    user_name: mockFriend.user_name,
+                    if_friend_status: mockFriend.if_friend_status as any,
+                    farm_stats: mockFriend.farm_stats,
+                } as any)
+            } catch (error) {
+                console.error("Failed to fetch mock friend data:", error)
+            }
+        }
+        loadFriend()
     }, [id, setCurrentTab])
 
     return (

@@ -2,12 +2,10 @@ import apiClient from "./client"
 import { FarmStats, GameStats, User } from "../types"
 import { CropTypes, LandIdTypes } from "../types"
 
-import { getMockGameStats } from "./mock"
-
 // ── Config ────────────────────────────────────────────────────────────────────
 export const fetchGameStats = async (): Promise<GameStats> => {
-    // Return mock data for now - this can be replaced with real API later
-    return getMockGameStats()
+    const res = await apiClient.get<GameStats>('/api/config/game')
+    return res.data
 }
 
 // ── Plant ─────────────────────────────────────────────────────────────────────

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { mapUserToFrontend } from '@/utils/func/userMapper';
 
 const BOOST_MULTIPLIER = 2.0;
 const BOOST_DURATION = 30 * 60 * 1000; // 30 minutes
@@ -31,8 +32,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Handle 1-based vs 0-based index
+    const dbPlotIndex = plotIndex > 0 ? plotIndex - 1 : plotIndex;
+
     // Find the plot
-    const plot = farmState.landPlots.find((p) => p.plotIndex === plotIndex);
+    const plot = farmState.landPlots.find((p) => p.plotIndex === dbPlotIndex);
 
     if (!plot) {
       return NextResponse.json(
@@ -65,7 +69,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Apply boost
-    const [updatedPlot, updatedInventory] = await prisma.$transaction([
+    await prisma.$transaction([
       prisma.landPlot.update({
         where: { id: plot.id },
         data: {
@@ -81,10 +85,24 @@ export async function POST(request: NextRequest) {
       }),
     ]);
 
-    return NextResponse.json({
-      plot: updatedPlot,
-      inventory: updatedInventory,
+    // Fetch updated user with relations
+    const updatedUser = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        farmState: {
+          include: {
+            landPlots: true,
+          },
+        },
+        inventory: true,
+      },
     });
+
+    if (!updatedUser) {
+      throw new Error('User not found after update');
+    }
+
+    return NextResponse.json(mapUserToFrontend(updatedUser));
   } catch (error) {
     console.error('POST /api/farm/boost error:', error);
     return NextResponse.json(

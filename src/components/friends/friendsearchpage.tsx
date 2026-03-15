@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react"
 import { useLanguage } from "../context/languageContext"
 import Image from "next/image"
-import { MOCK_SEARCH_RESULTS } from "@/utils/mock/mockData"
 import { searchUsers, sendFriendRequest } from "@/utils/api/social"
+import { fetchMockSearchResults } from "@/utils/api/mock"
 import { useData } from "../context/dataContext"
 import { UserSearch, X } from "lucide-react"
 import { useRouter } from "next/navigation"
@@ -73,11 +73,17 @@ const FriendRequest = () => {
             }
             searchUsers(query)
                 .then((results) => setSearchResults(results.length > 0 ? (results as any) : null))
-                .catch(() => {
-                    const results = MOCK_SEARCH_RESULTS.filter((f) =>
-                        f.user_name.toLowerCase().includes(query.toLowerCase())
-                    )
-                    setSearchResults(results.length > 0 ? (results as any) : null)
+                .catch(async () => {
+                    try {
+                        const mockResults = await fetchMockSearchResults()
+                        const results = mockResults.filter((f: any) =>
+                            f.user_name.toLowerCase().includes(query.toLowerCase())
+                        )
+                        setSearchResults(results.length > 0 ? (results as any) : null)
+                    } catch (error) {
+                        console.error("Failed to load mock search results", error)
+                        setSearchResults(null)
+                    }
                 })
                 .finally(() => setSearching(false))
         }
