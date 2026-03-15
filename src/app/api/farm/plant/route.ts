@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
 
     // Plant the crop
     const now = new Date();
-    const harvestAt = new Date(now.getTime() + crop.growTime * 1000);
+    const harvestAt = new Date(now.getTime() + crop.growTime * 60 * 1000);
 
     await prisma.$transaction([
       prisma.landPlot.update({
@@ -114,14 +114,16 @@ export async function POST(request: NextRequest) {
           cropId,
           plantedAt: now,
           harvestAt,
+          lastWateredAt: now,
+          nextWateringDue: new Date(now.getTime() + 10 * 60 * 1000), // Default 10 minutes
           growthStage: 1,
-        },
+        } as any,
       }),
       prisma.farmState.update({
         where: { id: farmState.id },
         data: {
-          energy: farmState.energy - crop.energyCost,
-          totalPlants: farmState.totalPlants + 1,
+          energy: { decrement: crop.energyCost },
+          totalPlants: { increment: 1 },
         },
       }),
       // Reduce inventory if needed? Frontend checks inventory but backend doesn't seem to enforce it yet.

@@ -146,7 +146,7 @@ const PlantModal = () => {
             {selectedLandId && actionType === "plant" && (
                 <>
                     {planting && (
-                        <div className="fixed h-full w-full top-0 left-0 justify-center items-center z-50 bg-light-dark">
+                        <div className="fixed h-full w-full top-0 left-0 justify-center items-center z-[150] bg-light-dark">
                             <DotLottiePlayer
                                 src="/lottie/Animation - 1717572561108.lottie"
                                 autoplay
@@ -160,7 +160,7 @@ const PlantModal = () => {
                     )}
                     <motion.div
                         initial="hidden"
-                        animate="visible"
+                        animate={planting ? "hidden" : "visible"}
                         exit="hidden"
                         variants={{
                             hidden: { y: "100%" },

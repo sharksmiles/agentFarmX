@@ -33,6 +33,7 @@ export function mapUserToFrontend(user: UserWithRelations): FrontendUser {
       
       const cropDetails: GrowingCrop['crop_details'] = {};
       if (plot && plot.cropId) {
+        const plotAny = plot as any;
         cropDetails.crop_id = plot.cropId;
         cropDetails.crop_type = plot.cropId as any; // Cast from string to CropTypes
         cropDetails.planted_time = plot.plantedAt?.toISOString();
@@ -40,9 +41,8 @@ export function mapUserToFrontend(user: UserWithRelations): FrontendUser {
         cropDetails.status = plot.growthStage >= 4 ? 'mature' : 'growing';
         cropDetails.maturing_time = plot.harvestAt ? new Date(plot.harvestAt).getTime() : undefined;
         cropDetails.growth_time_hours = 2; // Hardcoded in login route
-        cropDetails.last_watered_time = plot.plantedAt?.toISOString();
-        // Mock next watering
-        cropDetails.next_watering_due = plot.plantedAt ? new Date(new Date(plot.plantedAt).getTime() + 30 * 60 * 1000).toISOString() : undefined;
+        cropDetails.last_watered_time = plotAny.lastWateredAt ? plotAny.lastWateredAt.toISOString() : plot.plantedAt?.toISOString();
+        cropDetails.next_watering_due = plotAny.nextWateringDue ? plotAny.nextWateringDue.toISOString() : (plot.plantedAt ? new Date(new Date(plot.plantedAt).getTime() + 10 * 60 * 1000).toISOString() : undefined);
       }
 
       growing_crops.push({
@@ -52,6 +52,7 @@ export function mapUserToFrontend(user: UserWithRelations): FrontendUser {
         land_can_buy: canBuy,
         is_planted: !!(plot && plot.cropId),
         crop_details: cropDetails,
+        boost_multiplier: plot?.boostMultiplier || 1.0,
       });
     }
   } else {

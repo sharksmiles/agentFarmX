@@ -66,12 +66,14 @@ export async function POST(request: NextRequest) {
         data: {
           boostMultiplier: plot.boostMultiplier * WATER_BOOST_MULTIPLIER,
           boostExpireAt: new Date(Date.now() + 60 * 60 * 1000), // 1 hour
-        },
+          lastWateredAt: new Date(),
+          nextWateringDue: new Date(Date.now() + 10 * 60 * 1000), // Next watering in 10 minutes
+        } as any,
       }),
       prisma.farmState.update({
         where: { id: farmState.id },
         data: {
-          energy: farmState.energy - WATER_ENERGY_COST,
+          energy: { decrement: WATER_ENERGY_COST },
         },
       }),
     ]);

@@ -83,6 +83,7 @@ export type GrowingCrop = {
         is_mature?: boolean
         status?: string
     }
+    boost_multiplier?: number
 }
 
 // Type to encapsulate the overall farm status, including both inventory and growing crops
@@ -152,6 +153,7 @@ export type GameStats = {
 
 export interface GasEstimate {
     totalCostInART: string
+    totalCostInOKB: number
     finalEstimatedGas: bigint
     gasPriceInWei: bigint
 }
