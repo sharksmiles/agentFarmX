@@ -30,15 +30,11 @@ export const loginWithSIWE = async (message: string, signature: string) => {
         sessionToken: string
     }>('/api/auth/login', { message, signature })
     
-    // Save session token
-    if (typeof window !== 'undefined') {
+    if (res.data.sessionToken && typeof window !== 'undefined') {
         localStorage.setItem('sessionToken', res.data.sessionToken)
     }
+    
     return res.data
-}
-
-export const siweLogout = async (): Promise<void> => {
-    await apiClient.post("/api/auth/logout")
 }
 
 // New API: Logout
@@ -63,14 +59,16 @@ export const fetchMe = async (): Promise<User> => {
     return res.data.user
 }
 
-export const updateLanguage = async (lang: string): Promise<void> => {
+export const updateLanguage = async (lang: string): Promise<User> => {
     await apiClient.post("/u/language", { lang })
+    // We need to refetch the user or update the state
+    return fetchMe()
 }
 
 // New API: Get session
 export const fetchSession = async () => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('sessionToken') : null
-    if (!token) throw new Error('No session token')
+    if (!token) return null;
     
     const res = await apiClient.get<{ user: User }>('/api/auth/session', {
         headers: { Authorization: `Bearer ${token}` }

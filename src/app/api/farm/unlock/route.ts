@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { mapUserToFrontend } from '@/utils/func/userMapper';
 
 const LAND_UNLOCK_COSTS = {
   6: 500,   // 7th plot
@@ -38,23 +39,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Handle 1-based vs 0-based index
+    const dbPlotIndex = plotIndex > 0 ? plotIndex - 1 : plotIndex;
+
     // Check if plot already exists
     const existingPlot = farmState.landPlots.find(
-      (p) => p.plotIndex === plotIndex
+      (p) => p.plotIndex === dbPlotIndex
     );
 
     if (existingPlot) {
-      return NextResponse.json(
-        { error: 'Plot already unlocked' },
-        { status: 400 }
-      );
+        if (existingPlot.isUnlocked) {
+            return NextResponse.json(
+                { error: 'Plot already unlocked' },
+                { status: 400 }
+            );
+        }
+        // If plot exists but locked, we can proceed to unlock it
+        // But usually plot existence means unlocked in the current model?
+        // Wait, landPlots table has `isUnlocked`.
+        // So existingPlot means it's in the DB.
+        // We should check isUnlocked.
     }
 
     // Get unlock cost
-    const cost = LAND_UNLOCK_COSTS[plotIndex as keyof typeof LAND_UNLOCK_COSTS];
+    // Use dbPlotIndex for cost lookup
+    const cost = LAND_UNLOCK_COSTS[dbPlotIndex as keyof typeof LAND_UNLOCK_COSTS];
     if (!cost) {
       return NextResponse.json(
-        { error: 'Invalid plot index' },
+        { error: 'Invalid plot index or not unlockable' },
         { status: 400 }
       );
     }
@@ -68,14 +80,24 @@ export async function POST(request: NextRequest) {
     }
 
     // Unlock plot
-    const [newPlot, updatedUser, updatedFarmState] = await prisma.$transaction([
-      prisma.landPlot.create({
-        data: {
+    await prisma.$transaction([
+      // Upsert plot just in case
+      prisma.landPlot.upsert({
+        where: {
+            farmStateId_plotIndex: {
+                farmStateId: farmState.id,
+                plotIndex: dbPlotIndex
+            }
+        },
+        create: {
           farmStateId: farmState.id,
-          plotIndex,
+          plotIndex: dbPlotIndex,
           isUnlocked: true,
           growthStage: 0,
         },
+        update: {
+            isUnlocked: true
+        }
       }),
       prisma.user.update({
         where: { id: userId },
@@ -91,13 +113,28 @@ export async function POST(request: NextRequest) {
       }),
     ]);
 
-    return NextResponse.json({
-      plot: newPlot,
-      user: updatedUser,
-      farmState: updatedFarmState,
+    // Fetch updated user with relations
+    const updatedUser = await prisma.user.findUnique({
+        where: { id: userId },
+        include: {
+            farmState: {
+                include: {
+                    landPlots: true
+                }
+            },
+            inventory: true
+        }
     });
+
+    if (!updatedUser) {
+        throw new Error('User not found after update');
+    }
+
+    return NextResponse.json(mapUserToFrontend(updatedUser));
+
   } catch (error) {
     console.error('POST /api/farm/unlock error:', error);
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

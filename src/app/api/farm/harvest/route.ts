@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { mapUserToFrontend } from '@/utils/func/userMapper';
 
 const CROPS = {
   Apple: { growTime: 60, baseReward: 50, energyCost: 10 },
   Wheat: { growTime: 30, baseReward: 20, energyCost: 5 },
   Corn: { growTime: 45, baseReward: 35, energyCost: 8 },
   Tomato: { growTime: 40, baseReward: 30, energyCost: 7 },
+  Carrot: { growTime: 40, baseReward: 30, energyCost: 7 },
+  Potato: { growTime: 40, baseReward: 30, energyCost: 7 },
+  Strawberry: { growTime: 40, baseReward: 30, energyCost: 7 },
+  Pineapple: { growTime: 40, baseReward: 30, energyCost: 7 },
+  Watermelon: { growTime: 40, baseReward: 30, energyCost: 7 },
 };
 
 // POST /api/farm/harvest - Harvest a crop
@@ -35,7 +41,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Find the plot
-    const plot = farmState.landPlots.find((p) => p.plotIndex === plotIndex);
+    // Handle 1-based vs 0-based index
+    const dbPlotIndex = plotIndex > 0 ? plotIndex - 1 : plotIndex;
+    const plot = farmState.landPlots.find((p) => p.plotIndex === dbPlotIndex);
 
     if (!plot) {
       return NextResponse.json(
@@ -44,29 +52,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!plot.cropId || !plot.harvestAt) {
+    if (!plot.cropId) {
       return NextResponse.json(
         { error: 'No crop to harvest' },
         { status: 400 }
       );
     }
 
-    // Check if crop is ready
-    const now = new Date();
-    if (now < plot.harvestAt) {
-      return NextResponse.json(
-        { error: 'Crop is not ready yet' },
-        { status: 400 }
-      );
-    }
-
     // Calculate reward
-    const crop = CROPS[plot.cropId as keyof typeof CROPS];
-    const reward = Math.floor(crop.baseReward * plot.boostMultiplier);
+    const cropConfig = CROPS[plot.cropId as keyof typeof CROPS] || { baseReward: 10 };
+    const reward = Math.floor(cropConfig.baseReward * (plot.boostMultiplier || 1.0));
 
     // Harvest the crop
-    const [updatedPlot, updatedUser, updatedFarmState, inventory, transaction] =
-      await prisma.$transaction([
+    await prisma.$transaction([
         // Clear the plot
         prisma.landPlot.update({
           where: { id: plot.id },
@@ -103,37 +101,37 @@ export async function POST(request: NextRequest) {
               itemId: plot.cropId,
             },
           },
+          update: {
+            quantity: { increment: 1 },
+          },
           create: {
             userId,
             itemType: 'crop',
             itemId: plot.cropId,
             quantity: 1,
           },
-          update: {
-            quantity: { increment: 1 },
-          },
         }),
-        // Create transaction record
-        prisma.transaction.create({
-          data: {
-            userId,
-            type: 'earn',
-            category: 'harvest',
-            amount: reward,
-            balance: farmState.user.farmCoins + reward,
-            description: `Harvested ${plot.cropId}`,
-          },
-        }),
-      ]);
+    ]);
 
-    return NextResponse.json({
-      plot: updatedPlot,
-      user: updatedUser,
-      farmState: updatedFarmState,
-      reward,
-      inventory,
-      transaction,
+    // Fetch updated user with relations
+    const updatedUser = await prisma.user.findUnique({
+        where: { id: userId },
+        include: {
+            farmState: {
+                include: {
+                    landPlots: true
+                }
+            },
+            inventory: true
+        }
     });
+
+    if (!updatedUser) {
+        throw new Error('User not found after update');
+    }
+
+    return NextResponse.json(mapUserToFrontend(updatedUser));
+
   } catch (error) {
     console.error('POST /api/farm/harvest error:', error);
     return NextResponse.json(

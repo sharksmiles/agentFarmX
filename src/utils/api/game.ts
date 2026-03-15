@@ -12,8 +12,17 @@ export const fetchGameStats = async (): Promise<GameStats> => {
 
 // ── Plant ─────────────────────────────────────────────────────────────────────
 export const plantCrop = async (land_id: LandIdTypes, crop_name: CropTypes): Promise<User> => {
-    // TODO: Update to use new API when userId is available
-    const res = await apiClient.post<User>("/g/c/", { land_id, crop_name })
+    const user = await import("./auth").then(m => m.fetchMe()); // Get current user ID
+    if (!user) throw new Error("User not found");
+    
+    // Call new API
+    // land_id is 1-based, backend expects 0-based or handles it.
+    // I updated backend to handle 1-based by subtracting 1 if > 0.
+    const res = await apiClient.post<User>('/api/farm/plant', { 
+        userId: user.id, 
+        plotIndex: land_id, 
+        cropId: crop_name 
+    })
     return res.data
 }
 
@@ -23,15 +32,15 @@ export const fetchFarmState = async (userId: string) => {
     return res.data.farmState
 }
 
-// New API: Plant crop
+// New API: Plant crop (Duplicate of above but explicit signature)
 export const plantCropNew = async (userId: string, plotIndex: number, cropId: string) => {
-    const res = await apiClient.post('/api/farm/plant', { userId, plotIndex, cropId })
+    const res = await apiClient.post<User>('/api/farm/plant', { userId, plotIndex, cropId })
     return res.data
 }
 
 // New API: Harvest crop
 export const harvestCropNew = async (userId: string, plotIndex: number) => {
-    const res = await apiClient.post('/api/farm/harvest', { userId, plotIndex })
+    const res = await apiClient.post<User>('/api/farm/harvest', { userId, plotIndex })
     return res.data
 }
 
@@ -55,6 +64,48 @@ export type FarmActionPayload =
     | ShopPayload
 
 export const farmAction = async (payload: FarmActionPayload): Promise<User> => {
+    // Dispatch to new APIs based on payload
+    const user = await import("./auth").then(m => m.fetchMe());
+    if (!user) throw new Error("User not found");
+
+    if (payload.action === 'harvest') {
+        const res = await apiClient.post<User>('/api/farm/harvest', { 
+            userId: user.id, 
+            plotIndex: payload.land_id 
+        });
+        return res.data;
+    }
+    
+    if (payload.action === 'water') {
+        // Assume water API exists or create it
+        const res = await apiClient.post<User>('/api/farm/water', { 
+            userId: user.id, 
+            plotIndex: payload.land_id 
+        });
+        return res.data;
+    }
+
+    if (payload.action === 'buyland') {
+        const res = await apiClient.post<User>('/api/farm/unlock', { 
+            userId: user.id, 
+            plotIndex: payload.land_id 
+        });
+        return res.data;
+    }
+    
+    if (payload.action === 'boost') {
+        const res = await apiClient.post<User>('/api/farm/boost', { 
+            userId: user.id, 
+            plotIndex: payload.land_id 
+        });
+        return res.data;
+    }
+
+    // Fallback for other actions not yet implemented in new API
+    // or keep using old endpoint if they are different services
+    // For now, let's assume everything should move to /api/farm/*
+    
+    console.warn(`Action ${payload.action} not fully migrated to new API`);
     const res = await apiClient.post<User>("/g/a/", payload)
     return res.data
 }

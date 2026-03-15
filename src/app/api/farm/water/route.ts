@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { mapUserToFrontend } from '@/utils/func/userMapper';
 
 const WATER_ENERGY_COST = 5;
 const WATER_BOOST_MULTIPLIER = 1.1;
@@ -40,7 +41,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Find the plot
-    const plot = farmState.landPlots.find((p) => p.plotIndex === plotIndex);
+    // Handle 1-based vs 0-based index
+    const dbPlotIndex = plotIndex > 0 ? plotIndex - 1 : plotIndex;
+    const plot = farmState.landPlots.find((p) => p.plotIndex === dbPlotIndex);
 
     if (!plot) {
       return NextResponse.json(
@@ -57,7 +60,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Water the crop
-    const [updatedPlot, updatedFarmState] = await prisma.$transaction([
+    await prisma.$transaction([
       prisma.landPlot.update({
         where: { id: plot.id },
         data: {
@@ -73,12 +76,28 @@ export async function POST(request: NextRequest) {
       }),
     ]);
 
-    return NextResponse.json({
-      plot: updatedPlot,
-      farmState: updatedFarmState,
+    // Fetch updated user with relations
+    const updatedUser = await prisma.user.findUnique({
+        where: { id: userId },
+        include: {
+            farmState: {
+                include: {
+                    landPlots: true
+                }
+            },
+            inventory: true
+        }
     });
+
+    if (!updatedUser) {
+        throw new Error('User not found after update');
+    }
+
+    return NextResponse.json(mapUserToFrontend(updatedUser));
+
   } catch (error) {
     console.error('POST /api/farm/water error:', error);
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
