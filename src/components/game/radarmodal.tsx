@@ -3,7 +3,6 @@
 import { useLanguage } from "../context/languageContext"
 import { useData } from "../context/dataContext"
 import { fetchFriends } from "@/utils/api/social"
-import { fetchMockFriends } from "@/utils/api/mock"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { FriendsData } from "../friends/friendsearchpage"
@@ -18,41 +17,38 @@ const RadarModal = () => {
         setRadaring,
         OpenAgentFarmAlert,
     } = useData()
-    const [mockFriends, setMockFriends] = useState<any[]>([])
-
-    useEffect(() => {
-        if (openRadarModal) {
-            const loadFriends = async () => {
-                try {
-                    const friends = await fetchMockFriends()
-                    setMockFriends(friends)
-                } catch (error) {
-                    console.error("Failed to load mock friends", error)
-                }
-            }
-            loadFriends()
-        }
-    }, [openRadarModal])
-
     const handleRadar = () => {
         setRadaring(true)
-        setTimeout(() => {
-            const randomFriend = mockFriends[Math.floor(Math.random() * mockFriends.length)]
-            if (randomFriend) {
+        fetchFriends("all")
+            .then((res) => {
+                if (res.friends && res.friends.length > 0) {
+                    const randomFriend = res.friends[Math.floor(Math.random() * res.friends.length)]
+                    OpenAgentFarmAlert({
+                        notificationTitle: "Radar Found!",
+                        notificationMessage: `Found ${randomFriend.user_name}'s farm!`,
+                        progressBars: 100,
+                        progressTimeLeft: 0,
+                        leftHours: 0,
+                        leftMinutes: 0,
+                        needCopy: false,
+                    })
+                    router.push(`/friends/farm/ra/${randomFriend.id}`)
+                    setOpenRadarModal(false)
+                } else {
+                    OpenAgentFarmAlert({
+                        notificationTitle: "Error",
+                        notificationMessage: "No friends found"
+                    })
+                }
+                setRadaring(false)
+            })
+            .catch(() => {
                 OpenAgentFarmAlert({
-                    notificationTitle: "Radar Found!",
-                    notificationMessage: `Found ${randomFriend.user_name}'s farm!`,
-                    progressBars: 100,
-                    progressTimeLeft: 0,
-                    leftHours: 0,
-                    leftMinutes: 0,
-                    needCopy: false,
+                    notificationTitle: "Error",
+                    notificationMessage: "Radar feature unavailable"
                 })
-                router.push(`/friends/farm/ra/${randomFriend.id}`)
-                setOpenRadarModal(false)
-            }
-            setRadaring(false)
-        }, 2000)
+                setRadaring(false)
+            })
     }
 
     useEffect(() => {

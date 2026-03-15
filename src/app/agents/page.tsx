@@ -1,6 +1,5 @@
 "use client"
 import { useEffect, useState } from "react"
-import { MOCK_AGENTS } from "../../utils/mock/mockData"
 import { fetchAgents, Agent } from "../../utils/api/agents"
 import Link from "next/link"
 import { useData } from "../../components/context/dataContext"
@@ -29,7 +28,7 @@ export default function AgentsPage() {
         setCurrentTab("Agents")
         fetchAgents()
             .then(setAgents)
-            .catch(() => setAgents(MOCK_AGENTS as any))
+            .catch(() => setAgents([]))
     }, [setCurrentTab])
 
     const totalEarned  = agents.reduce((s, a) => s + ((a as any).totalProfit || (a as any).stats?.total_earned_coin || 0), 0)

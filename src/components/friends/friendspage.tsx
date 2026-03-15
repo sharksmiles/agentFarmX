@@ -4,7 +4,6 @@ import Image from "next/image"
 import { useLanguage } from "../context/languageContext"
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { fetchMockFriends, fetchMockData, fetchMockFriendInfo } from "@/utils/api/mock"
 import { fetchFriends, fetchFriendInfo } from "@/utils/api/social"
 import { FriendsData } from "./friendsearchpage"
 import { useData } from "../context/dataContext"
@@ -55,14 +54,8 @@ const FriendsPage = () => {
     useEffect(() => {
         fetchFriendInfo()
             .then((info) => setFriendInfo({ pendingRequest: info.new_friend_requests_count, friendsTotal: info.friend_total }))
-            .catch(async () => {
-                try {
-                    const mockInfo = await fetchMockFriendInfo()
-                    setFriendInfo({ pendingRequest: mockInfo.new_friend_requests_count, friendsTotal: mockInfo.friend_total })
-                } catch (error) {
-                    console.error("Failed to fetch mock friend info", error)
-                    setFriendInfo({ pendingRequest: 0, friendsTotal: 0 })
-                }
+            .catch(() => {
+                setFriendInfo({ pendingRequest: 0, friendsTotal: 0 })
             })
     }, [setFriendInfo])
 
@@ -74,17 +67,9 @@ const FriendsPage = () => {
                 setFriendList(res.friends)
                 setCursor(res.next_cursor)
             })
-            .catch(async () => {
-                try {
-                    const mockFriends = await fetchMockFriends()
-                    let filtered = mockFriends as FriendsData[]
-                    if (friendsFilter === "need_water") filtered = mockFriends.filter((f: any) => f.need_water > 0) as FriendsData[]
-                    setFriendList(filtered)
-                    setCursor(null)
-                } catch (error) {
-                    console.error("Failed to load mock friends", error)
-                    setFriendList([])
-                }
+            .catch(() => {
+                setFriendList([])
+                setCursor(null)
             })
             .finally(() => setLoadingFriends(false))
     }, [friendsFilter, setFriendList])

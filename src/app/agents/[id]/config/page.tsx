@@ -2,7 +2,6 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
-import { MOCK_AGENTS } from "../../../../utils/mock/mockData"
 import { fetchAgentDetail, updateAgentConfig, Agent } from "../../../../utils/api/agents"
 
 const CROP_OPTIONS = ["Wheat", "Corn", "Carrot", "Potato", "Tomato", "Strawberry", "Pineapple", "Watermelon"]
@@ -14,9 +13,8 @@ const AGENT_TYPE_ICONS: Record<string, string> = {
 export default function AgentConfigPage() {
     const params = useParams()
     const id     = params.id as string
-    const mockFallback = MOCK_AGENTS.find(a => a.id === id) ?? MOCK_AGENTS[0]
-    const [agent, setAgent] = useState<Agent>(mockFallback as any)
-    const cfg    = (agent as any).strategyConfig || (agent as any).config || {}
+    const [agent, setAgent] = useState<Agent | null>(null)
+    const cfg    = agent ? ((agent as any).strategyConfig || (agent as any).config || {}) : {}
 
     useEffect(() => {
         fetchAgentDetail(id)
@@ -55,6 +53,7 @@ export default function AgentConfigPage() {
     }
 
     const handleSave = () => {
+        if (!agent) return
         setSaving(true)
         const type = (agent.strategyType || (agent as any).type) as string
         const config = type === "farming" || type === "farmer"
@@ -72,6 +71,14 @@ export default function AgentConfigPage() {
                 setSaved(true)
                 setTimeout(() => setSaved(false), 2000)
             })
+    }
+
+    if (!agent) {
+        return (
+            <div className="w-full min-h-screen bg-[#1A1F25] text-white flex items-center justify-center">
+                <p className="text-gray-400">Loading agent configuration...</p>
+            </div>
+        )
     }
 
     return (

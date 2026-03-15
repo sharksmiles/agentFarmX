@@ -11,7 +11,6 @@ import { motion } from "framer-motion"
 import { FriendStats, StealConfirmationTypes } from "@/utils/types"
 import FriendStealConfirmation from "./friendstealconfirmation"
 import { FriendRadar } from "@/components/friends/farm/friendradar"
-import { fetchMockFriends } from "@/utils/api/mock"
 
 const FriendFarm = ({
     id,
@@ -28,21 +27,7 @@ const FriendFarm = ({
 
     useEffect(() => {
         setCurrentTab(null)
-        const loadFriend = async () => {
-            try {
-                const friends = await fetchMockFriends()
-                const mockFriend = friends.find((f: any) => f.id === id) ?? friends[0]
-                setFriendStats({
-                    id: mockFriend.id,
-                    user_name: mockFriend.user_name,
-                    if_friend_status: mockFriend.if_friend_status as any,
-                    farm_stats: mockFriend.farm_stats,
-                } as any)
-            } catch (error) {
-                console.error("Failed to fetch mock friend data:", error)
-            }
-        }
-        loadFriend()
+        setFriendStats(null)
     }, [id, setCurrentTab])
 
     return (

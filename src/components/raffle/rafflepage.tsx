@@ -1,6 +1,5 @@
 "use client"
 
-import { fetchMockRaffles } from "@/utils/api/mock"
 import { fetchRaffleList } from "@/utils/api/raffle"
 import { useEffect, useRef, useState, useCallback } from "react"
 import Countdown from "./countdown"
@@ -27,15 +26,8 @@ const RafflePage = ({}) => {
                 if (list.filter((r) => !r.ended).length === 0) setSelectedButton("ended")
                 setRaffleList(list)
             })
-            .catch(async () => {
-                try {
-                    const list = await fetchMockRaffles()
-                    if (list.filter((raffle: Raffle) => !raffle.ended).length === 0) setSelectedButton("ended")
-                    setRaffleList(list)
-                } catch (error) {
-                    console.error("Failed to fetch mock raffles", error)
-                    setRaffleList([])
-                }
+            .catch(() => {
+                setRaffleList([])
             })
             .finally(() => setRaffleListLoading(false))
     }, [setRaffleList, setRaffleListLoading])

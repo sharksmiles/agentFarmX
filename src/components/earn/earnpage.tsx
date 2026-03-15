@@ -3,7 +3,6 @@ import { useUser } from "../context/userContext"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { fetchTasks, claimGameReward } from "@/utils/api/tasks"
-import { fetchMockTasks } from "@/utils/api/mock"
 import { useData } from "../context/dataContext"
 import { ArrowUpFromDot } from "lucide-react"
 import { useLanguage } from "../context/languageContext"
@@ -52,16 +51,11 @@ const EarnPage = () => {
                     setRenaissanceTask(data.renaissance_tasks)
                 }
             })
-            .catch(async () => {
-                try {
-                    const mockData = await fetchMockTasks()
-                    setInGameTask(mockData.game_tasks)
-                    setDailyRewardList(mockData.daily_reward)
-                    setGameReward(mockData.game_reward)
-                    setCompleted(mockData.completed)
-                } catch (error) {
-                    console.error("Failed to fetch mock tasks", error)
-                }
+            .catch(() => {
+                setInGameTask([])
+                setDailyRewardList([])
+                setGameReward(0)
+                setCompleted(0)
             })
     }, [setCompleted, setDailyRewardList, setGameReward, setInGameTask, setRenaissanceTask])
 

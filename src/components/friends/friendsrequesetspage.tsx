@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react"
 import { useLanguage } from "../context/languageContext"
 import { FriendsData } from "./friendsearchpage"
-import { fetchMockFriendRequests } from "@/utils/api/mock"
 import { fetchFriendRequests, respondFriendRequest } from "@/utils/api/social"
 import Image from "next/image"
 import { useData } from "../context/dataContext"
@@ -22,14 +21,8 @@ const FriendsRequestsPage = () => {
         setLoadingFriend(true)
         fetchFriendRequests()
             .then((reqs) => setRequestResults(reqs as any))
-            .catch(async () => {
-                try {
-                    const mockRequests = await fetchMockFriendRequests()
-                    setRequestResults(mockRequests as any)
-                } catch (error) {
-                    console.error("Failed to load mock friend requests", error)
-                    setRequestResults([])
-                }
+            .catch(() => {
+                setRequestResults([])
             })
             .finally(() => setLoadingFriend(false))
     }

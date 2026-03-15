@@ -2,7 +2,6 @@
 import Image from "next/image"
 import { useUser } from "../context/userContext"
 import { fetchInviteStats, InviteFriend } from "@/utils/api/invite"
-import { fetchMockInvites } from "@/utils/api/mock"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useData } from "../context/dataContext"
 import { ArrowUpFromDot } from "lucide-react"
@@ -69,17 +68,10 @@ const InvitesPage = () => {
                 setTotalFriends(data.total_invites)
                 setPage(data.next_cursor ?? null)
             })
-            .catch(async () => {
+            .catch(() => {
                 if (page === "1") {
-                    try {
-                        const mockInvites = await fetchMockInvites()
-                        setTotalFriendsData(mockInvites as any)
-                        setTotalFriends(mockInvites.length)
-                    } catch (error) {
-                        console.error("Failed to fetch mock invites", error)
-                        setTotalFriendsData([])
-                        setTotalFriends(0)
-                    }
+                    setTotalFriendsData([])
+                    setTotalFriends(0)
                 }
                 setPage(null)
             })

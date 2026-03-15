@@ -8,7 +8,6 @@ import { useEffect, useState, useCallback } from "react"
 import CountUp from "react-countup"
 import { useRouter } from "next/navigation"
 import { useLanguage } from "../context/languageContext"
-import { fetchMockData } from "@/utils/api/mock"
 
 const GameStats = ({}) => {
     const { user, setUser } = useUser()
@@ -73,17 +72,10 @@ const GameStats = ({}) => {
     }, [currentEnergy, user?.farm_stats?.max_energy, setUser])
 
     useEffect(() => {
-        // We already have gameStats in context which should be populated by API/Mock
-        // But if we need to set local state from context or fetch again
         if (gameStats) {
             setGameStats(gameStats)
-        } else {
-            // Fallback fetch if context is empty for some reason
-            fetchMockData().then(data => {
-                 setGameStats(data.gameStats)
-            }).catch(console.error)
         }
-    }, [gameStats])
+    }, [gameStats, setGameStats])
 
     useEffect(() => {
         if (user?.farm_stats?.next_restore_time) {
