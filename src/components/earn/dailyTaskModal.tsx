@@ -221,7 +221,7 @@ const DailyTaskModal = () => {
                                 visible: { y: 0 },
                             }}
                             transition={{ duration: 0.3 }}
-                            className="fixed w-full bottom-0 bg-[#1A1F25] h-auto p-[16px] z-20 rounded-t-[32px] border-t-4 border-[#FBB602] max-h-[95%] overflow-y-auto"
+                            className="fixed w-full bottom-0 bg-[#1A1F25] h-auto p-[16px] z-[100] rounded-t-[32px] border-t-4 border-[#FBB602] max-h-[95%] overflow-y-auto"
                         >
                             {/* close button */}
                             <button

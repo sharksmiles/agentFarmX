@@ -45,7 +45,7 @@ const TransactionPage: FC<{ action: ActionTypes; id: string }> = ({ action, id: 
     const getBurnCoinGas = () => {
         setFetchingGas(true)
         setTimeout(() => {
-            setGasEstimate({ gasPriceInWei: BigInt(1000000000), totalCostInART: 0.0001 } as any)
+            setGasEstimate({ gasPriceInWei: BigInt(1000000000), totalCostInOKB: 0.0001 } as any)
             setFetchingGas(false)
         }, 400)
     }
@@ -53,7 +53,7 @@ const TransactionPage: FC<{ action: ActionTypes; id: string }> = ({ action, id: 
     const getMinCoinGas = () => {
         setFetchingGas(true)
         setTimeout(() => {
-            setGasEstimate({ gasPriceInWei: BigInt(1000000000), totalCostInART: 0.0001 } as any)
+            setGasEstimate({ gasPriceInWei: BigInt(1000000000), totalCostInOKB: 0.0001 } as any)
             setFetchingGas(false)
         }, 400)
     }
@@ -178,7 +178,7 @@ const TransactionPage: FC<{ action: ActionTypes; id: string }> = ({ action, id: 
                                     <div className="flex justify-center items-center gap-1 text-white">
                                         <p className="text-[12px]">
                                             {gasEstimate
-                                                ? `${gasEstimate?.totalCostInART.toString()} ART`
+                                                ? `${(gasEstimate as any)?.totalCostInOKB.toString()} OKB`
                                                 : `failed gas estimation`}
                                         </p>
                                     </div>
@@ -192,7 +192,7 @@ const TransactionPage: FC<{ action: ActionTypes; id: string }> = ({ action, id: 
                                     <div className="flex justify-center items-center gap-1 text-white">
                                         <p className="text-[12px]">
                                             {gasEstimate
-                                                ? `${gasEstimate?.totalCostInART.toString()} ART`
+                                                ? `${gasEstimate?.totalCostInOKB.toString()} OKB`
                                                 : `failed gas estimation`}
                                         </p>
                                     </div>
@@ -247,7 +247,7 @@ const TransactionPage: FC<{ action: ActionTypes; id: string }> = ({ action, id: 
                             <div className="h-auto w-full flex justify-between py-[16px] text-[16px] px-[8px]">
                                 <div className="flex gap-2">
                                     <p className="font-semibold">
-                                        {Number(artBalance).toFixed(8)} $ART
+                                        {Number(artBalance).toFixed(8)} OKB
                                     </p>{" "}
                                     <p className="">available</p>
                                 </div>

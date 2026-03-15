@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import Image from "next/image"
 import { motion, AnimatePresence } from "framer-motion"
@@ -26,7 +26,7 @@ const ArtelaTaskModal = () => {
                             visible: { y: 0 },
                         }}
                         transition={{ duration: 0.3 }}
-                        className="fixed w-full bottom-0 bg-[#1A1F25] h-auto p-4 z-20 rounded-t-[32px] border-t-4 border-[#FBB602] max-h-[80%]"
+                        className="fixed w-full bottom-0 bg-[#1A1F25] h-auto p-4 z-[100] rounded-t-[32px] border-t-4 border-[#FBB602] max-h-[80%]"
                     >
                         {/* close button */}
                         <button

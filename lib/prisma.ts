@@ -5,11 +5,15 @@ const globalForPrisma = globalThis as unknown as {
 }
 
 const createPrismaClient = () => {
+  const dbUrl = process.env.POSTGRES_PRISMA_URL || '';
+  const separator = dbUrl.includes('?') ? '&' : '?';
+  const urlWithPool = dbUrl + separator + 'connection_limit=5&pool_timeout=20';
+
   const client = new PrismaClient({
     log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
     datasources: {
       db: {
-        url: process.env.POSTGRES_PRISMA_URL + '&connection_limit=5&pool_timeout=20',
+        url: urlWithPool,
       },
     },
   })

@@ -92,14 +92,13 @@ model Inventory {
 }
 
 model Agent {
-  id           String            @id @default(cuid())
-  userId       String
-  scaAddress   String            @unique @db.VarChar(42)
-  nftTokenId   String?           @db.VarChar(78)
-  name         String            @db.VarChar(100)
+  id             String            @id @default(cuid())
+  userId         String
+  scaAddress     String            @unique @db.VarChar(42)
+  nftTokenId     String?           @db.VarChar(78)
+  name           String            @db.VarChar(100)
   personality    String            @db.VarChar(50)
   strategyType   String            @db.VarChar(50)
-  strategyConfig Json?
   aiModel        String            @default("gpt-3.5-turbo") @db.VarChar(50)
   customPrompt   String?
   temperature    Float             @default(0.7)
@@ -108,16 +107,17 @@ model Agent {
   totalProfit    Int               @default(0)
   totalTasks     Int               @default(0)
   successRate    Float             @default(0.0)
-  balanceUsdc    Float             @default(0.0)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  lastActiveAt   DateTime?
   balanceOkb     Float             @default(0.0)
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
-  lastActiveAt DateTime?
-  decisions    AgentDecision[]
-  logs         AgentLog[]
-  skillUsages  AgentSkillUsage[]
-  tasks        AgentTask[]
-  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balanceUsdc    Float             @default(0.0)
+  strategyConfig Json?
+  decisions      AgentDecision[]
+  logs           AgentLog[]
+  skillUsages    AgentSkillUsage[]
+  tasks          AgentTask[]
+  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([scaAddress])

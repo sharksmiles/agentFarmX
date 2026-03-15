@@ -12,7 +12,7 @@ const EnergyModal = () => {
     return (
         <>
             {openEnergyModal && (
-                <div className="fixed w-full h-full bg-[rgba(0,0,0,0.65)] z-[2000] flex justify-center items-center px-5">
+                <div className="fixed w-full h-full bg-[rgba(0,0,0,0.65)] z-[100] flex justify-center items-center px-5">
                     <div className="w-full h-auto bg-gradient-to-b from-[#E0E6F7] to-white rounded-[20px] flex flex-col pt-7 pb-4 px-4 gap-2">
                         <div className="w-full h-auto flex justify-center items-center pb-2">
                             <h1

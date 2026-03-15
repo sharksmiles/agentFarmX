@@ -158,7 +158,7 @@ const ShopModal = () => {
                             visible: { y: 0 },
                         }}
                         transition={{ duration: 0.3 }}
-                        className="fixed w-full bottom-0 bg-[#1A1F25] h-auto z-[60] rounded-t-[32px] border-t-4 border-[#FBB602] max-h-[90%] pb-32"
+                        className="fixed w-full bottom-0 bg-[#1A1F25] h-auto z-[100] rounded-t-[32px] border-t-4 border-[#FBB602] max-h-[90%] pb-32"
                     >
                         {/* close button */}
                         <button

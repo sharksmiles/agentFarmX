@@ -111,7 +111,7 @@ export default function WalletInfoTopBar({
                             <p className="text-white text-[28px] h-[36px]">
                                 {Number(artBalance) * 304.2} USD
                             </p>
-                            <p className="text-white text-[12px]">{artBalance} ART</p>
+                            <p className="text-white text-[12px]">{artBalance} OKB</p>
                         </div>
                     )} */}
             </div>

@@ -119,7 +119,7 @@ const FriendStealConfirmation = ({
             )}
             {stealConfirmation && (
                 <div
-                    className="fixed top-0 w-full h-full px-5 flex flex-col items-center justify-center z-[20] bg-[rgba(26,31,37,0.7)]"
+                    className="fixed top-0 w-full h-full px-5 flex flex-col items-center justify-center z-[100] bg-[rgba(26,31,37,0.7)]"
                     onClick={(e) => {
                         e.stopPropagation()
                         onClose()

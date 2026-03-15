@@ -52,7 +52,7 @@ export default function WalletInfo() {
                                     quality={100}
                                 />
                             </div>
-                            <div className="text-[#373583] font-medium">{artBalance} ART</div>
+                            <div className="text-[#373583] font-medium">{artBalance} OKB</div>
                         </div>
                         <span className="w-full bg-[#E4E3FF] h-[2px] flex" />
                         <div className="px-[32px] py-[24px] h-auto w-full flex justify-start items-center gap-[16px]">
@@ -128,7 +128,7 @@ export default function WalletInfo() {
                                 />
                             </div>
                             <div>
-                                <p className="text-[#373583] font-medium">Artela {t("Network")}</p>
+                                <p className="text-[#373583] font-medium">X Layer {t("Network")}</p>
                             </div>
                         </div>
                         <div className="pl-[32px] pt-[28px] pb-[12px]">
