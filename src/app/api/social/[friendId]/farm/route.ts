@@ -18,6 +18,7 @@ export async function GET(
             username: true,
             avatar: true,
             level: true,
+            farmCoins: true,
           },
         },
       },

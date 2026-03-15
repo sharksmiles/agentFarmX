@@ -12,6 +12,8 @@ import { FriendStats, StealConfirmationTypes } from "@/utils/types"
 import FriendStealConfirmation from "./friendstealconfirmation"
 import { FriendRadar } from "@/components/friends/farm/friendradar"
 
+import { fetchFriendFarm } from "@/utils/api/social"
+
 const FriendFarm = ({
     id,
     action,
@@ -28,6 +30,18 @@ const FriendFarm = ({
     useEffect(() => {
         setCurrentTab(null)
         setFriendStats(null)
+
+        if (id) {
+            fetchFriendFarm(id)
+                .then((stats) => {
+                    setFriendStats(stats)
+                })
+                .catch((err) => {
+                    console.error("Failed to fetch friend farm:", err)
+                    // Optionally redirect back if not found
+                    // router.push("/friends")
+                })
+        }
     }, [id, setCurrentTab])
 
     return (

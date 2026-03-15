@@ -112,7 +112,7 @@ const FriendItem: FC<{
                                     {t("Water")}
                                 </div>
                             )}
-                            {friend.need_harvest > 4 && (
+                            {friend.need_harvest > 0 && (
                                 <div className="rounded-[5px] w-[41px] flex justify-center items-center border-2 border-[#33C14A] text-[8px] h-[19px]">
                                     {t("Harvest")}
                                 </div>

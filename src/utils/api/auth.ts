@@ -89,7 +89,10 @@ export const fetchMe = async (): Promise<User> => {
 }
 
 export const updateLanguage = async (lang: string): Promise<User> => {
-    await apiClient.post("/u/language", { lang })
+    const user = await fetchMe();
+    if (!user) throw new Error("User not found");
+    
+    await apiClient.patch(`/api/users/${user.id}`, { lang })
     // We need to refetch the user or update the state
     return fetchMe()
 }

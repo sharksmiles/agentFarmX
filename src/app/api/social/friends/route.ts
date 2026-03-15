@@ -31,6 +31,17 @@ export async function GET(request: NextRequest) {
             username: true,
             avatar: true,
             level: true,
+            farmCoins: true,
+            farmState: {
+              include: {
+                landPlots: {
+                  where: {
+                    isUnlocked: true,
+                    cropId: { not: null },
+                  },
+                },
+              },
+            },
           },
         },
         toUser: {
@@ -40,26 +51,75 @@ export async function GET(request: NextRequest) {
             username: true,
             avatar: true,
             level: true,
+            farmCoins: true,
+            farmState: {
+              include: {
+                landPlots: {
+                  where: {
+                    isUnlocked: true,
+                    cropId: { not: null },
+                  },
+                },
+              },
+            },
           },
         },
       },
     });
 
-    // Extract unique friends
+    // Extract unique friends and calculate status
+    const now = new Date();
     const friendsSet = new Set<string>();
     const friendsMap = new Map();
 
     friendActions.forEach((action) => {
       const friendId = action.fromUserId === userId ? action.toUserId : action.fromUserId;
-      const friend = action.fromUserId === userId ? action.toUser : action.fromUser;
+      const friendData = action.fromUserId === userId ? action.toUser : action.fromUser;
       
       if (!friendsSet.has(friendId)) {
         friendsSet.add(friendId);
-        friendsMap.set(friendId, friend);
+        
+        // Calculate status indicators
+        let needWaterCount = 0;
+        let needHarvestCount = 0;
+
+        if (friendData.farmState?.landPlots) {
+          friendData.farmState.landPlots.forEach((plot: any) => {
+            // Check if needs water (nextWateringDue <= now AND not mature)
+            if (plot.cropId && 
+                plot.nextWateringDue && 
+                new Date(plot.nextWateringDue) <= now && 
+                plot.growthStage < 4) {
+              needWaterCount++;
+            }
+            // Check if ready to harvest (growthStage is 4 OR harvestAt <= now)
+            if (plot.cropId && 
+                (plot.growthStage === 4 || (plot.harvestAt && new Date(plot.harvestAt) <= now))) {
+              needHarvestCount++;
+            }
+          });
+        }
+
+        // Add to result
+        friendsMap.set(friendId, {
+          id: friendData.id,
+          walletAddress: friendData.walletAddress,
+          username: friendData.username,
+          avatar: friendData.avatar,
+          level: friendData.level,
+          farmCoins: friendData.farmCoins,
+          need_water: needWaterCount,
+          need_harvest: needHarvestCount,
+        });
       }
     });
 
-    const friends = Array.from(friendsMap.values());
+    let friends = Array.from(friendsMap.values());
+
+    // Apply filter if provided
+    if (filter === 'need_water') {
+      friends = friends.filter(f => f.need_water > 0);
+    }
 
     return NextResponse.json({ 
       friends,

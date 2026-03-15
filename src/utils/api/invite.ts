@@ -17,11 +17,23 @@ export interface InviteStats {
 }
 
 export const fetchInviteStats = async (cursor?: string | null): Promise<InviteStats> => {
-    const params: Record<string, string> = {}
-    if (cursor) params.cursor = cursor
-    // TODO: Update to use new API
-    const res = await apiClient.get<InviteStats>("/u/invite/", { params })
-    return res.data
+    const user = await import("./auth").then(m => m.fetchMe());
+    if (!user) throw new Error("User not found");
+    
+    const res = await fetchInviteInfo(user.id);
+    
+    return {
+        invite_link: `https://agentfarm.x/?invite=${res.inviteCode}`,
+        total_invites: res.totalInvites || 0,
+        total_rewards: 0, // Need API for rewards
+        friends: (res.invites || []).map((invite: any) => ({
+            id: invite.toUserId,
+            invitee_name: `Farmer-${invite.toUserId.substring(0, 4)}`,
+            invitee_game_level: 1,
+            invitee_coin_balance: 0
+        })),
+        next_cursor: null
+    }
 }
 
 // New API: Get invite info
@@ -59,9 +71,7 @@ export const fetchLeaderboard = async (
     type: "invite" | "coin" | "level",
     cursor?: string | null
 ): Promise<LeaderboardResponse> => {
-    const params: Record<string, string> = { type }
-    if (cursor) params.cursor = cursor
-    const res = await apiClient.get<LeaderboardResponse>("/u/invite/leaderboard/", { params })
+    const res = await apiClient.get<LeaderboardResponse>(`/api/leaderboard?type=${type}`)
     return res.data
 }
 

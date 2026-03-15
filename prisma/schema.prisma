@@ -64,12 +64,12 @@ model LandPlot {
   plantedAt       DateTime?
   harvestAt       DateTime?
   growthStage     Int       @default(0)
-  lastWateredAt   DateTime?
-  nextWateringDue DateTime?
   boostMultiplier Float     @default(1.0)
   boostExpireAt   DateTime?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
+  lastWateredAt   DateTime?
+  nextWateringDue DateTime?
   farmState       FarmState @relation(fields: [farmStateId], references: [id], onDelete: Cascade)
 
   @@unique([farmStateId, plotIndex])

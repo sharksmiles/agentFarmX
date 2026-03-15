@@ -2,16 +2,10 @@ import apiClient from "./client"
 import { AirDropStatsInfo } from "../types"
 
 export const fetchAirdropInfo = async (): Promise<AirDropStatsInfo> => {
-    // Return mock data for now - can be replaced with real API later
-    return {
-        eligible: false,
-        airdrop_amount: 0,
-        remarks: [],
-        total_airdrop: "0",
-        claimed_airdrop: "0",
-        unclaimed_airdrop: "0",
-        airdrops: [],
-    }
+    const user = await import("./auth").then(m => m.fetchMe());
+    if (!user) throw new Error("User not found");
+    
+    return fetchAirdropInfoNew(user.id);
 }
 
 // New API: Get airdrop info
@@ -21,17 +15,18 @@ export const fetchAirdropInfoNew = async (userId: string): Promise<AirDropStatsI
         eligible: res.data.airdrops?.[0]?.eligible || false,
         airdrop_amount: res.data.airdrops?.[0]?.airdrop_amount || 0,
         remarks: res.data.airdrops?.[0]?.remarks || [],
-        total_airdrop: res.data.totalAirdrops.toString(),
-        claimed_airdrop: res.data.claimedCount.toString(),
-        unclaimed_airdrop: (res.data.totalAirdrops - res.data.claimedCount).toString(),
-        airdrops: res.data.airdrops,
+        total_airdrop: (res.data.totalAirdrops || 0).toString(),
+        claimed_airdrop: (res.data.claimedCount || 0).toString(),
+        unclaimed_airdrop: ((res.data.totalAirdrops || 0) - (res.data.claimedCount || 0)).toString(),
+        airdrops: res.data.airdrops || [],
     }
 }
 
 export const claimAirdrop = async (airdropId: string): Promise<{ tx_hash: string }> => {
-    // TODO: Update to use new API when userId is available
-    const res = await apiClient.post<{ tx_hash: string }>("/u/airdrop/", { airdrop_id: airdropId })
-    return res.data
+    const user = await import("./auth").then(m => m.fetchMe());
+    if (!user) throw new Error("User not found");
+    
+    return claimAirdropNew(user.id, airdropId);
 }
 
 // New API: Claim airdrop
@@ -50,6 +45,9 @@ export interface OnChainBalances {
 }
 
 export const fetchOnChainBalances = async (): Promise<OnChainBalances> => {
-    const res = await apiClient.get<OnChainBalances>("/u/balances/")
+    const user = await import("./auth").then(m => m.fetchMe());
+    if (!user) throw new Error("User not found");
+    
+    const res = await apiClient.get<OnChainBalances>(`/api/users/balances?userId=${user.id}`)
     return res.data
 }

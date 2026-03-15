@@ -52,6 +52,7 @@ const FriendsPage = () => {
     }, [])
 
     useEffect(() => {
+        // Fetch friend info (counts)
         fetchFriendInfo()
             .then((info) => setFriendInfo({ pendingRequest: info.new_friend_requests_count, friendsTotal: info.friend_total }))
             .catch(() => {
@@ -66,13 +67,15 @@ const FriendsPage = () => {
             .then((res) => {
                 setFriendList(res.friends)
                 setCursor(res.next_cursor)
+                // Also update friend total from this list call
+                setFriendInfo(prev => ({ ...prev, friendsTotal: res.total }))
             })
             .catch(() => {
                 setFriendList([])
                 setCursor(null)
             })
             .finally(() => setLoadingFriends(false))
-    }, [friendsFilter, setFriendList])
+    }, [friendsFilter, setFriendList, setFriendInfo])
 
     useEffect(() => {
         const handleScroll = () => {
