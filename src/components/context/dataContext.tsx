@@ -13,7 +13,7 @@ import {
     SelectedShopState,
     currentTabTypes,
 } from "@/utils/types"
-import React, { createContext, useContext, useState, ReactNode, FC, useEffect } from "react"
+import React, { createContext, useContext, useState, ReactNode, FC, useEffect, useMemo } from "react"
 import {
     FriendsData,
     FriendInfoStats,
@@ -228,7 +228,7 @@ export const DataProvider: FC<DataProviderProps> = ({ children }) => {
         })
     }
 
-    const value = {
+    const value = useMemo(() => ({
         gameStats,
         setGameStats,
         isDataFetched,
@@ -326,7 +326,56 @@ export const DataProvider: FC<DataProviderProps> = ({ children }) => {
         setRadaring,
         openLeaderBoardPopupModal,
         setOpenLeaderBoardPopupModal,
-    }
+    }), [
+        gameStats,
+        isDataFetched,
+        currentTab,
+        selectedLandId,
+        selectedCrop,
+        actionType,
+        selectedCropId,
+        selectedShop,
+        openBoost,
+        boosting,
+        harvesting,
+        harvestSuccess,
+        harvestCoinAmount,
+        padHeight,
+        onBoardingStep,
+        invitationHeight,
+        imgLoaded,
+        walletSettingheight,
+        notification,
+        OpenAgentFarmAlert,
+        artelaTask,
+        taskHeight,
+        dailyTask,
+        gameTask,
+        renaissanceTask,
+        inGameTask,
+        dailyRewardList,
+        claimable,
+        gameReward,
+        stone,
+        crystal,
+        completed,
+        openRaffleEntry,
+        raffleList,
+        openRaffleResult,
+        friendsHeight,
+        friendFarmNotification,
+        friendInfo,
+        searchResults,
+        search,
+        loading,
+        friendsFilter,
+        openDeleteFriendModel,
+        friendList,
+        openEnergyModal,
+        openRadarModal,
+        radaring,
+        openLeaderBoardPopupModal,
+    ])
 
     return <DataContext.Provider value={value}>{children}</DataContext.Provider>
 }

@@ -48,7 +48,23 @@ export const logout = async () => {
 // Alias for backward compatibility
 export const siweLogout = logout
 
+// Cache for fetchMe to avoid redundant calls
+let fetchMeCache: {
+    promise: Promise<User> | null
+    timestamp: number
+} = {
+    promise: null,
+    timestamp: 0
+}
+
 export const fetchMe = async (): Promise<User> => {
+    const now = Date.now()
+    const CACHE_DURATION = 1000 // 1 second cache
+
+    if (fetchMeCache.promise && (now - fetchMeCache.timestamp < CACHE_DURATION)) {
+        return fetchMeCache.promise
+    }
+
     // Get wallet address from window.ethereum or localStorage
     const address = typeof window !== 'undefined' 
         ? (window as any).ethereum?.selectedAddress || localStorage.getItem('walletAddress')
@@ -58,8 +74,18 @@ export const fetchMe = async (): Promise<User> => {
         throw new Error('No wallet address found')
     }
     
-    const res = await apiClient.get<User>(`/api/users?walletAddress=${address}`)
-    return res.data
+    fetchMeCache.promise = apiClient.get<User>(`/api/users?walletAddress=${address}`).then(res => res.data)
+    fetchMeCache.timestamp = now
+
+    try {
+        const user = await fetchMeCache.promise
+        return user
+    } catch (error) {
+        // Clear cache on error so next call can retry
+        fetchMeCache.promise = null
+        fetchMeCache.timestamp = 0
+        throw error
+    }
 }
 
 export const updateLanguage = async (lang: string): Promise<User> => {

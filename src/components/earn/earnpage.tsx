@@ -41,7 +41,9 @@ const EarnPage = () => {
     const [claimingReward, setClaimingReward] = useState<boolean>(false)
 
     const getTask = useCallback(async () => {
-        fetchTasks()
+        if (!user?.id) return
+        
+        fetchTasks(user.id)
             .then((data) => {
                 setInGameTask(data.game_tasks)
                 setDailyRewardList(data.daily_reward as any)
@@ -57,7 +59,7 @@ const EarnPage = () => {
                 setGameReward(0)
                 setCompleted(0)
             })
-    }, [setCompleted, setDailyRewardList, setGameReward, setInGameTask, setRenaissanceTask])
+    }, [user?.id, setCompleted, setDailyRewardList, setGameReward, setInGameTask, setRenaissanceTask])
 
     const scrollToTop = () => {
         containerRef.current?.scrollTo({

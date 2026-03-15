@@ -1,7 +1,7 @@
 "use client"
 
 import { AirDropStatsInfo, User, Wallet, WalletBlance } from "@/utils/types"
-import React, { createContext, useContext, useState, ReactNode, FC, useCallback } from "react"
+import React, { createContext, useContext, useState, ReactNode, FC, useCallback, useMemo } from "react"
 import { siweLogout, fetchMe } from "@/utils/api/auth"
 import {
     discoverWalletProviders,
@@ -120,7 +120,7 @@ export const UserProvider: FC<UserProviderProps> = ({ children }) => {
         setAuthError(null)
     }, [])
 
-    const value = {
+    const value = useMemo(() => ({
         user,
         setUser,
         wallet,
@@ -143,7 +143,23 @@ export const UserProvider: FC<UserProviderProps> = ({ children }) => {
         disconnectWallet,
         refreshUser,
         clearAuthError,
-    }
+    }), [
+        user, 
+        wallet, 
+        coinBalance, 
+        artBalance, 
+        airdropInfo, 
+        walletAddress, 
+        isAuthenticated, 
+        isAuthLoading, 
+        isSessionRestored, 
+        authError, 
+        availableProviders, 
+        connectWallet, 
+        disconnectWallet, 
+        refreshUser, 
+        clearAuthError
+    ])
 
     return <UserContext.Provider value={value}>{children}</UserContext.Provider>
 }

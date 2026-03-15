@@ -16,13 +16,17 @@ export interface TasksResponse {
     completed: boolean
 }
 
-export const fetchTasks = async (): Promise<TasksResponse> => {
-    const user = await import("./auth").then(m => m.fetchMe());
-    if (!user) throw new Error("User not found");
+export const fetchTasks = async (userId?: string): Promise<TasksResponse> => {
+    let id = userId;
+    if (!id) {
+        const user = await import("./auth").then(m => m.fetchMe());
+        if (!user) throw new Error("User not found");
+        id = user.id;
+    }
     
     const [tasks, dailyStatus] = await Promise.all([
-        fetchTasksByUserId(user.id, 'all'),
-        fetchDailyCheckInStatus(user.id)
+        fetchTasksByUserId(id, 'all'),
+        fetchDailyCheckInStatus(id)
     ]);
     
     const game_tasks = tasks.filter(t => t.type === 'daily').map(t => ({
@@ -70,11 +74,15 @@ export interface DailyCheckInStatus {
     daily_reward: DailyRewardDay[]
 }
 
-export const fetchDailyCheckIn = async (): Promise<DailyCheckInStatus> => {
-    const user = await import("./auth").then(m => m.fetchMe());
-    if (!user) throw new Error("User not found");
+export const fetchDailyCheckIn = async (userId?: string): Promise<DailyCheckInStatus> => {
+    let id = userId;
+    if (!id) {
+        const user = await import("./auth").then(m => m.fetchMe());
+        if (!user) throw new Error("User not found");
+        id = user.id;
+    }
     
-    const res = await fetchDailyCheckInStatus(user.id);
+    const res = await fetchDailyCheckInStatus(id);
     return res;
 }
 
@@ -84,11 +92,15 @@ export const fetchDailyCheckInStatus = async (userId: string) => {
     return res.data
 }
 
-export const claimDailyReward = async (): Promise<{ reward: number; updated_user: any }> => {
-    const user = await import("./auth").then(m => m.fetchMe());
-    if (!user) throw new Error("User not found");
+export const claimDailyReward = async (userId?: string): Promise<{ reward: number; updated_user: any }> => {
+    let id = userId;
+    if (!id) {
+        const user = await import("./auth").then(m => m.fetchMe());
+        if (!user) throw new Error("User not found");
+        id = user.id;
+    }
     
-    const res = await claimDailyCheckIn(user.id);
+    const res = await claimDailyCheckIn(id);
     return res;
 }
 
