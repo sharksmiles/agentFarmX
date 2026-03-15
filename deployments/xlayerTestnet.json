@@ -1,0 +1,11 @@
+{
+  "network": "xlayerTestnet",
+  "chainId": "1952",
+  "deployer": "0x97E8128f759973f6DCe0c1957030fA8a23a23953",
+  "timestamp": "2026-03-15T09:46:34.661Z",
+  "contracts": {
+    "FarmToken": "0xee9c2a8aF5B232eaf372d78f71B3fC7126798673",
+    "AgentFactory": "0x7192862d94c8316FDEE4f8AE7d25f80a30C980b6",
+    "Raffle": "0x94d323Aa7612D8C04e0e597c3E637d98A4243aE1"
+  }
+}

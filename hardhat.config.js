@@ -1,24 +1,34 @@
+const { config } = require("dotenv");
+config();
 require("@nomicfoundation/hardhat-toolbox");
-require("dotenv").config();
 
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
   solidity: {
-    version: "0.8.20",
+    version: "0.8.24",
     settings: {
       optimizer: {
         enabled: true,
         runs: 200,
+      },
+      evmVersion: "cancun",
+    },
+  },
+  solc: {
+    compilers: {
+      download: {
+        timeout: 60000,
       },
     },
   },
   networks: {
     // X Layer 测试网
     xlayerTestnet: {
-      url: "https://testrpc.x1.tech",
-      chainId: 195,
+      url: process.env.XLAYER_TESTNET_RPC || "https://testrpc.xlayer.tech",
+      chainId: 1952,
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
-      gasPrice: 1000000000, // 1 gwei
+      gasPrice: 1000000000,
+      timeout: 60000,
     },
     // X Layer 主网
     xlayerMainnet: {
@@ -26,10 +36,7 @@ module.exports = {
       chainId: 196,
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
       gasPrice: 1000000000,
-    },
-    // 本地测试网
-    hardhat: {
-      chainId: 31337,
+      timeout: 60000,
     },
   },
   etherscan: {
@@ -40,7 +47,7 @@ module.exports = {
     customChains: [
       {
         network: "xlayerTestnet",
-        chainId: 195,
+        chainId: 1952,
         urls: {
           apiURL: "https://www.okx.com/explorer/xlayer-test/api",
           browserURL: "https://www.okx.com/explorer/xlayer-test",

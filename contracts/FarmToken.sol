@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
@@ -13,10 +12,9 @@ import "@openzeppelin/contracts/access/Ownable.sol";
  * 功能:
  * - ERC20 标准代币
  * - 可燃烧 (Burnable)
- * - DAO 投票权 (Votes)
  * - 铸造控制 (仅 Owner)
  */
-contract FarmToken is ERC20, ERC20Burnable, ERC20Votes, Ownable {
+contract FarmToken is ERC20, ERC20Burnable, Ownable {
     // 最大供应量: 1,000,000,000 FARM (10亿)
     uint256 public constant MAX_SUPPLY = 1_000_000_000 * 10**18;
     
@@ -29,7 +27,6 @@ contract FarmToken is ERC20, ERC20Burnable, ERC20Votes, Ownable {
     
     constructor(address initialOwner) 
         ERC20("AgentFarm Token", "FARM")
-        ERC20Permit("AgentFarm Token")
         Ownable(initialOwner)
     {
         // 铸造初始供应量给部署者
@@ -67,22 +64,5 @@ contract FarmToken is ERC20, ERC20Burnable, ERC20Votes, Ownable {
             _mint(recipients[i], amounts[i]);
             emit TokensMinted(recipients[i], amounts[i]);
         }
-    }
-    
-    // 重写必需的函数
-    function _update(address from, address to, uint256 value)
-        internal
-        override(ERC20, ERC20Votes)
-    {
-        super._update(from, to, value);
-    }
-
-    function nonces(address owner)
-        public
-        view
-        override(ERC20Permit, Nonces)
-        returns (uint256)
-    {
-        return super.nonces(owner);
     }
 }

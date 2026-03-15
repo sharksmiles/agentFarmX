@@ -4,6 +4,14 @@ async function main() {
   console.log("🚀 开始部署 AgentFarm X 智能合约...\n");
 
   const [deployer] = await hre.ethers.getSigners();
+  
+  if (!deployer) {
+    console.error("❌ 错误: 未找到部署账户！");
+    console.error("   请检查 .env 文件中是否已填写 PRIVATE_KEY。");
+    console.error("   如果没有 .env 文件，请复制 .env.example 并重命名为 .env。");
+    process.exit(1);
+  }
+
   console.log("部署账户:", deployer.address);
   console.log("账户余额:", hre.ethers.formatEther(await hre.ethers.provider.getBalance(deployer.address)), "OKB\n");
 
