@@ -60,6 +60,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Find the plot
+    const dbPlotIndex = plotIndex > 0 ? plotIndex - 1 : plotIndex;
+    const plot = farmState.landPlots.find((p) => p.plotIndex === dbPlotIndex);
+
+    if (!plot) {
+      return NextResponse.json(
+        { error: 'Plot not found' },
+        { status: 404 }
+      );
+    }
+
     // Water the crop
     await prisma.$transaction([
       prisma.landPlot.update({
@@ -70,6 +81,12 @@ export async function POST(request: NextRequest) {
           lastWateredAt: new Date(),
           nextWateringDue: new Date(Date.now() + 10 * 60 * 1000), // Next watering in 10 minutes
         } as any,
+      }),
+      prisma.user.update({
+        where: { id: userId },
+        data: {
+          experience: { increment: 2 }, // Small exp for watering
+        },
       }),
       prisma.farmState.update({
         where: { id: farmState.id },

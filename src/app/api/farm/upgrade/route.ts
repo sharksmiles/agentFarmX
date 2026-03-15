@@ -57,8 +57,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get upgrade cost
-    const cost = UPGRADE_COSTS[currentLevel as keyof typeof UPGRADE_COSTS];
+    // Get current level config for cost and exp requirements
+    const currentLevelConfig = await prisma.levelConfig.findUnique({
+      where: { level: currentLevel }
+    });
+
+    if (!currentLevelConfig) {
+      return NextResponse.json(
+        { error: 'Level configuration not found' },
+        { status: 404 }
+      );
+    }
+
+    // Check if user has enough experience
+    if (user.experience < currentLevelConfig.requiredExp) {
+      return NextResponse.json(
+        { error: `Insufficient experience. Need ${currentLevelConfig.requiredExp} exp.` },
+        { status: 400 }
+      );
+    }
+
+    // Get upgrade cost from DB if possible, fallback to hardcoded
+    const cost = currentLevelConfig.upgradeCost;
 
     // Check if user has enough coins
     if (user.farmCoins < cost) {
@@ -69,14 +89,20 @@ export async function POST(request: NextRequest) {
     }
 
     // Upgrade farm
-    const newMaxEnergy = MAX_ENERGY_PER_LEVEL[nextLevel as keyof typeof MAX_ENERGY_PER_LEVEL];
+    // Get next level config for max land and energy
+    const nextLevelConfig = await prisma.levelConfig.findUnique({
+      where: { level: nextLevel }
+    });
+
+    const newMaxEnergy = nextLevelConfig?.maxLand ? (nextLevelConfig.maxLand * 10 + 40) : (MAX_ENERGY_PER_LEVEL[nextLevel as keyof typeof MAX_ENERGY_PER_LEVEL] || 100);
 
     await prisma.$transaction([
       prisma.user.update({
         where: { id: userId },
         data: {
           level: nextLevel,
-          farmCoins: user.farmCoins - cost,
+          farmCoins: { decrement: cost },
+          experience: user.experience - currentLevelConfig.requiredExp, // Deduct required exp or reset to 0
         },
       }),
       prisma.farmState.update({

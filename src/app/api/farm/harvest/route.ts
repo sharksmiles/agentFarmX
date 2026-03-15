@@ -59,9 +59,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Calculate reward
-    const cropConfig = CROPS[plot.cropId as keyof typeof CROPS] || { baseReward: 10 };
-    const reward = Math.floor(cropConfig.baseReward * (plot.boostMultiplier || 1.0));
+    // Get crop config from DB for accurate reward and exp
+    const dbCropConfig = await prisma.cropConfig.findUnique({
+      where: { cropType: plot.cropId }
+    });
+
+    const reward = Math.floor((dbCropConfig?.harvestPrice || 10) * (plot.boostMultiplier || 1.0));
+    const expGain = dbCropConfig?.harvestExp || 10;
 
     // Harvest the crop
     await prisma.$transaction([
@@ -77,19 +81,19 @@ export async function POST(request: NextRequest) {
             boostExpireAt: null,
           },
         }),
-        // Add coins to user
+        // Add coins and experience to user using increment to avoid race conditions
         prisma.user.update({
           where: { id: userId },
           data: {
-            farmCoins: farmState.user.farmCoins + reward,
-            experience: farmState.user.experience + 10,
+            farmCoins: { increment: reward },
+            experience: { increment: expGain },
           },
         }),
         // Update farm stats
         prisma.farmState.update({
           where: { id: farmState.id },
           data: {
-            totalHarvests: farmState.totalHarvests + 1,
+            totalHarvests: { increment: 1 },
           },
         }),
         // Add crop to inventory

@@ -126,6 +126,12 @@ export async function POST(request: NextRequest) {
     // Plant the crop
     const harvestAt = new Date(now.getTime() + crop.growTime * 60 * 1000);
 
+    // Get crop config from DB for exp
+    const dbCropConfig = await prisma.cropConfig.findUnique({
+      where: { cropType: cropId }
+    });
+    const expGain = dbCropConfig?.seedingExp || 5;
+
     await prisma.$transaction([
       prisma.landPlot.update({
         where: { id: plot.id },
@@ -138,6 +144,12 @@ export async function POST(request: NextRequest) {
           growthStage: 1,
         } as any,
       }),
+      prisma.user.update({
+        where: { id: userId },
+        data: {
+          experience: { increment: expGain },
+        },
+      }),
       prisma.farmState.update({
         where: { id: farmState.id },
         data: {
@@ -146,9 +158,6 @@ export async function POST(request: NextRequest) {
           lastEnergyUpdate: currentEnergy - crop.energyCost >= farmState.maxEnergy ? now : lastEnergyUpdate,
         },
       }),
-      // Reduce inventory if needed? Frontend checks inventory but backend doesn't seem to enforce it yet.
-      // Ideally we should check and reduce inventory.
-      // For now let's just plant.
     ]);
 
     // Fetch updated user with relations
