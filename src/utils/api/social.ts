@@ -26,24 +26,14 @@ export const fetchFriends = async (
     filter?: "need_water" | "all",
     cursor?: string | null
 ): Promise<FriendListResponse> => {
-    try {
-        const user = await import("./auth").then(m => m.fetchMe());
-        if (!user) throw new Error("User not found");
-        
-        const res = await apiClient.get<{ friends: FriendsData[]; total: number }>(`/api/social/friends?userId=${user.id}`)
-        
-        // Transform to match old response format
-        return {
-            friends: res.data.friends,
-            next_cursor: null // New API doesn't use cursor pagination yet
-        }
-    } catch (error) {
-        // Fallback to old API if new one fails
-        const params: Record<string, string> = {}
-        if (filter && filter !== "all") params.filter = filter
-        if (cursor) params.cursor = cursor
-        const res = await apiClient.get<FriendListResponse>("/u/friends/", { params })
-        return res.data
+    const user = await import("./auth").then(m => m.fetchMe());
+    if (!user) throw new Error("User not found");
+    
+    const res = await apiClient.get<{ friends: FriendsData[]; total: number }>(`/api/social/friends?userId=${user.id}`)
+    
+    return {
+        friends: res.data.friends,
+        next_cursor: null
     }
 }
 

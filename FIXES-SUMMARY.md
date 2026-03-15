@@ -599,16 +599,16 @@ npm run build
 #### 2. ✅ 前端 API 迁移
 
 **更新的函数**:
-- `fetchFriends()` - 使用 `/api/social/friends`，带回退机制
+- `fetchFriends()` - 使用 `/api/social/friends`
 - `fetchTasks()` - 使用新 API 并转换数据格式
 - `fetchDailyCheckIn()` - 使用 `/api/tasks/daily`
 - `claimDailyReward()` - 使用 `/api/tasks/daily/claim`
 - `claimGameReward()` - 批量领取所有已完成任务奖励
 
 **特点**:
-- 所有函数都保留了向后兼容的回退机制
-- 失败时自动降级到旧 API
-- 无缝迁移，不影响现有功能
+- 全栈一体化项目，直接使用新 API 端点
+- 统一的 API 路径规范（`/api/*`）
+- 移除了旧 API 路径的依赖
 
 #### 3. ✅ 完善错误处理和验证
 
@@ -1056,10 +1056,49 @@ export async function POST(request: NextRequest) {
 
 ---
 
+---
+
+## 🔄 第五轮修复（2026-03-15 下午 - 移除旧 API）
+
+### 完成的任务
+
+#### 1. ✅ 移除旧 API 回退逻辑
+
+**问题**：
+- 之前的实现中保留了旧 API 的回退机制（try-catch fallback）
+- 在全栈一体化项目中，不应该存在旧 API 路径
+- 应该统一使用新的 `/api/*` 端点
+
+**修改的文件**：
+1. **`src/utils/api/social.ts`**
+   - 移除 `fetchFriends()` 中的 `/u/friends/` 回退
+   - 直接使用 `/api/social/friends`
+
+2. **`src/utils/api/tasks.ts`**
+   - 移除 `fetchTasks()` 中的 `/g/tasv/` 回退
+   - 移除 `fetchDailyCheckIn()` 中的 `/g/gdt/` 回退
+   - 移除 `claimDailyReward()` 中的 `/g/gdt/` 回退
+   - 移除 `claimGameReward()` 中的 `/g/cwr/` 回退
+   - 所有函数直接使用新 API 端点
+
+**改进**：
+- ✅ 统一 API 路径规范
+- ✅ 简化代码逻辑，移除不必要的 try-catch
+- ✅ 提高代码可维护性
+- ✅ 符合全栈一体化项目的最佳实践
+
+**影响**：
+- 前端完全依赖新 API 端点
+- 旧的 `/u/*` 和 `/g/*` 路径不再被调用
+- 如果 API 失败，会直接抛出错误而不是静默回退
+
+---
+
 **修复完成时间**: 2026-03-15 下午  
-**文档版本**: 4.0  
+**文档版本**: 5.0  
 **构建状态**: ✅ 成功  
 **测试状态**: ✅ 90.9% 通过（集成测试）+ 单元测试框架  
 **开发服务器**: ✅ 运行中 (http://localhost:3000)  
-**完成度**: ✅ 所有短期任务已完成  
+**完成度**: ✅ 所有短期任务已完成 + 旧 API 清理完成  
+**API 架构**: ✅ 统一使用 `/api/*` 路径，无旧 API 依赖  
 **下次更新**: 待中期任务启动后
