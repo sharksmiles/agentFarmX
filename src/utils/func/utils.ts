@@ -90,3 +90,8 @@ export function generateRandomString(length: number) {
 export function shortenAddress(address: string) {
     return `${address.slice(0, 4)}...${address.slice(-6)}`
 }
+
+export function formatWalletAddress(address: string, chainName: string = "X Layer") {
+    if (!address) return ""
+    return `${chainName}-${address.slice(-4)}`
+}

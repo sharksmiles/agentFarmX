@@ -8,6 +8,7 @@ import { useEffect, useState, useCallback } from "react"
 import CountUp from "react-countup"
 import { useRouter } from "next/navigation"
 import { useLanguage } from "../context/languageContext"
+import { formatWalletAddress } from "../../utils/func/utils"
 
 const GameStats = ({}) => {
     const { user, setUser } = useUser()
@@ -113,7 +114,9 @@ const GameStats = ({}) => {
             <div className="w-full flex justify-between gap-[12px] p-[12px] text-[12px]">
                 <div className="flex w-full bg-light-dark rounded-[16px] p-[8px] justify-between items-center flex-col">
                     <p className="text-[#FC9069]">{t("User name")}</p>
-                    <p className="text-white text-[16px] font-bold">{user?.username}</p>
+                    <p className="text-white text-[16px] font-bold">
+                        {user?.username || formatWalletAddress(user?.wallet_address!, "X Layer")}
+                    </p>
                 </div>
                 <div className="flex w-full bg-light-dark rounded-[16px] p-[8px] justify-end items-center flex-col gap-[4px]">
                     <p className="text-[#FC9069]">

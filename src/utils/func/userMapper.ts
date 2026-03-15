@@ -1,5 +1,5 @@
 import { User as PrismaUser, FarmState, LandPlot, Inventory } from '@prisma/client';
-import { User as FrontendUser, FarmStats, GrowingCrop, CropItem, LandIdTypes } from '@/utils/types';
+import { User as FrontendUser, GrowingCrop, CropItem, LandIdTypes } from '../types';
 
 type UserWithRelations = PrismaUser & {
   farmState: (FarmState & {
@@ -12,7 +12,7 @@ export function mapUserToFrontend(user: UserWithRelations): FrontendUser {
   const farmState = user.farmState;
   
   // Map inventories
-  const inventory: CropItem[] = user.inventory?.map(item => ({
+  const inventory: CropItem[] = user.inventory?.map((item: Inventory) => ({
     crop_type: item.itemId as any,
     quantity: item.quantity
   })) || [];
@@ -31,10 +31,10 @@ export function mapUserToFrontend(user: UserWithRelations): FrontendUser {
       const isOwned = plot ? plot.isUnlocked : false;
       const canBuy = !isOwned && i < ((farmState.unlockedLands || 6) + 3); // Logic from login route
       
-      const cropDetails: any = {};
+      const cropDetails: GrowingCrop['crop_details'] = {};
       if (plot && plot.cropId) {
         cropDetails.crop_id = plot.cropId;
-        cropDetails.crop_type = plot.cropId;
+        cropDetails.crop_type = plot.cropId as any; // Cast from string to CropTypes
         cropDetails.planted_time = plot.plantedAt?.toISOString();
         cropDetails.is_mature = plot.growthStage >= 4; // Assuming 4 is mature
         cropDetails.status = plot.growthStage >= 4 ? 'mature' : 'growing';
@@ -71,7 +71,7 @@ export function mapUserToFrontend(user: UserWithRelations): FrontendUser {
     wallet_address: user.walletAddress,
     wallet_address_type: 'evm',
     invite_link: user.inviteCode || '',
-    username: user.username || '',
+    username: user.username || `X Layer-${user.walletAddress.slice(-4)}`,
     is_active: true,
     lang: 'en',
     farm_stats: {

@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
     const user = await prisma.user.create({
       data: {
         walletAddress: walletAddress.toLowerCase(),
-        username,
+        username: username || `X Layer-${walletAddress.slice(-4)}`,
         avatar,
         farmState: {
           create: {
