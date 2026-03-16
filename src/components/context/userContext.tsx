@@ -116,9 +116,11 @@ export const UserProvider: FC<UserProviderProps> = ({ children }) => {
         setWalletAddress(null)
         setIsAuthenticated(false)
         setAuthError(null)
-        
+
         if (typeof window !== 'undefined') {
             localStorage.removeItem('walletAddress')
+            localStorage.removeItem('accessToken')
+            localStorage.removeItem('refreshToken')
         }
     }, [])
 

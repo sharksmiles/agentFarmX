@@ -1,18 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { withAuth, AuthContext } from '@/middleware/auth';
 
-// GET /api/agents - Get all agents for a user
-export async function GET(request: NextRequest) {
+// GET /api/agents - Get all agents for the authenticated user
+export const GET = withAuth(async (
+  request: NextRequest,
+  context: { params: Record<string, string>; auth: AuthContext }
+) => {
   try {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
-
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'userId is required' },
-        { status: 400 }
-      );
-    }
+    const userId = context.auth.userId;
 
     const agents = await prisma.agent.findMany({
       where: { userId },
@@ -37,14 +33,17 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
 // POST /api/agents - Create new agent
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (
+  request: NextRequest,
+  context: { params: Record<string, string>; auth: AuthContext }
+) => {
   try {
+    const userId = context.auth.userId;
     const body = await request.json();
     const {
-      userId,
       scaAddress,
       name,
       personality = 'balanced',
@@ -54,9 +53,9 @@ export async function POST(request: NextRequest) {
       temperature = 0.7,
     } = body;
 
-    if (!userId || !scaAddress || !name) {
+    if (!scaAddress || !name) {
       return NextResponse.json(
-        { error: 'userId, scaAddress, and name are required' },
+        { error: 'scaAddress and name are required' },
         { status: 400 }
       );
     }
@@ -115,4 +114,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

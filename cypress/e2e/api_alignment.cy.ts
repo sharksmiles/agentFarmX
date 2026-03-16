@@ -11,7 +11,7 @@ describe('Frontend API Alignment Tests', () => {
   it('should load the farm page and fetch initial data correctly', () => {
     cy.visit('/');
     cy.window().then((win) => {
-      expect(win.localStorage.getItem('sessionToken')).to.exist;
+      expect(win.localStorage.getItem('accessToken')).to.exist;
     });
     cy.wait('@getUser').its('response.statusCode').should('eq', 200);
   });

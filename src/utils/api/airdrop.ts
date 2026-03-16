@@ -2,15 +2,7 @@ import apiClient from "./client"
 import { AirDropStatsInfo } from "../types"
 
 export const fetchAirdropInfo = async (): Promise<AirDropStatsInfo> => {
-    const user = await import("./auth").then(m => m.fetchMe());
-    if (!user) throw new Error("User not found");
-    
-    return fetchAirdropInfoNew(user.id);
-}
-
-// New API: Get airdrop info
-export const fetchAirdropInfoNew = async (userId: string): Promise<AirDropStatsInfo> => {
-    const res = await apiClient.get(`/api/airdrop?userId=${userId}`)
+    const res = await apiClient.get('/api/airdrop')
     return {
         eligible: res.data.airdrops?.[0]?.eligible || false,
         airdrop_amount: res.data.airdrops?.[0]?.airdrop_amount || 0,
@@ -22,17 +14,19 @@ export const fetchAirdropInfoNew = async (userId: string): Promise<AirDropStatsI
     }
 }
 
-export const claimAirdrop = async (airdropId: string): Promise<{ tx_hash: string }> => {
-    const user = await import("./auth").then(m => m.fetchMe());
-    if (!user) throw new Error("User not found");
-    
-    return claimAirdropNew(user.id, airdropId);
+// Keep for backward compatibility, but userId is no longer needed
+export const fetchAirdropInfoNew = async (_userId: string): Promise<AirDropStatsInfo> => {
+    return fetchAirdropInfo()
 }
 
-// New API: Claim airdrop
-export const claimAirdropNew = async (userId: string, airdropId: string) => {
-    const res = await apiClient.post('/api/airdrop/claim', { userId, airdropId })
+export const claimAirdrop = async (airdropId: string): Promise<{ tx_hash: string }> => {
+    const res = await apiClient.post('/api/airdrop/claim', { airdropId })
     return res.data
+}
+
+// Keep for backward compatibility, but userId is no longer needed
+export const claimAirdropNew = async (_userId: string, airdropId: string) => {
+    return claimAirdrop(airdropId)
 }
 
 // ── On-chain balances ─────────────────────────────────────────────────────────

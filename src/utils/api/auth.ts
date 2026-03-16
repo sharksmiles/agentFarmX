@@ -28,15 +28,20 @@ export const siweLogin = async (payload: {
     try {
         // Clear cache before login so subsequent fetchMe will get new data
         clearFetchMeCache()
-        const response = await apiClient.post<{ user: User, sessionToken: string }>("/api/auth/login", payload)
-        
-        if (response.data.sessionToken && typeof window !== 'undefined') {
-            localStorage.setItem('sessionToken', response.data.sessionToken)
+        const response = await apiClient.post<{
+            user: User
+            tokens: { accessToken: string; refreshToken: string; expiresIn: number; tokenType: string }
+            isNewUser: boolean
+        }>('/api/auth/login', payload)
+
+        if (response.data.tokens?.accessToken && typeof window !== 'undefined') {
+            localStorage.setItem('accessToken', response.data.tokens.accessToken)
+            localStorage.setItem('refreshToken', response.data.tokens.refreshToken)
             if (response.data.user && response.data.user.wallet_address) {
                 localStorage.setItem('walletAddress', response.data.user.wallet_address)
             }
         }
-        
+
         return response.data.user
     } catch (error: any) {
         console.error('SIWE login failed:', error.response?.data || error.message)
@@ -51,17 +56,19 @@ export const loginWithSIWE = async (message: string, signature: string) => {
     const res = await apiClient.post<{
         success: boolean
         user: User
-        sessionToken: string
+        tokens: { accessToken: string; refreshToken: string; expiresIn: number; tokenType: string }
+        isNewUser: boolean
     }>('/api/auth/login', { message, signature })
-    
-    if (res.data.sessionToken && typeof window !== 'undefined') {
-        localStorage.setItem('sessionToken', res.data.sessionToken)
+
+    if (res.data.tokens?.accessToken && typeof window !== 'undefined') {
+        localStorage.setItem('accessToken', res.data.tokens.accessToken)
+        localStorage.setItem('refreshToken', res.data.tokens.refreshToken)
         // Also store wallet address to ensure fetchMe has it
         if (res.data.user && res.data.user.wallet_address) {
             localStorage.setItem('walletAddress', res.data.user.wallet_address)
         }
     }
-    
+
     return res.data
 }
 
@@ -71,7 +78,8 @@ export const logout = async () => {
     clearFetchMeCache()
     await apiClient.post('/api/auth/logout')
     if (typeof window !== 'undefined') {
-        localStorage.removeItem('sessionToken')
+        localStorage.removeItem('accessToken')
+        localStorage.removeItem('refreshToken')
     }
 }
 
@@ -120,9 +128,9 @@ export const updateLanguage = async (lang: string): Promise<User> => {
 
 // New API: Get session
 export const fetchSession = async () => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('sessionToken') : null
+    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null
     if (!token) return null;
-    
+
     const res = await apiClient.get<{ user: User }>('/api/auth/session', {
         headers: { Authorization: `Bearer ${token}` }
     })

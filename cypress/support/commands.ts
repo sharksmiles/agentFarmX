@@ -36,10 +36,11 @@ Cypress.Commands.add('login', () => {
         message: preparedMessage,
         signature,
       }).then((loginResponse) => {
-        const { sessionToken } = loginResponse.body;
-        
+        const { tokens } = loginResponse.body;
+
         // 5. Set LocalStorage
-        window.localStorage.setItem('sessionToken', sessionToken);
+        window.localStorage.setItem('accessToken', tokens.accessToken);
+        window.localStorage.setItem('refreshToken', tokens.refreshToken);
         window.localStorage.setItem('walletAddress', wallet.address);
         
         // 6. Reload to apply

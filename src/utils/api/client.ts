@@ -1,4 +1,4 @@
-import axios, { AxiosRequestConfig } from "axios"
+import axios, { AxiosRequestConfig, InternalAxiosRequestConfig } from "axios"
 import { parsePaymentRequired, signX402Payment, encodePaymentHeader } from "../func/x402"
 
 const apiClient = axios.create({
@@ -8,6 +8,20 @@ const apiClient = axios.create({
         "Content-Type": "application/json",
     },
 })
+
+// 请求拦截器：自动添加 Authorization header
+apiClient.interceptors.request.use(
+    (config: InternalAxiosRequestConfig) => {
+        if (typeof window !== "undefined") {
+            const token = localStorage.getItem("accessToken")
+            if (token && config.headers) {
+                config.headers.Authorization = `Bearer ${token}`
+            }
+        }
+        return config
+    },
+    (error) => Promise.reject(error)
+)
 
 apiClient.interceptors.response.use(
     (response) => response,

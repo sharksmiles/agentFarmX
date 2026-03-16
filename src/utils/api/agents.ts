@@ -22,11 +22,8 @@ export const getAgentTopUpHistory = async (
 };
 
 // ── Agent CRUD ────────────────────────────────────────────────────────────────
-export const fetchAgents = async (userId?: string): Promise<Agent[]> => {
-    // If no userId, try to get from session or something?
-    // For now, assume it's passed or handled by the backend if userId is not provided
-    const url = userId ? `/api/agents?userId=${userId}` : "/api/agents"
-    const res = await apiClient.get<{ agents: Agent[] }>(url)
+export const fetchAgents = async (): Promise<Agent[]> => {
+    const res = await apiClient.get<{ agents: Agent[] }>('/api/agents')
     return res.data.agents
 }
 
