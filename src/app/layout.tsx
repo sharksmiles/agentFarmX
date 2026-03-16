@@ -1,7 +1,9 @@
 import type { Metadata } from "next"
 import type { Viewport } from "next"
-import { Baloo_Bhai_2 } from "next/font/google"
-import "./globals.css"
+import './globals.css'
+
+// Preload fonts to avoid timeout issues
+export const dynamic = 'force-dynamic'
 import { ViewTransitions } from "next-view-transitions"
 import AppInitializer from "@/components/init"
 import WithLoader from "@/components/loader/WithLoader"
@@ -12,7 +14,10 @@ import AgentFarmAlert from "@/components/alert"
 import { LanguageProvider } from "@/components/context/languageContext"
 import AuthGate from "@/components/auth/AuthGate"
 
-const inter = Baloo_Bhai_2({ subsets: ["latin"] })
+// 使用本地字体定义
+const inter = {
+  className: 'font-baloo-bhai'
+}
 
 export const metadata: Metadata = {
     title: "AgentFarm X",

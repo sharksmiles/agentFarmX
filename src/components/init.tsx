@@ -19,7 +19,7 @@ const AppInitializer = () => {
         setFriendsHeight,
         setFriendInfo,
     } = useData()
-    const { setAirdropInfo, setAvailableProviders, refreshUser, setIsSessionRestored } = useUser()
+    const { setAirdropInfo, setAvailableProviders, refreshUser, setIsSessionRestored, isAuthenticated } = useUser()
 
     useEffect(() => {
         console.log(
@@ -74,13 +74,6 @@ const AppInitializer = () => {
                 })
             })
 
-        // ── Load airdrop info from real API ────────────────
-        fetchAirdropInfo()
-            .then((info) => setAirdropInfo(info))
-            .catch(() => {
-                setAirdropInfo(null)
-            })
-
         // ── Signal loading complete ──────────────────────────────────────────
         setIsDataFetched(true)
 
@@ -99,6 +92,17 @@ const AppInitializer = () => {
         setTaskHeight,
         setWalletSettingHeight
     ])
+
+    // 当用户认证成功后，获取需要认证的数据
+    useEffect(() => {
+        if (isAuthenticated) {
+            fetchAirdropInfo()
+                .then((info) => setAirdropInfo(info))
+                .catch(() => {
+                    setAirdropInfo(null)
+                })
+        }
+    }, [isAuthenticated, setAirdropInfo])
 
     return null
 }

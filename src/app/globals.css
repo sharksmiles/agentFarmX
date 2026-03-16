@@ -509,3 +509,32 @@ body {
     opacity: 1;
     transform: translateY(0);
 }
+
+/* Baloo Bhai 2 字体定义 */
+@font-face {
+    font-family: 'Baloo Bhai 2';
+    src: url('/fonts/BalooBhai2-Regular.woff2') format('woff2'),
+         url('/fonts/BalooBhai2-Regular.woff') format('woff');
+    font-weight: 400;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Baloo Bhai 2';
+    src: url('/fonts/BalooBhai2-Medium.woff2') format('woff2'),
+         url('/fonts/BalooBhai2-Medium.woff') format('woff');
+    font-weight: 500;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Baloo Bhai 2';
+    src: url('/fonts/BalooBhai2-Bold.woff2') format('woff2'),
+         url('/fonts/BalooBhai2-Bold.woff') format('woff');
+    font-weight: 700;
+    font-display: swap;
+}
+
+.font-baloo-bhai {
+    font-family: 'Baloo Bhai 2', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}

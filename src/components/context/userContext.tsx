@@ -58,6 +58,14 @@ export const UserProvider: FC<UserProviderProps> = ({ children }) => {
 
     const refreshUser = useCallback(async () => {
         try {
+            // 检查是否有有效的 JWT token
+            const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null
+            if (!token) {
+                // 没有 token，即使用户存在也不应该认为已认证
+                setIsAuthenticated(false)
+                return
+            }
+            
             const me = await fetchMe()
             setUser(me)
             setWallet({ address: me.wallet_address, hasPrivateKey: false, hasMnemonic: false })
