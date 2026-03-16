@@ -80,6 +80,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check inventory
+    const inventoryItem = await prisma.inventory.findUnique({
+      where: {
+        userId_itemType_itemId: {
+          userId,
+          itemType: 'crop',
+          itemId: cropId,
+        },
+      },
+    });
+
+    if (!inventoryItem || inventoryItem.quantity <= 0) {
+      return NextResponse.json(
+        { error: `Insufficient seeds for ${cropId}` },
+        { status: 400 }
+      );
+    }
+
     // Find the plot
     // plotIndex from frontend is 1-based usually (LandIdTypes), but DB is 0-based or 1-based?
     // Let's check how it was created.
@@ -143,6 +161,12 @@ export async function POST(request: NextRequest) {
           nextWateringDue: new Date(now.getTime() + 10 * 60 * 1000), // Default 10 minutes
           growthStage: 1,
         } as any,
+      }),
+      prisma.inventory.update({
+        where: { id: inventoryItem!.id },
+        data: {
+          quantity: { decrement: 1 },
+        },
       }),
       prisma.user.update({
         where: { id: userId },
