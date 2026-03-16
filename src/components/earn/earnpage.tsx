@@ -39,9 +39,14 @@ const EarnPage = () => {
     const [isVisible, setIsVisible] = useState<boolean>(false)
     const [isGameWallet, setIsGameWallet] = useState<boolean>(false)
     const [claimingReward, setClaimingReward] = useState<boolean>(false)
+    const [loading, setLoading] = useState<boolean>(true)
+    const isFetchingRef = useRef<boolean>(false)
 
     const getTask = useCallback(async () => {
-        if (!user?.id) return
+        if (!user?.id || isFetchingRef.current) return
+        
+        isFetchingRef.current = true
+        setLoading(true)
         
         fetchTasks(user.id)
             .then((data) => {
@@ -53,11 +58,16 @@ const EarnPage = () => {
                     setRenaissanceTask(data.renaissance_tasks)
                 }
             })
-            .catch(() => {
+            .catch((err) => {
+                console.error('Failed to fetch tasks:', err)
                 setInGameTask([])
                 setDailyRewardList([])
                 setGameReward(0)
                 setCompleted(0)
+            })
+            .finally(() => {
+                setLoading(false)
+                isFetchingRef.current = false
             })
     }, [user?.id, setCompleted, setDailyRewardList, setGameReward, setInGameTask, setRenaissanceTask])
 
@@ -147,7 +157,11 @@ const EarnPage = () => {
             <div className="h-auto w-full flex flex-col justify-center items-center text-[20px] pt-[24px] pb-[12px]">
                 {t("Daily Tasks")}
             </div>
-            {dailyRewardList?.length > 0 ? (
+            {loading ? (
+                <div className="min-h-[38px] w-full flex justify-between items-center py-[6px]">
+                    <div className="skeleton" />
+                </div>
+            ) : dailyRewardList?.length > 0 ? (
                 <div
                     onClick={() => {
                         setGameTask(null)
@@ -160,15 +174,6 @@ const EarnPage = () => {
                         <p className="text-[16px] font-medium">{t("Daily reward")}</p>
                     </div>
                     <div>
-                        {/* <Image
-                            src="/svg/yes.svg"
-                            width={20}
-                            height={20}
-                            alt="yes"
-                            priority={true}
-                            loading="eager"
-                            quality={100}
-                        /> */}
                         <Image
                             src="/svg/next.svg"
                             width={20}
@@ -182,7 +187,7 @@ const EarnPage = () => {
                 </div>
             ) : (
                 <div className="min-h-[38px] w-full flex justify-between items-center py-[6px]">
-                    <div className="skeleton" />
+                    <p className="text-gray-400">{t("No daily rewards available")}</p>
                 </div>
             )}
 
@@ -220,27 +225,30 @@ const EarnPage = () => {
                     : t("No coins to claim")}
             </button>
             <div className="flex flex-col min-h-[280px] max-h-[280px] overflow-auto">
-                {inGameTask?.length > 0 ? (
+                {loading ? (
+                    <>
+                        {Array.from({ length: 5 }, (_, i) => (
+                            <div
+                                key={i}
+                                className="min-h-[62px] w-full flex justify-between items-center py-[6px]"
+                            >
+                                <div className="skeleton" />
+                            </div>
+                        ))}
+                    </>
+                ) : inGameTask?.length > 0 ? (
                     inGameTask.map((task, index) => {
-                        if (!isGameWallet && task.id === 5) {
-                            return null
-                        }
-                        if (
-                            (task.id === 3 || task.id === 4 || task.id === 5 || task.id === 9) &&
-                            completed
-                        ) {
-                            return null
-                        }
-
                         return (
                             <div
                                 onClick={() => {
+                                    // 已完成的任务不再弹出提示
+                                    if (task.completed) return
                                     setArtelaTask(null)
                                     setDailyTask(null)
                                     setGameTask(task)
                                 }}
                                 key={index}
-                                className="h-auto w-full flex justify-between items-center py-[6px] border-b-2 border-[#252A31]"
+                                className={`h-auto w-full flex justify-between items-center py-[6px] border-b-2 border-[#252A31] ${task.completed ? 'opacity-60' : 'cursor-pointer'}`}
                             >
                                 <div className="flex flex-col justify-start">
                                     <p className="text-[16px] font-medium">{t(task.title)}</p>
@@ -275,16 +283,9 @@ const EarnPage = () => {
                         )
                     })
                 ) : (
-                    <>
-                        {Array.from({ length: 5 }, (_, i) => (
-                            <div
-                                key={i}
-                                className="min-h-[62px] w-full flex justify-between items-center py-[6px]"
-                            >
-                                <div className="skeleton" />
-                            </div>
-                        ))}
-                    </>
+                    <div className="w-full text-center py-4">
+                        <p className="text-gray-400">{t("No game tasks available")}</p>
+                    </div>
                 )}
             </div>
             {/* Artela Renaissance Tasks */}

@@ -252,6 +252,11 @@ export const fetchFriendFarm = async (friendId: string): Promise<FriendStats> =>
 
 // New API: Visit friend farm
 export const visitFriendFarm = async (friendId: string) => {
+    // Record visit for task tracking
+    apiClient.post('/api/social/visit', { friendId }).catch(() => {
+        // Ignore visit recording errors
+    });
+    
     const res = await apiClient.get(`/api/social/${friendId}/farm`)
     return res.data.farmState
 }

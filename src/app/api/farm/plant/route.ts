@@ -100,7 +100,20 @@ export const POST = withAuth(async (
         },
       });
 
-      // 8. 返回最新用户数据
+      // 8. 创建交易记录 (用于任务追踪)
+      const user = await tx.user.findUnique({ where: { id: userId } });
+      await tx.transaction.create({
+        data: {
+          userId,
+          type: 'plant',
+          category: 'farm',
+          amount: 0,
+          balance: user?.farmCoins || 0,
+          description: `Planted ${cropId} on plot ${plotIndex}`,
+        },
+      });
+
+      // 9. 返回最新用户数据
       return await tx.user.findUnique({
         where: { id: userId },
         include: {

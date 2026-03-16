@@ -16,6 +16,21 @@ export interface TasksResponse {
     completed: boolean
 }
 
+// Task ID mapping for frontend compatibility
+const TASK_ID_MAP: Record<string, number> = {
+    'daily_login': 1,
+    'plant_5_crops': 2,
+    'harvest_3_crops': 3,
+    'visit_friends': 4,
+    'reach_level_5': 5,
+    'earn_1000_coins': 6,
+};
+
+// Task banner mapping
+const TASK_BANNER_MAP: Record<string, string> = {
+    'reach_level_5': 'banner1.png',
+};
+
 export const fetchTasks = async (userId?: string): Promise<TasksResponse> => {
     let id = userId;
     if (!id) {
@@ -29,8 +44,8 @@ export const fetchTasks = async (userId?: string): Promise<TasksResponse> => {
         fetchDailyCheckInStatus(id)
     ]);
     
-    const game_tasks = tasks.filter(t => t.type === 'daily').map(t => ({
-        id: parseInt(t.id) || 0,
+    const game_tasks = tasks.map(t => ({
+        id: TASK_ID_MAP[t.id] || 0,
         title: t.name,
         content: t.description,
         reward: t.reward,
@@ -38,6 +53,7 @@ export const fetchTasks = async (userId?: string): Promise<TasksResponse> => {
         click: false,
         completed: t.completed,
         claimed: t.claimed,
+        banner: TASK_BANNER_MAP[t.id],
     }));
     
     return {
@@ -63,8 +79,10 @@ export interface Task {
 }
 
 export const fetchTasksByUserId = async (userId: string, type: 'daily' | 'achievement' | 'all' = 'all'): Promise<Task[]> => {
-    const res = await apiClient.get<{ tasks: Task[] }>(`/api/tasks?userId=${userId}&type=${type}`)
-    return res.data.tasks
+    const res = await apiClient.get<{ success: boolean; data: { tasks: Task[] } }>(`/api/tasks?userId=${userId}&type=${type}`)
+    // Handle both response formats: { tasks: [...] } and { success: true, data: { tasks: [...] } }
+    const data = res.data as any
+    return data.data?.tasks || data.tasks || []
 }
 
 // ── Daily sign-in ─────────────────────────────────────────────────────────────
