@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { GameService, GAME_CONSTANTS } from '@/services/gameService';
 import { errorResponse, successResponse, internalErrorResponse, notFoundResponse } from '@/utils/api/response';
+import { withAuth, AuthContext } from '@/middleware/auth';
 
 // 计算偷盗成功率
 function calculateStealSuccessRate(params: {
@@ -73,13 +74,21 @@ function calculateStealSuccessRate(params: {
   return { rate, details };
 }
 
-export async function POST(request: NextRequest) {
+/**
+ * POST /api/social/steal - Steal from another farm
+ * 需要认证：从Token中获取用户ID
+ */
+export const POST = withAuth(async (
+  request: NextRequest,
+  context: { params: Record<string, string>; auth: AuthContext }
+) => {
   try {
     const body = await request.json();
-    const { userId, friendId, plotIndex } = body;
+    const { friendId, plotIndex } = body;
+    const userId = context.auth.userId; // 从认证上下文获取用户ID
 
-    if (!userId || !friendId || plotIndex === undefined) {
-      return errorResponse('userId, friendId, and plotIndex are required', 400);
+    if (!friendId || plotIndex === undefined) {
+      return errorResponse('friendId and plotIndex are required', 400);
     }
 
     const now = new Date();
@@ -212,4 +221,4 @@ export async function POST(request: NextRequest) {
     }
     return internalErrorResponse(error);
   }
-}
+});

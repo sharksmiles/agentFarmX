@@ -1,5 +1,6 @@
 import { prisma } from '../../lib/prisma';
-import { FarmState, LandPlot } from '@prisma/client';
+import { FarmState, LandPlot, CropConfig, LevelConfig } from '@prisma/client';
+import { CacheService, CacheKey, CacheTTL } from '@/lib/cache';
 
 export type FarmStateWithPlots = {
   landPlots: LandPlot[];
@@ -29,19 +30,39 @@ export const GAME_CONSTANTS = {
  */
 export class GameService {
   /**
-   * 获取系统配置
+   * 获取系统配置（带缓存）
    */
   static async getSystemConfig(key: string, defaultValue: any, tx?: any): Promise<any> {
-    try {
-      const client = tx || prisma;
-      const config = await client.systemConfig.findUnique({
-        where: { key },
-      });
-      return config?.value ?? defaultValue;
-    } catch (error) {
-      console.error(`[GameService] Error fetching config for ${key}:`, error);
-      return defaultValue;
+    // 如果在事务中，直接查询数据库
+    if (tx) {
+      try {
+        const config = await tx.systemConfig.findUnique({
+          where: { key },
+        });
+        return config?.value ?? defaultValue;
+      } catch (error) {
+        console.error(`[GameService] Error fetching config for ${key}:`, error);
+        return defaultValue;
+      }
     }
+
+    // 使用缓存
+    const cacheKey = `system_config:${key}`;
+    return CacheService.getOrSet(
+      cacheKey,
+      async () => {
+        try {
+          const config = await prisma.systemConfig.findUnique({
+            where: { key },
+          });
+          return config?.value ?? defaultValue;
+        } catch (error) {
+          console.error(`[GameService] Error fetching config for ${key}:`, error);
+          return defaultValue;
+        }
+      },
+      { ttl: CacheTTL.LONG }
+    );
   }
 
   /**
@@ -189,13 +210,71 @@ export class GameService {
   }
 
   /**
-   * 获取作物配置
+   * 获取作物配置（带缓存）
    */
-  static async getCropConfig(cropType: string, tx?: any) {
-    const client = tx || prisma;
-    return await client.cropConfig.findUnique({
-      where: { cropType },
-    });
+  static async getCropConfig(cropType: string, tx?: any): Promise<CropConfig | null> {
+    // 如果在事务中，直接查询数据库
+    if (tx) {
+      return await tx.cropConfig.findUnique({
+        where: { cropType },
+      });
+    }
+
+    // 使用缓存
+    const cacheKey = `${CacheKey.CROP_CONFIG_BY_ID}${cropType}`;
+    return CacheService.getOrSet(
+      cacheKey,
+      () => prisma.cropConfig.findUnique({ where: { cropType } }),
+      { ttl: CacheTTL.LONG }
+    );
+  }
+
+  /**
+   * 获取所有作物配置（带缓存）
+   */
+  static async getAllCropConfigs(tx?: any): Promise<CropConfig[]> {
+    if (tx) {
+      return await tx.cropConfig.findMany();
+    }
+
+    return CacheService.getOrSet(
+      CacheKey.CROP_CONFIGS,
+      () => prisma.cropConfig.findMany(),
+      { ttl: CacheTTL.LONG }
+    );
+  }
+
+  /**
+   * 获取等级配置（带缓存）
+   */
+  static async getLevelConfig(level: number, tx?: any): Promise<LevelConfig | null> {
+    if (tx) {
+      return await tx.levelConfig.findUnique({
+        where: { level },
+      });
+    }
+
+    const cacheKey = `${CacheKey.LEVEL_CONFIG_BY_ID}${level}`;
+    return CacheService.getOrSet(
+      cacheKey,
+      () => prisma.levelConfig.findUnique({ where: { level } }),
+      { ttl: CacheTTL.LONG }
+    );
+  }
+
+  /**
+   * 获取所有等级配置（带缓存）
+   */
+  static async getAllLevelConfigs(tx?: any): Promise<LevelConfig[]> {
+    if (tx) {
+      return await tx.levelConfig.findMany({ orderBy: { level: 'asc' } });
+    }
+
+    return CacheService.getOrSet(
+      CacheKey.LEVEL_CONFIGS,
+      () => prisma.levelConfig.findMany({ orderBy: { level: 'asc' } }),
+      { ttl: CacheTTL.LONG }
+    );
   }
 
   /**

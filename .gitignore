@@ -54,3 +54,5 @@ ma and backend structure
 # Hardhat
 artifacts/
 cache/
+
+.qoder/

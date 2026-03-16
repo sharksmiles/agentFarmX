@@ -124,6 +124,9 @@ model Agent {
   @@index([userId])
   @@index([scaAddress])
   @@index([status])
+  @@index([userId, status])
+  @@index([userId, isActive])
+  @@index([status, isActive])
   @@map("agents")
 }
 
@@ -144,6 +147,8 @@ model AgentTask {
   @@index([agentId])
   @@index([status])
   @@index([createdAt])
+  @@index([agentId, status])
+  @@index([status, priority])
   @@map("agent_tasks")
 }
 
@@ -241,6 +246,9 @@ model SocialAction {
   @@index([toUserId])
   @@index([actionType])
   @@index([createdAt])
+  @@index([fromUserId, actionType])
+  @@index([toUserId, actionType])
+  @@index([fromUserId, toUserId, actionType])
   @@map("social_actions")
 }
 
@@ -279,6 +287,9 @@ model Transaction {
   @@index([userId])
   @@index([type])
   @@index([createdAt])
+  @@index([userId, type])
+  @@index([userId, createdAt])
+  @@index([category, createdAt])
   @@map("transactions")
 }
 

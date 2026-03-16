@@ -3,15 +3,23 @@ import { prisma } from '@/lib/prisma';
 import { mapUserToFrontend } from '@/utils/func/userMapper';
 import { GameService, GAME_CONSTANTS, FarmStateWithPlots } from '@/services/gameService';
 import { errorResponse, successResponse, internalErrorResponse, notFoundResponse } from '@/utils/api/response';
+import { withAuth, AuthContext } from '@/middleware/auth';
 
-// POST /api/farm/plant - Plant a crop
-export async function POST(request: NextRequest) {
+/**
+ * POST /api/farm/plant - Plant a crop
+ * 需要认证：从Token中获取用户ID
+ */
+export const POST = withAuth(async (
+  request: NextRequest,
+  context: { params: Record<string, string>; auth: AuthContext }
+) => {
   try {
     const body = await request.json();
-    const { userId, plotIndex, cropId } = body;
+    const { plotIndex, cropId } = body;
+    const userId = context.auth.userId; // 从认证上下文获取用户ID
 
-    if (!userId || plotIndex === undefined || !cropId) {
-      return errorResponse('userId, plotIndex, and cropId are required', 400);
+    if (plotIndex === undefined || !cropId) {
+      return errorResponse('plotIndex and cropId are required', 400);
     }
 
     const now = new Date();
@@ -116,4 +124,4 @@ export async function POST(request: NextRequest) {
     }
     return internalErrorResponse(error);
   }
-}
+});

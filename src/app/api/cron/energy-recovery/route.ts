@@ -4,6 +4,11 @@ import { GameService } from '@/services/gameService';
 
 export const maxDuration = 60;
 
+/**
+ * GET /api/cron/energy-recovery
+ * 能量恢复Cron任务
+ * 优化版本：使用原生SQL批量更新，提高效率
+ */
 export async function GET(request: NextRequest) {
   try {
     // Verify Cron Secret
@@ -15,51 +20,42 @@ export async function GET(request: NextRequest) {
     const startTime = Date.now();
     console.log('[Energy Recovery] Starting...');
 
-    // Find farms that need energy recovery (energy < maxEnergy)
-    // Prisma does not support comparing two columns directly in 'where' using standard syntax.
-    // Fetch all potentially under-energy farms and filter in service layer logic.
-    const farmStates = await prisma.farmState.findMany({
-      where: {
-        energy: { lt: 1000 }, // Assume maxEnergy is always <= 1000
-      },
-      select: {
-        userId: true,
-        energy: true,
-        maxEnergy: true,
-      },
+    // 获取能量恢复配置
+    const recoveryConfig = await GameService.getSystemConfig('energy_recovery_rate', {
+      intervalMinutes: 5,
+      rate: 1
     });
+    
+    const intervalMinutes = recoveryConfig.intervalMinutes || 5;
+    const rate = recoveryConfig.rate || 1;
 
-    // Only process those truly below max
-    const farmsToSync = farmStates.filter(f => f.energy < f.maxEnergy);
-
-    console.log(`[Energy Recovery] Found ${farmsToSync.length} farms truly needing recovery`);
-
-    let updatedCount = 0;
-
-    // Batch process to avoid timeout
-    const BATCH_SIZE = 50;
-    for (let i = 0; i < farmsToSync.length; i += BATCH_SIZE) {
-      const batch = farmsToSync.slice(i, i + BATCH_SIZE);
-
-      await Promise.all(
-        batch.map(async (farm) => {
-          const result = await GameService.syncUserStamina(farm.userId);
-          if (result && result.recovered > 0) {
-            updatedCount++;
-          }
-        })
-      );
-    }
+    // 使用原生SQL批量更新能量
+    // 这比逐个查询和更新更高效
+    const result = await prisma.$executeRaw`
+      UPDATE farm_states 
+      SET 
+        energy = LEAST(
+          energy + FLOOR(
+            EXTRACT(EPOCH FROM (NOW() - last_energy_update)) / ${intervalMinutes * 60}
+          ) * ${rate},
+          max_energy
+        ),
+        last_energy_update = NOW()
+      WHERE energy < max_energy
+        AND last_energy_update < NOW() - INTERVAL '1 minute'
+    `;
 
     const duration = Date.now() - startTime;
     console.log(
-      `[Energy Recovery] Completed in ${duration}ms. Updated ${updatedCount} farms`
+      `[Energy Recovery] Completed in ${duration}ms. Updated ${result} farms`
     );
 
     return NextResponse.json({
       success: true,
-      updatedCount,
+      updatedCount: result,
       duration,
+      intervalMinutes,
+      rate,
     });
   } catch (error) {
     console.error('[Energy Recovery] Error:', error);

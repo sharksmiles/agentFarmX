@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { mapUserToFrontend } from '@/utils/func/userMapper';
 import { errorResponse, successResponse, internalErrorResponse, notFoundResponse } from '@/utils/api/response';
+import { withAuth, AuthContext } from '@/middleware/auth';
 
 // 解锁地块的硬编码成本（建议后续移至 LevelConfig 或 SystemConfig）
 const LAND_UNLOCK_COSTS: Record<number, number> = {
@@ -13,13 +14,21 @@ const LAND_UNLOCK_COSTS: Record<number, number> = {
   11: 20000, 
 };
 
-export async function POST(request: NextRequest) {
+/**
+ * POST /api/farm/unlock - 解锁地块
+ * 需要认证：从Token中获取用户ID
+ */
+export const POST = withAuth(async (
+  request: NextRequest,
+  context: { params: Record<string, string>; auth: AuthContext }
+) => {
   try {
     const body = await request.json();
-    const { userId, plotIndex } = body;
+    const { plotIndex } = body;
+    const userId = context.auth.userId; // 从认证上下文获取用户ID
 
-    if (!userId || plotIndex === undefined) {
-      return errorResponse('userId and plotIndex are required', 400);
+    if (plotIndex === undefined) {
+      return errorResponse('plotIndex is required', 400);
     }
 
     // 在单个事务中执行解锁逻辑
@@ -92,4 +101,4 @@ export async function POST(request: NextRequest) {
     }
     return internalErrorResponse(error);
   }
-}
+});

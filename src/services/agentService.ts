@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import OpenAI from 'openai';
+import { AICostService } from './aiCostService';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -62,6 +63,17 @@ export class AgentService {
     // 4. 构建系统提示词
     const systemPrompt = this.buildSystemPrompt(agent, context);
 
+    // 4.5 检查配额
+    const estimatedTokens = 2000; // 估算值
+    const quotaCheck = await AICostService.checkQuota(agent.userId, estimatedTokens);
+    if (!quotaCheck.allowed) {
+      return { 
+        success: false, 
+        error: quotaCheck.reason || 'Token quota exceeded', 
+        errorCode: 'QUOTA_EXCEEDED' as any 
+      };
+    }
+
     // 5. 调用 LLM
     const startTime = Date.now();
     const completion = await openai.chat.completions.create({
@@ -93,7 +105,22 @@ export class AgentService {
       }
 
       const tokensUsed = completion.usage?.total_tokens || 0;
-      const cost = this.calculateCost(agent.aiModel, tokensUsed);
+      const promptTokens = completion.usage?.prompt_tokens || 0;
+      const completionTokens = completion.usage?.completion_tokens || 0;
+      const cost = AICostService.calculateCost('openai', agent.aiModel, promptTokens, completionTokens);
+
+      // 5.5 记录token使用
+      await AICostService.recordUsage({
+        userId: agent.userId,
+        agentId: agent.id,
+        provider: 'openai',
+        model: agent.aiModel,
+        promptTokens,
+        completionTokens,
+        totalTokens: tokensUsed,
+        requestType: 'decision',
+        cost,
+      });
 
       // 6. 解析决策
       let decisions: any[] = [];
