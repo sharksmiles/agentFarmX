@@ -6,17 +6,30 @@ import { mapUserToFrontend } from '@/utils/func/userMapper';
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const walletAddress = searchParams.get('walletAddress');
+    const walletAddressRaw = searchParams.get('walletAddress');
 
-    if (!walletAddress) {
+    if (!walletAddressRaw) {
       return NextResponse.json(
         { error: 'walletAddress is required' },
         { status: 400 }
       );
     }
 
-    const user = await prisma.user.findUnique({
-      where: { walletAddress: walletAddress.toLowerCase() },
+    const walletAddress = walletAddressRaw.trim().toLowerCase();
+    console.log(`[API] Searching for user with walletAddress: "${walletAddress}" (length: ${walletAddress.length})`);
+
+    // DEBUG: Count all users
+    const allUsersCount = await prisma.user.count();
+    console.log(`[API] Total users in DB: ${allUsersCount}`);
+
+    if (allUsersCount > 0) {
+      const firstFewUsers = await prisma.user.findMany({ take: 5, select: { walletAddress: true } });
+      console.log(`[API] First few wallet addresses in DB: ${JSON.stringify(firstFewUsers.map(u => u.walletAddress))}`);
+    }
+
+    // Try findUnique first as it's more efficient
+    let user = await prisma.user.findUnique({
+      where: { walletAddress },
       include: {
         farmState: {
           include: {
@@ -28,12 +41,73 @@ export async function GET(request: NextRequest) {
       },
     });
 
+    // If not found with findUnique, try findFirst with insensitive mode just in case
     if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
+      console.log(`[API] User not found with findUnique, trying findFirst insensitive...`);
+      user = await prisma.user.findFirst({
+        where: { 
+          walletAddress: {
+            equals: walletAddress,
+            mode: 'insensitive'
+          }
+        },
+        include: {
+          farmState: {
+            include: {
+              landPlots: true,
+            },
+          },
+          inventory: true,
+          agents: true,
+        },
+      });
     }
+
+    if (!user) {
+      console.log(`[API] User still not found, performing AUTO-REGISTRATION for: "${walletAddress}"`);
+      // Create user with farm state and initial land plots
+      user = await prisma.user.create({
+        data: {
+          walletAddress: walletAddress,
+          username: `X Layer-${walletAddress.slice(-4)}`,
+          farmState: {
+            create: {
+              energy: 100,
+              maxEnergy: 100,
+              unlockedLands: 6,
+              landPlots: {
+                create: Array.from({ length: 6 }, (_, i) => ({
+                  plotIndex: i,
+                  isUnlocked: true,
+                  growthStage: 0,
+                })),
+              },
+            },
+          },
+          inventory: {
+            create: [
+              {
+                itemType: 'boost',
+                itemId: 'daily_boost',
+                quantity: 3,
+              }
+            ]
+          }
+        },
+        include: {
+          farmState: {
+            include: {
+              landPlots: true,
+            },
+          },
+          inventory: true,
+          agents: true,
+        },
+      });
+      console.log(`[API] Auto-registration successful for: ${user.id}`);
+    }
+
+    console.log(`[API] User found: ${user.id} for wallet: ${user.walletAddress}`);
 
     // Daily boost reset logic
     let boostItem = user.inventory.find(i => i.itemType === 'boost');
@@ -83,18 +157,25 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { walletAddress, username, avatar } = body;
+    const { walletAddress: walletAddressRaw, username, avatar } = body;
 
-    if (!walletAddress) {
+    if (!walletAddressRaw) {
       return NextResponse.json(
         { error: 'walletAddress is required' },
         { status: 400 }
       );
     }
 
+    const walletAddress = walletAddressRaw.trim().toLowerCase();
+
     // Check if user already exists
-    const existing = await prisma.user.findUnique({
-      where: { walletAddress: walletAddress.toLowerCase() },
+    const existing = await prisma.user.findFirst({
+      where: { 
+        walletAddress: {
+          equals: walletAddress,
+          mode: 'insensitive'
+        }
+      },
     });
 
     if (existing) {

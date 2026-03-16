@@ -1,6 +1,7 @@
 import { SiweMessage } from "siwe"
 import { getAddress } from "ethers"
 import { fetchNonce, siweLogin } from "../api/auth"
+import { User } from "../types"
 
 export interface EIP6963ProviderInfo {
     uuid: string
@@ -65,13 +66,13 @@ export async function connectAndSign(
     }
 }
 
-export async function performSiweLogin(provider: any): Promise<string> {
+export async function performSiweLogin(provider: any): Promise<User> {
     const { address, signature, message } = await connectAndSign(provider)
-    await siweLogin({ address, signature, message })
+    const user = await siweLogin({ address, signature, message })
     
     if (typeof window !== 'undefined') {
         localStorage.setItem('walletAddress', address)
     }
     
-    return address
+    return user
 }

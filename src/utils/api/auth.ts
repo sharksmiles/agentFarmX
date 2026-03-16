@@ -1,6 +1,20 @@
 import apiClient from "./client"
 import { User } from "../types"
 
+// Cache for fetchMe to avoid redundant calls
+let fetchMeCache: {
+    promise: Promise<User> | null
+    timestamp: number
+} = {
+    promise: null,
+    timestamp: 0
+}
+
+export const clearFetchMeCache = () => {
+    fetchMeCache.promise = null
+    fetchMeCache.timestamp = 0
+}
+
 export const fetchNonce = async (): Promise<string> => {
     const res = await apiClient.get<{ nonce: string }>("/api/auth/nonce")
     return res.data.nonce
@@ -10,12 +24,20 @@ export const siweLogin = async (payload: {
     address: string
     signature: string
     message: string
-}): Promise<void> => {
+}): Promise<User> => {
     try {
-        const response = await apiClient.post("/api/auth/login", payload)
+        // Clear cache before login so subsequent fetchMe will get new data
+        clearFetchMeCache()
+        const response = await apiClient.post<{ user: User, sessionToken: string }>("/api/auth/login", payload)
+        
         if (response.data.sessionToken && typeof window !== 'undefined') {
             localStorage.setItem('sessionToken', response.data.sessionToken)
+            if (response.data.user && response.data.user.wallet_address) {
+                localStorage.setItem('walletAddress', response.data.user.wallet_address)
+            }
         }
+        
+        return response.data.user
     } catch (error: any) {
         console.error('SIWE login failed:', error.response?.data || error.message)
         throw new Error(error.response?.data?.error || 'Login failed')
@@ -24,6 +46,8 @@ export const siweLogin = async (payload: {
 
 // New API: Login with SIWE and get session token
 export const loginWithSIWE = async (message: string, signature: string) => {
+    // Clear cache before login
+    clearFetchMeCache()
     const res = await apiClient.post<{
         success: boolean
         user: User
@@ -32,6 +56,10 @@ export const loginWithSIWE = async (message: string, signature: string) => {
     
     if (res.data.sessionToken && typeof window !== 'undefined') {
         localStorage.setItem('sessionToken', res.data.sessionToken)
+        // Also store wallet address to ensure fetchMe has it
+        if (res.data.user && res.data.user.wallet_address) {
+            localStorage.setItem('walletAddress', res.data.user.wallet_address)
+        }
     }
     
     return res.data
@@ -39,6 +67,8 @@ export const loginWithSIWE = async (message: string, signature: string) => {
 
 // New API: Logout
 export const logout = async () => {
+    // Clear cache on logout
+    clearFetchMeCache()
     await apiClient.post('/api/auth/logout')
     if (typeof window !== 'undefined') {
         localStorage.removeItem('sessionToken')
@@ -47,15 +77,6 @@ export const logout = async () => {
 
 // Alias for backward compatibility
 export const siweLogout = logout
-
-// Cache for fetchMe to avoid redundant calls
-let fetchMeCache: {
-    promise: Promise<User> | null
-    timestamp: number
-} = {
-    promise: null,
-    timestamp: 0
-}
 
 export const fetchMe = async (): Promise<User> => {
     const now = Date.now()

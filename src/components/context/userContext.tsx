@@ -71,7 +71,8 @@ export const UserProvider: FC<UserProviderProps> = ({ children }) => {
         setIsAuthLoading(true)
         setAuthError(null)
         try {
-            const address = await performSiweLogin(providerDetail.provider)
+            const user = await performSiweLogin(providerDetail.provider)
+            const address = user.wallet_address
             setWalletAddress(address)
             setWallet({ address, hasPrivateKey: false, hasMnemonic: false })
             
@@ -79,6 +80,11 @@ export const UserProvider: FC<UserProviderProps> = ({ children }) => {
                 localStorage.setItem('walletAddress', address)
             }
             
+            // Set user immediately after login
+            setUser(user)
+            setIsAuthenticated(true)
+            
+            // Still call refreshUser just to be sure everything is in sync
             await refreshUser()
         } catch (error: any) {
             console.error('Wallet connection failed:', error)

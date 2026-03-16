@@ -26,11 +26,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const walletAddress = siweMessage.address.toLowerCase();
+    const walletAddress = siweMessage.address.trim().toLowerCase();
+    console.log(`[AUTH] Login attempt for wallet: "${walletAddress}" (length: ${walletAddress.length})`);
+
+    // DEBUG: Count all users before
+    const countBefore = await prisma.user.count();
+    console.log(`[AUTH] Total users in DB before: ${countBefore}`);
 
     // Find or create user
-    let user = await prisma.user.findUnique({
-      where: { walletAddress },
+    let user = await prisma.user.findFirst({
+      where: { 
+        walletAddress: {
+          equals: walletAddress,
+          mode: 'insensitive'
+        }
+      },
       include: {
         farmState: {
           include: {
@@ -42,7 +52,8 @@ export async function POST(request: NextRequest) {
     });
 
     if (!user) {
-      // Create new user with farm state
+      console.log(`[AUTH] New user! Creating record for: "${walletAddress}"`);
+      // Create new user with farm state and initial items
       user = await prisma.user.create({
         data: {
           walletAddress,
@@ -61,6 +72,15 @@ export async function POST(request: NextRequest) {
               },
             },
           },
+          inventory: {
+            create: [
+              {
+                itemType: 'boost',
+                itemId: 'daily_boost',
+                quantity: 3,
+              }
+            ]
+          }
         },
         include: {
           farmState: {
@@ -71,6 +91,12 @@ export async function POST(request: NextRequest) {
           inventory: true,
         },
       });
+      console.log(`[AUTH] User created successfully: ${user.id}`);
+      
+      const countAfter = await prisma.user.count();
+      console.log(`[AUTH] Total users in DB after: ${countAfter}`);
+    } else {
+      console.log(`[AUTH] Existing user found: ${user.id}`);
     }
 
     // Update last login time
@@ -78,6 +104,7 @@ export async function POST(request: NextRequest) {
       where: { id: user.id },
       data: { lastLoginAt: new Date() },
     });
+    console.log(`[AUTH] Last login updated for: ${user.id}`);
 
     // Create session token (simplified - in production use proper JWT)
     const sessionToken = Buffer.from(
