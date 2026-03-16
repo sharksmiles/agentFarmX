@@ -6,13 +6,17 @@ import Image from "next/image"
 import { motion, AnimatePresence } from "framer-motion"
 import { useLanguage } from "../context/languageContext"
 import { upgradeFarm } from "@/utils/api/game"
+import { useState } from "react"
 
 const UpgradeModal = () => {
     const { user, setUser } = useUser()
     const { t } = useLanguage()
     const { actionType, setActionType, gameStats, OpenAgentFarmAlert } = useData()
+    const [isUpgrading, setIsUpgrading] = useState(false)
 
     const upgrade = async () => {
+        if (isUpgrading) return
+        
         if (
             Number(user?.farm_stats?.coin_balance) <
             gameStats!.level_requirements[user?.farm_stats?.level!]?.["Upgrade Cost"]
@@ -24,6 +28,8 @@ const UpgradeModal = () => {
             })
             return
         }
+        
+        setIsUpgrading(true)
         try {
             const updatedUser = await upgradeFarm()
             setUser(updatedUser)
@@ -41,6 +47,8 @@ const UpgradeModal = () => {
                     },
                 }
             })
+        } finally {
+            setIsUpgrading(false)
         }
         OpenAgentFarmAlert({ notificationTitle: t("Congratulation!"), notificationMessage: t("You have upgraded to the next level!") })
         setActionType(null)
@@ -117,9 +125,32 @@ const UpgradeModal = () => {
                                 onClick={() => {
                                     upgrade()
                                 }}
-                                className="rounded-[16px] bg-[#5964F5] w-full h-[50px] py-[12px] px-[16px] font-semibold text-[16px] text-white"
+                                disabled={isUpgrading}
+                                className="rounded-[16px] bg-[#5964F5] w-full h-[50px] py-[12px] px-[16px] font-semibold text-[16px] text-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                             >
-                                {t("Upgrade")}
+                                {isUpgrading ? (
+                                    <>
+                                        <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                                            <circle
+                                                className="opacity-25"
+                                                cx="12"
+                                                cy="12"
+                                                r="10"
+                                                stroke="currentColor"
+                                                strokeWidth="4"
+                                                fill="none"
+                                            />
+                                            <path
+                                                className="opacity-75"
+                                                fill="currentColor"
+                                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                            />
+                                        </svg>
+                                        <span>{t("Upgrading...")}</span>
+                                    </>
+                                ) : (
+                                    t("Upgrade")
+                                )}
                             </button>
                         </div>
                     </motion.div>

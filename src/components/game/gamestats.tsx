@@ -95,10 +95,8 @@ const GameStats = ({}) => {
     const progress = requiredExp ? (requiredExp != "max" ? (levelExp / requiredExp) * 100 : 0) : 0
 
     const upgradeLevel = () => {
-        if (currentLevel >= 40) {
-            return
-        }
-        if (progress === 100) {
+        // 检查进度是否达到升级要求（>= 100%）
+        if (progress >= 100) {
             setActionType("upgrade")
         }
     }
@@ -118,7 +116,7 @@ const GameStats = ({}) => {
                     <div className="px-[4px] w-full">
                         <ProgressBar progress={progress} />
                     </div>
-                    {progress === 100 ? (
+                    {progress >= 100 && requiredExp !== "max" ? (
                         <button
                             className="text-[#80EE9E] underline font-semibold relative"
                             onClick={() => {
@@ -143,7 +141,7 @@ const GameStats = ({}) => {
                                     </span>
                                 </div>
                             )}
-                            {currentLevel < 40 ? t("Upgrade") : t("Max Level")}
+                            {t("Upgrade")}
                         </button>
                     ) : (
                         <p className="">

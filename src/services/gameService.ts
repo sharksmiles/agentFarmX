@@ -296,22 +296,31 @@ export class GameService {
     if (!user) throw new Error('User not found');
 
     let newLevel = user.level;
-    let totalExp = user.experience + gainedExp;
+    let currentExp = user.experience + gainedExp; // 当前级别经验进度 + 获得的经验
 
-    // 简单循环检查升级，实际应优化为查询 LevelConfig
-    const nextLevelConfig = await client.levelConfig.findUnique({
-      where: { level: newLevel + 1 }
-    });
+    // 循环检查升级，支持连续升级
+    while (true) {
+      // 获取当前等级的配置
+      const currentLevelConfig = await client.levelConfig.findUnique({
+        where: { level: newLevel }
+      });
 
-    if (nextLevelConfig && totalExp >= nextLevelConfig.requiredExp) {
-      newLevel += 1;
-      // 可以在此处添加升级奖励逻辑
+      if (!currentLevelConfig) break;
+
+      // 检查是否可以升级（当前经验 >= 当前等级所需经验）
+      if (currentExp >= currentLevelConfig.requiredExp) {
+        currentExp -= currentLevelConfig.requiredExp; // 扣除升级所需经验，剩余经验保留到下一级
+        newLevel += 1;
+        // 可以在此处添加升级奖励逻辑
+      } else {
+        break;
+      }
     }
 
     return await client.user.update({
       where: { id: userId },
       data: {
-        experience: totalExp,
+        experience: currentExp,
         level: newLevel
       }
     });

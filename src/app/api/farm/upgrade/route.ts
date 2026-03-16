@@ -30,15 +30,22 @@ export async function POST(request: NextRequest) {
       const currentLevel = user.level;
       const nextLevel = currentLevel + 1;
 
-      // 2. 获取等级配置
+      // 2. 获取当前等级配置
       const currentLevelConfig = await tx.levelConfig.findUnique({
         where: { level: currentLevel }
       });
 
       if (!currentLevelConfig) throw new Error('Level configuration not found');
-      if (nextLevel > 6) throw new Error('Max level reached');
 
-      // 3. 校验经验值与金币
+      // 3. 获取下一级配置，用于检查是否可以升级和计算新能量上限
+      const nextLevelConfig = await tx.levelConfig.findUnique({
+        where: { level: nextLevel }
+      });
+
+      // 如果没有下一级配置，说明已达到最大等级
+      if (!nextLevelConfig) throw new Error('Max level reached');
+
+      // 4. 校验经验值与金币
       if (user.experience < currentLevelConfig.requiredExp) {
         throw new Error(`Insufficient experience. Need ${currentLevelConfig.requiredExp} exp.`);
       }
@@ -46,16 +53,10 @@ export async function POST(request: NextRequest) {
       const cost = currentLevelConfig.upgradeCost;
       if (user.farmCoins < cost) throw new Error('Insufficient coins');
 
-      // 4. 获取下一级配置
-      const nextLevelConfig = await tx.levelConfig.findUnique({
-        where: { level: nextLevel }
-      });
+      // 5. 计算新的能量上限
+      const newMaxEnergy = nextLevelConfig.maxLand * 10 + 40;
 
-      const newMaxEnergy = nextLevelConfig 
-        ? (nextLevelConfig.maxLand * 10 + 40) 
-        : (MAX_ENERGY_PER_LEVEL[nextLevel] || 100);
-
-      // 5. 执行升级操作
+      // 6. 执行升级操作
       await tx.user.update({
         where: { id: userId },
         data: {
@@ -74,7 +75,7 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      // 6. 返回最新用户数据
+      // 7. 返回最新用户数据
       return await tx.user.findUnique({
         where: { id: userId },
         include: {
