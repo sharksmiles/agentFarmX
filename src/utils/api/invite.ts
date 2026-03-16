@@ -83,6 +83,8 @@ export interface ActivityRecord {
     user_game_level: number
     user_coin_balance: number
     action: string
+    action_direction: 'your' | 'their' // 'your' = 别人对我的, 'their' = 我对别人的
+    is_incoming: boolean // true = 别人对我, false = 我对别人
     user_earning: number
     user_exp_gain: number
     crop_name: string

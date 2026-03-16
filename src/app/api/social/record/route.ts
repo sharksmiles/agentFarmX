@@ -15,29 +15,50 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Build the query where clause
+    // Build the query where clause - include both incoming and outgoing actions
     const where: any = {
-      toUserId: userId,
+      OR: [
+        { toUserId: userId },   // 别人对我的操作
+        { fromUserId: userId }, // 我对别人的操作
+      ],
     };
 
     if (filter === 'watered') {
-      where.actionType = 'water';
+      where.OR = where.OR.map((cond: any) => ({ ...cond, actionType: 'water' }));
     } else if (filter === 'stole') {
-      where.actionType = 'steal';
-      where.metadata = { path: ['success'], equals: true };
+      where.OR = where.OR.map((cond: any) => ({
+        ...cond,
+        actionType: 'steal',
+        metadata: { path: ['success'], equals: true },
+      }));
     } else if (filter === 'failed stealing') {
-      where.actionType = 'steal';
-      where.metadata = { path: ['success'], equals: false };
+      where.OR = where.OR.map((cond: any) => ({
+        ...cond,
+        actionType: 'steal',
+        metadata: { path: ['success'], equals: false },
+      }));
     } else {
-      where.actionType = { in: ['water', 'steal'] };
+      // Add actionType filter to both conditions
+      where.OR = where.OR.map((cond: any) => ({
+        ...cond,
+        actionType: { in: ['water', 'steal'] },
+      }));
     }
 
-    // Get social actions where the target is the current user
-    // This shows what other people did to the user's farm
+    // Get social actions - both incoming (others to me) and outgoing (me to others)
     const socialActions = await prisma.socialAction.findMany({
       where,
       include: {
         fromUser: {
+          select: {
+            id: true,
+            username: true,
+            level: true,
+            farmCoins: true,
+            lastLoginAt: true,
+          },
+        },
+        toUser: {
           select: {
             id: true,
             username: true,
@@ -57,26 +78,46 @@ export async function GET(request: NextRequest) {
 
     const results = socialActions.map((action: any) => {
       const metadata = action.metadata as any || {};
+      const isIncoming = action.toUserId === userId; // 别人对我 = true, 我对别人 = false
+      
+      // 根据方向确定显示的用户
+      const targetUser = isIncoming ? action.fromUser : action.toUser;
+      
       let displayAction = action.actionType;
+      let actionDirection = '';
       
       if (action.actionType === 'water') {
-        displayAction = 'watered';
+        if (isIncoming) {
+          displayAction = 'watered';
+          actionDirection = 'your'; // 别人浇了我的
+        } else {
+          displayAction = 'watered';
+          actionDirection = 'their'; // 我浇了别人的
+        }
       } else if (action.actionType === 'steal') {
-        displayAction = metadata.success ? 'stole' : 'failed stealing';
+        if (isIncoming) {
+          displayAction = metadata.success ? 'stole' : 'failed stealing';
+          actionDirection = 'your'; // 别人偷了我的
+        } else {
+          displayAction = metadata.success ? 'stole' : 'failed stealing';
+          actionDirection = 'their'; // 我偷了别人的
+        }
       }
 
       return {
         id: action.id,
-        user_id: action.fromUserId,
-        user_name: action.fromUser.username || 'Unknown',
-        user_game_level: action.fromUser.level,
-        user_coin_balance: action.fromUser.farmCoins,
+        user_id: targetUser.id,
+        user_name: targetUser.username || 'Unknown',
+        user_game_level: targetUser.level,
+        user_coin_balance: targetUser.farmCoins,
         action: displayAction,
+        action_direction: actionDirection, // 'your' 或 'their'
+        is_incoming: isIncoming, // true = 别人对我, false = 我对别人
         user_earning: metadata.reward || 0,
-        user_exp_gain: 0, // Social actions don't seem to give exp in current implementation
-        crop_name: metadata.cropId || 'Wheat', // Default to Wheat if missing
+        user_exp_gain: 0,
+        crop_name: metadata.cropId || 'Wheat',
         action_time: action.createdAt.toISOString(),
-        last_login: action.fromUser.lastLoginAt.toISOString(),
+        last_login: targetUser.lastLoginAt.toISOString(),
       };
     });
 

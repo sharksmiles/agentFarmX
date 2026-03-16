@@ -152,7 +152,10 @@ const Record = () => {
                                     >
                                         <div className="flex flex-col items-start text-[14px] overflow-hidden">
                                             <span className="text-[18px] font-bold h-[12px] text-left absolute top-[8px] left-[52px]">
-                                                {truncateText(record.user_name, 18)}{" "}
+                                                {record.is_incoming 
+                                                    ? truncateText(record.user_name, 18)
+                                                    : truncateText(`You → ${record.user_name}`, 18)
+                                                }{" "}
                                             </span>
                                             <div className="flex gap-[7px] items-center h-[40px] mt-[20px] -mb-[1px]">
                                                 <Image
@@ -174,8 +177,13 @@ const Record = () => {
                                                 >
                                                     {t(record.action)}
                                                 </p>
-                                                <p className="-ml-[3px]">{t("your")}</p>
-
+                                                {/* 根据方向显示不同文案 */}
+                                                {record.is_incoming ? (
+                                                    <p className="-ml-[3px]">{t("your")}</p>
+                                                ) : (
+                                                    <p className="-ml-[3px]">{t("their")}</p>
+                                                )}
+                                            
                                                 <p className="-ml-[5px]">
                                                     {t(record.crop_name)} {value} {t(unit)}{" "}
                                                     {t("ago")}
