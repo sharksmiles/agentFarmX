@@ -22,7 +22,7 @@ const RadarModal = () => {
         setRadaring(true)
         exploreFarm()
             .then((res) => {
-                // 更新用户金币（扣除100金币）
+                // 更新用户金币（扣除20金币）
                 setUser((prev) => {
                     if (!prev) return prev
                     return {
@@ -34,20 +34,7 @@ const RadarModal = () => {
                     }
                 })
                 
-                // 显示找到的农场信息
-                const stealInfo = res.friend.stealableCrops > 0 
-                    ? ` (${res.friend.stealableCrops} crops ready to steal!)` 
-                    : ''
-                
-                OpenAgentFarmAlert({
-                    notificationTitle: "Radar Found!",
-                    notificationMessage: `Found ${res.friend.username}'s farm!${stealInfo}`,
-                    progressBars: 100,
-                    progressTimeLeft: 0,
-                    leftHours: 0,
-                    leftMinutes: 0,
-                    needCopy: false,
-                })
+                // 直接跳转到目标农场，不显示中间弹窗
                 router.push(`/friends/farm/ra/${res.friend.id}`)
                 setOpenRadarModal(false)
             })
@@ -87,7 +74,7 @@ const RadarModal = () => {
                         <div className="flex gap-1 items-start">
                             <p className="text-[16px] text-black font-bold">
                                 {t(
-                                    "Explore the world and find farms to steal from, consuming $100 coines per attempt. Take your own risk."
+                                    "Explore the world and find farms to steal from, consuming $20 coins per attempt. Take your own risk."
                                 )}
                             </p>
                         </div>

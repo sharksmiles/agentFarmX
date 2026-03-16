@@ -15,9 +15,10 @@ export type StaminaSyncResult<T = {}> = T & FarmState & {
  */
 export const GAME_CONSTANTS = {
   BASE_SUCCESS_RATE: 0.5,        // 基础偷取成功率 50%
-  STEAL_AMOUNT: 0.2,             // 偷取作物价值的 20%
+  STEAL_AMOUNT: 0.4,             // 偷取作物价值的 40%
   STEAL_ENERGY_COST: 1,          // 偷取消耗 1 能量
-  STEAL_COIN_COST: 20,           // 偷取消耗 20 金币
+  STEAL_COIN_COST: 10,           // 偷取消耗 10 金币
+  EXPLORE_COST: 20,              // 探索消耗 20 金币
   ENERGY_RECOVERY_INTERVAL_MINS: 5,
   BASE_MAX_ENERGY: 100,
   DEFAULT_UNLOCKED_LANDS: 6,

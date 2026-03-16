@@ -7,9 +7,10 @@
 
 const GAME_CONSTANTS = {
   BASE_SUCCESS_RATE: 0.5,
-  STEAL_AMOUNT: 0.2,
+  STEAL_AMOUNT: 0.4,
   STEAL_ENERGY_COST: 1,
-  STEAL_COIN_COST: 100,
+  STEAL_COIN_COST: 10,
+  EXPLORE_COST: 20,
   ENERGY_RECOVERY_INTERVAL_MINS: 5,
   BASE_MAX_ENERGY: 100,
   DEFAULT_UNLOCKED_LANDS: 6,
@@ -83,7 +84,7 @@ describe('GAME_CONSTANTS', () => {
   });
 
   it('should have correct steal amount percentage', () => {
-    expect(GAME_CONSTANTS.STEAL_AMOUNT).toBe(0.2);
+    expect(GAME_CONSTANTS.STEAL_AMOUNT).toBe(0.4);
   });
 
   it('should have correct energy recovery interval', () => {
