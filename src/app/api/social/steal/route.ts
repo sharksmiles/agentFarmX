@@ -1,78 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { GameService, GAME_CONSTANTS } from '@/services/gameService';
+import { GameService, GAME_CONSTANTS, calculateStealSuccessRate } from '@/services/gameService';
 import { errorResponse, successResponse, internalErrorResponse, notFoundResponse } from '@/utils/api/response';
 import { withAuth, AuthContext } from '@/middleware/auth';
-
-// 计算偷盗成功率
-function calculateStealSuccessRate(params: {
-  isTargetOnline: boolean;
-  stealerLevel: number;
-  targetLevel: number;
-  cropUnlockLevel: number;
-  stealerInvites: number;
-  targetInvites: number;
-  isFriend: boolean;
-  recentStealCount: number;
-  targetIsNewFarmer: boolean;
-}): { rate: number; details: Record<string, string> } {
-  let rate = GAME_CONSTANTS.BASE_SUCCESS_RATE;
-  const details: Record<string, string> = {
-    base_success_rate: `${GAME_CONSTANTS.BASE_SUCCESS_RATE * 100}%`,
-  };
-
-  // 1. 在线状态：目标在线降低成功率
-  if (params.isTargetOnline) {
-    rate -= 0.15;
-    details.online = '-15% (target is online)';
-  }
-
-  // 2. 作物等级差：高级作物更难偷
-  const cropLevelDiff = params.cropUnlockLevel - params.stealerLevel;
-  if (cropLevelDiff > 0) {
-    const penalty = Math.min(cropLevelDiff * 0.02, 0.2);
-    rate -= penalty;
-    details.crop_level_diff = `-${(penalty * 100).toFixed(0)}%`;
-  }
-
-  // 3. 等级差
-  const levelDiff = params.stealerLevel - params.targetLevel;
-  if (levelDiff > 0) {
-    const bonus = Math.min(levelDiff * 0.01, 0.1);
-    rate += bonus;
-    details.level_diff = `+${(bonus * 100).toFixed(0)}%`;
-  } else if (levelDiff < 0) {
-    const penalty = Math.min(Math.abs(levelDiff) * 0.015, 0.15);
-    rate -= penalty;
-    details.level_diff = `-${(penalty * 100).toFixed(0)}%`;
-  }
-
-  // 4. 邀请数差
-  const inviteDiff = params.stealerInvites - params.targetInvites;
-  if (inviteDiff > 0) {
-    const bonus = Math.min(inviteDiff * 0.005, 0.05);
-    rate += bonus;
-    details.invite_diff = `+${(bonus * 100).toFixed(0)}%`;
-  }
-
-  // 5. 好友关系
-  if (params.isFriend) {
-    rate -= 0.1;
-    details.friendship_diff = '-10%';
-  }
-
-  // 6. 惯犯惩罚
-  if (params.recentStealCount > 5) {
-    const penalty = Math.min((params.recentStealCount - 5) * 0.03, 0.15);
-    rate -= penalty;
-    details.recidivist = `-${(penalty * 100).toFixed(0)}%`;
-  }
-
-  // 限制在 10% - 90% 之间
-  rate = Math.max(0.1, Math.min(0.9, rate));
-
-  return { rate, details };
-}
 
 /**
  * POST /api/social/steal - Steal from another farm
@@ -179,8 +109,14 @@ export const POST = withAuth(async (
       });
 
       if (success) {
-        // 计算奖励 (100 是假设的基础价值)
-        reward = Math.floor(100 * GAME_CONSTANTS.STEAL_AMOUNT * plot.boostMultiplier);
+        // 获取作物配置，计算实际奖励
+        const cropConfig = await tx.cropConfig.findUnique({
+          where: { cropType: plot.cropId! }
+        });
+        const cropValue = cropConfig?.harvestPrice || 50; // 默认价值 50
+        
+        // 奖励 = 作物收获价 * 偷取比例 * 加成倍率
+        reward = Math.floor(cropValue * GAME_CONSTANTS.STEAL_AMOUNT * plot.boostMultiplier);
         
         await tx.user.update({
           where: { id: userId },
@@ -209,7 +145,13 @@ export const POST = withAuth(async (
         }
       });
 
-      return { success, reward, successRate, details, action };
+      // 获取更新后的用户信息
+      const updatedUser = await tx.user.findUnique({
+        where: { id: userId },
+        select: { farmCoins: true, experience: true, level: true }
+      });
+
+      return { success, reward, successRate, details, action, updatedSelf: updatedUser };
     });
 
     return successResponse(result);

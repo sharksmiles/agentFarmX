@@ -37,15 +37,20 @@ const FriendStealConfirmation = ({
     const { t } = useLanguage()
     const { addNotification } = useNotification()
     const { setUser } = useUser()
+    // 解析百分比字符串为数值（去掉 % 符号）
+    const parsePercentValue = (val: string | undefined): number => {
+        if (!val) return 0
+        return parseFloat(val.replace('%', '')) || 0
+    }
+
     const stealStats = {
-        "Skill Gap": stealConfirmation?.success_rate_details?.level_diff || "0",
-        "Buddy Boost": stealConfirmation?.success_rate_details?.friendship_diff || "0",
-        "Invite Edge": stealConfirmation?.success_rate_details?.invite_diff || "0",
-        "Harvest Stage": stealConfirmation?.success_rate_details?.crop_level_diff || "0",
-        "is Online": stealConfirmation?.success_rate_details?.online || "0",
-        // "Theft Attempts": stealConfirmation?.success_rate_details?.level_diff || "0",
-        "Newbie Shield": stealConfirmation?.success_rate_details?.new_farmer || "0",
-        "Familiar Face": stealConfirmation?.success_rate_details?.recidivist || "0",
+        "Skill Gap": stealConfirmation?.success_rate_details?.level_diff || "0%",
+        "Buddy Boost": stealConfirmation?.success_rate_details?.friendship_diff || "0%",
+        "Invite Edge": stealConfirmation?.success_rate_details?.invite_diff || "0%",
+        "Harvest Stage": stealConfirmation?.success_rate_details?.crop_level_diff || "0%",
+        "is Online": stealConfirmation?.success_rate_details?.online || "0%",
+        "Newbie Shield": stealConfirmation?.success_rate_details?.new_farmer || "0%",
+        "Familiar Face": stealConfirmation?.success_rate_details?.recidivist || "0%",
     }
 
     const stealStatsList = Object.entries(stealStats)
@@ -304,20 +309,24 @@ const FriendStealConfirmation = ({
                             </div>
                             <div className="flex flex-col w-full mt-5">
                                 {stealStatsList.map(([key, value], index) => {
+                                    const numValue = parsePercentValue(value)
+                                    
+                                    // 在线状态特殊处理：后端返回 -15% 表示目标在线
                                     if (key === "is Online") {
-                                        if (Number(value) > 0) {
-                                            key = `${truncateText(friendStats.user_name, 15)} ${t(
-                                                "is Offline"
-                                            )}`
+                                        if (numValue < 0) {
+                                            // 目标在线，降低成功率
+                                            key = `${truncateText(friendStats.user_name, 15)} ${t("is Online")}`
                                         } else {
-                                            key = `${truncateText(friendStats.user_name, 15)} ${t(
-                                                "is Online"
-                                            )}`
+                                            // 目标离线，无影响
+                                            return null
                                         }
                                     } else {
                                         key = t(key)
                                     }
-                                    if (value === "0") return null
+                                    
+                                    // 值为 0 时不显示
+                                    if (numValue === 0) return null
+                                    
                                     return (
                                         <li key={index} className="flex justify-between">
                                             <p
@@ -327,7 +336,7 @@ const FriendStealConfirmation = ({
                                                 {key}
                                             </p>
                                             <p className="text-[16px] font-bold text-black">
-                                                {Number(value) > 0 ? `+${value}` : value}%
+                                                {numValue > 0 ? `+${numValue}%` : `${numValue}%`}
                                             </p>
                                         </li>
                                     )

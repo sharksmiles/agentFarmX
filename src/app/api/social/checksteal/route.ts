@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { GAME_CONSTANTS, calculateStealSuccessRate } from '@/services/gameService';
 
 /**
  * Check Steal Success Rate
  * Calculates the success rate for stealing a crop from a friend
- * Based on multiple factors as defined in PRD Section 10.4
+ * 使用统一的 calculateStealSuccessRate 函数，与 steal API 保持一致
  */
 
 export async function POST(request: NextRequest) {
@@ -19,8 +20,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get user and friend data
-    const [user, friend] = await Promise.all([
+    const now = new Date();
+
+    // 并行获取用户和好友数据
+    const [user, friend, friendship, recentSteals] = await Promise.all([
       prisma.user.findUnique({
         where: { id: userId },
         include: { farmState: true },
@@ -35,7 +38,36 @@ export async function POST(request: NextRequest) {
           },
         },
       }),
+      // 检查好友关系
+      prisma.socialAction.findFirst({
+        where: {
+          OR: [
+            { fromUserId: userId, toUserId: friendId, actionType: 'friend_accept' },
+            { fromUserId: friendId, toUserId: userId, actionType: 'friend_accept' },
+          ],
+        },
+      }),
+      // 检查24h内偷取次数
+      prisma.socialAction.count({
+        where: {
+          fromUserId: userId,
+          actionType: 'steal',
+          createdAt: {
+            gte: new Date(now.getTime() - 24 * 60 * 60 * 1000),
+          },
+        },
+      }),
     ]);
+
+    // 查找目标地块
+    const targetPlot = friend?.farmState?.landPlots.find(
+      (plot) => plot.plotIndex === plotIndex
+    );
+
+    // 获取作物配置
+    const cropConfig = targetPlot?.cropId 
+      ? await prisma.cropConfig.findUnique({ where: { cropType: targetPlot.cropId } })
+      : null;
 
     if (!user || !friend) {
       return NextResponse.json(
@@ -51,11 +83,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Find the target plot
-    const targetPlot = friend.farmState.landPlots.find(
-      (plot) => plot.plotIndex === plotIndex
-    );
-
     if (!targetPlot || !targetPlot.cropId) {
       return NextResponse.json(
         { error: 'No crop found on this plot' },
@@ -63,88 +90,57 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if crop is mature
-    if (!targetPlot.harvestAt || new Date() < targetPlot.harvestAt) {
+    // 检查作物是否成熟
+    if (!targetPlot.harvestAt || now < targetPlot.harvestAt) {
       return NextResponse.json(
         { error: 'Crop is not mature yet' },
         { status: 400 }
       );
     }
 
-    // Calculate success rate factors
-    const baseSuccessRate = 15; // 15% base rate
+    // 检查成熟是否超过15分钟（偷取条件）
+    const minutesSinceMature = (now.getTime() - targetPlot.harvestAt.getTime()) / (1000 * 60);
+    if (minutesSinceMature <= 15) {
+      return NextResponse.json(
+        { error: 'Crop must be mature for at least 15 minutes before stealing' },
+        { status: 400 }
+      );
+    }
 
-    // Level difference factor (higher level = better chance)
-    const levelDiff = user.level - friend.level;
-    const levelFactor = levelDiff * 2; // +2% per level difference
+    // 判断目标是否在线（5分钟内活跃）
+    const isTargetOnline = friend.lastLoginAt && 
+      (now.getTime() - friend.lastLoginAt.getTime()) < 5 * 60 * 1000;
 
-    // Online status (if friend was active in last 60 seconds)
-    const isOnline = friend.lastLoginAt && 
-      (Date.now() - friend.lastLoginAt.getTime()) < 60000;
-    const onlineFactor = isOnline ? -10 : 0; // -10% if online
+    // 简化处理作物等级（可后续从 CropConfig 获取）
+    const cropUnlockLevel = 1;
 
-    // Crop maturity factor (how long it's been mature)
-    const matureTime = targetPlot.harvestAt ? 
-      (Date.now() - targetPlot.harvestAt.getTime()) / (1000 * 60 * 60) : 0;
-    const cropLevelFactor = Math.min(matureTime * 2, 10); // +2% per hour, max +10%
-
-    // Invite advantage (if user invited the friend)
-    const inviteFactor = friend.invitedBy === user.inviteCode ? 5 : 0; // +5% if invited
-
-    // Friendship penalty (friends are harder to steal from)
-    // TODO: Check actual friendship status from a friends table
-    const friendshipFactor = -5; // -5% penalty for friends
-
-    // New farmer protection (users under level 5)
-    const newFarmerFactor = friend.level < 5 ? -15 : 0; // -15% if new farmer
-
-    // Recidivist penalty (check recent steal attempts on same user)
-    const recentSteals = await prisma.socialAction.count({
-      where: {
-        fromUserId: userId,
-        toUserId: friendId,
-        actionType: 'steal',
-        createdAt: {
-          gte: new Date(Date.now() - 24 * 60 * 60 * 1000), // Last 24 hours
-        },
-      },
+    // 使用统一的成功率计算函数
+    const { rate: successRate, details } = calculateStealSuccessRate({
+      isTargetOnline: !!isTargetOnline,
+      stealerLevel: user.level,
+      targetLevel: friend.level,
+      cropUnlockLevel,
+      stealerInvites: user.inviteCount,
+      targetInvites: friend.inviteCount,
+      isFriend: !!friendship,
+      recentStealCount: recentSteals,
+      targetIsNewFarmer: friend.level < 5,
     });
-    const recidivistFactor = recentSteals > 0 ? -5 * recentSteals : 0; // -5% per recent steal
 
-    // Calculate final success rate
-    const finalSuccessRate = Math.max(
-      0,
-      Math.min(
-        100,
-        baseSuccessRate +
-          levelFactor +
-          onlineFactor +
-          cropLevelFactor +
-          inviteFactor +
-          friendshipFactor +
-          newFarmerFactor +
-          recidivistFactor
-      )
-    );
+    // 计算预期奖励（使用实际作物价值）
+    const cropValue = cropConfig?.harvestPrice || 50; // 默认价值 50
+    const stealingEarning = Math.floor(cropValue * GAME_CONSTANTS.STEAL_AMOUNT * targetPlot.boostMultiplier);
+    const stealingExp = cropConfig?.harvestExp || 10; // 使用作物配置的经验或默认 10
 
-    // Calculate rewards and costs
-    const stealingCost = 100; // 100 coins + 1 energy
-    const energyCost = 1;
-
-    // Estimate earnings based on crop type (simplified)
-    const cropEarnings = 50; // Base earnings
-    const stealingEarning = Math.floor(cropEarnings * 0.5); // 50% of crop value
-    const stealingExp = 10; // Base experience
-
-    // Check if user has enough resources
-    if (user.farmCoins < stealingCost) {
+    // 检查资源是否足够
+    if (user.farmCoins < GAME_CONSTANTS.STEAL_COIN_COST) {
       return NextResponse.json(
         { error: 'Insufficient coins' },
         { status: 400 }
       );
     }
 
-    if (user.farmState.energy < energyCost) {
+    if (user.farmState.energy < GAME_CONSTANTS.STEAL_ENERGY_COST) {
       return NextResponse.json(
         { error: 'Insufficient energy' },
         { status: 400 }
@@ -153,19 +149,12 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success_rate_details: {
-        base_success_rate: `${baseSuccessRate}%`,
-        online: `${onlineFactor}%`,
-        crop_level_diff: `${cropLevelFactor.toFixed(1)}%`,
-        level_diff: `${levelFactor}%`,
-        invite_diff: `${inviteFactor}%`,
-        friendship_diff: `${friendshipFactor}%`,
-        recidivist: `${recidivistFactor}%`,
-        new_farmer: `${newFarmerFactor}%`,
-        final_success_rate: finalSuccessRate,
+        ...details,
+        final_success_rate: Math.round(successRate * 100),
       },
-      stealing_earning: `${stealingEarning}`,
-      stealing_exp: `${stealingExp}`,
-      stealing_cost: `${stealingCost}`,
+      stealing_earning: stealingEarning,
+      stealing_exp: stealingExp,
+      stealing_cost: GAME_CONSTANTS.STEAL_COIN_COST,
       stealing_crop_name: targetPlot.cropId,
       crop_id: targetPlot.id,
       plotIndex: targetPlot.plotIndex,

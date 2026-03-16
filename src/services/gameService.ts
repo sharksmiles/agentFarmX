@@ -14,15 +14,122 @@ export type StaminaSyncResult<T = {}> = T & FarmState & {
  * 游戏常量配置
  */
 export const GAME_CONSTANTS = {
-  BASE_SUCCESS_RATE: 0.5,
-  STEAL_AMOUNT: 0.2,
-  STEAL_ENERGY_COST: 1,
-  STEAL_COIN_COST: 100,
+  BASE_SUCCESS_RATE: 0.5,        // 基础偷取成功率 50%
+  STEAL_AMOUNT: 0.2,             // 偷取作物价值的 20%
+  STEAL_ENERGY_COST: 1,          // 偷取消耗 1 能量
+  STEAL_COIN_COST: 20,           // 偷取消耗 20 金币
   ENERGY_RECOVERY_INTERVAL_MINS: 5,
   BASE_MAX_ENERGY: 100,
   DEFAULT_UNLOCKED_LANDS: 6,
   DAILY_BOOST_COUNT: 3,
 };
+
+/**
+ * 偷取成功率计算参数
+ */
+export interface StealSuccessRateParams {
+  isTargetOnline: boolean;       // 目标是否在线
+  stealerLevel: number;          // 偷盗者等级
+  targetLevel: number;           // 目标等级
+  cropUnlockLevel: number;       // 作物解锁等级
+  stealerInvites: number;        // 偷盗者邀请数
+  targetInvites: number;         // 目标邀请数
+  isFriend: boolean;             // 是否是好友
+  recentStealCount: number;      // 24h内偷取次数
+  targetIsNewFarmer: boolean;    // 目标是否是新手 (等级<5)
+}
+
+/**
+ * 偷取成功率计算结果
+ */
+export interface StealSuccessRateResult {
+  rate: number;                  // 最终成功率 (0-1)
+  details: Record<string, string>; // 各因素详情
+}
+
+/**
+ * 计算偷取成功率
+ * 统一的计算函数，供 checksteal 和 steal API 共用
+ */
+export function calculateStealSuccessRate(params: StealSuccessRateParams): StealSuccessRateResult {
+  let rate = GAME_CONSTANTS.BASE_SUCCESS_RATE;
+  const details: Record<string, string> = {
+    base_success_rate: `${GAME_CONSTANTS.BASE_SUCCESS_RATE * 100}%`,
+  };
+
+  // 1. 在线状态：目标在线降低成功率
+  if (params.isTargetOnline) {
+    rate -= 0.15;
+    details.online = '-15%';
+  } else {
+    details.online = '0%';
+  }
+
+  // 2. 作物等级差：高级作物更难偷
+  const cropLevelDiff = params.cropUnlockLevel - params.stealerLevel;
+  if (cropLevelDiff > 0) {
+    const penalty = Math.min(cropLevelDiff * 0.02, 0.2);
+    rate -= penalty;
+    details.crop_level_diff = `-${(penalty * 100).toFixed(0)}%`;
+  } else {
+    details.crop_level_diff = '0%';
+  }
+
+  // 3. 等级差
+  const levelDiff = params.stealerLevel - params.targetLevel;
+  if (levelDiff > 0) {
+    const bonus = Math.min(levelDiff * 0.01, 0.1);
+    rate += bonus;
+    details.level_diff = `+${(bonus * 100).toFixed(0)}%`;
+  } else if (levelDiff < 0) {
+    const penalty = Math.min(Math.abs(levelDiff) * 0.015, 0.15);
+    rate -= penalty;
+    details.level_diff = `-${(penalty * 100).toFixed(0)}%`;
+  } else {
+    details.level_diff = '0%';
+  }
+
+  // 4. 邀请数差
+  const inviteDiff = params.stealerInvites - params.targetInvites;
+  if (inviteDiff > 0) {
+    const bonus = Math.min(inviteDiff * 0.005, 0.05);
+    rate += bonus;
+    details.invite_diff = `+${(bonus * 100).toFixed(0)}%`;
+  } else {
+    details.invite_diff = '0%';
+  }
+
+  // 5. 好友关系
+  if (params.isFriend) {
+    rate -= 0.1;
+    details.friendship_diff = '-10%';
+  } else {
+    details.friendship_diff = '0%';
+  }
+
+  // 6. 惯犯惩罚：24h内偷取超过5次后，每次额外惩罚
+  if (params.recentStealCount > 5) {
+    const penalty = Math.min((params.recentStealCount - 5) * 0.03, 0.15);
+    rate -= penalty;
+    details.recidivist = `-${(penalty * 100).toFixed(0)}%`;
+  } else {
+    details.recidivist = '0%';
+  }
+
+  // 7. 新手保护：目标等级<5时，降低成功率
+  if (params.targetIsNewFarmer) {
+    rate -= 0.15;
+    details.new_farmer = '-15%';
+  } else {
+    details.new_farmer = '0%';
+  }
+
+  // 限制在 10% - 90% 之间
+  rate = Math.max(0.1, Math.min(0.9, rate));
+  details.final_success_rate = `${Math.round(rate * 100)}%`;
+
+  return { rate, details };
+}
 
 /**
  * 游戏服务类
