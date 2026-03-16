@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { mapUserToFrontend } from '@/utils/func/userMapper';
-import { calculateRecoveredEnergy, getSystemConfig, GAME_CONSTANTS } from '@/utils/func/gameLogic';
+import { GameService, GAME_CONSTANTS } from '@/services/gameService';
 import { errorResponse, successResponse, internalErrorResponse, notFoundResponse } from '@/utils/api/response';
 
 // GET /api/farm/state - 获取农场当前状态
@@ -35,8 +35,8 @@ export async function GET(request: NextRequest) {
     }
 
     // 内存中计算当前能量（不写入数据库）
-    const recoveryInterval = await getSystemConfig('energy_recovery_rate', GAME_CONSTANTS.ENERGY_RECOVERY_INTERVAL_MINS);
-    const { newEnergy } = calculateRecoveredEnergy({
+    const recoveryInterval = await GameService.getSystemConfig('energy_recovery_rate', GAME_CONSTANTS.ENERGY_RECOVERY_INTERVAL_MINS);
+    const { newEnergy } = GameService.calculateRecoveredEnergy({
       currentEnergy: user.farmState.energy,
       maxEnergy: user.farmState.maxEnergy,
       lastUpdate: user.farmState.lastEnergyUpdate,

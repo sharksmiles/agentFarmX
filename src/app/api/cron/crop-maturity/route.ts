@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { GameService } from '@/services/gameService';
 
 export const maxDuration = 60;
 
@@ -14,39 +15,38 @@ export async function GET(request: NextRequest) {
     const startTime = Date.now();
     console.log('[Crop Maturity] Starting...');
 
-    const now = new Date();
-
-    // Find crops that are ready to harvest
-    const maturePlots = await prisma.landPlot.findMany({
+    // Find all plots that are planted
+    const activePlots = await prisma.landPlot.findMany({
       where: {
         cropId: { not: null },
-        harvestAt: { lte: now },
-        growthStage: { lt: 4 },
-      },
-      select: {
-        id: true,
-        cropId: true,
-        harvestAt: true,
-        farmStateId: true,
+        harvestAt: { not: null }, // 确保有收获时间
       },
     });
 
-    console.log(`[Crop Maturity] Found ${maturePlots.length} crops ready to mature`);
+    console.log(`[Crop Maturity] Checking ${activePlots.length} active plots for stage updates`);
 
     let updatedCount = 0;
 
-    // Update growth stage to mature (4)
+    // Batch process to avoid timeout
     const BATCH_SIZE = 100;
-    for (let i = 0; i < maturePlots.length; i += BATCH_SIZE) {
-      const batch = maturePlots.slice(i, i + BATCH_SIZE);
+    for (let i = 0; i < activePlots.length; i += BATCH_SIZE) {
+      const batch = activePlots.slice(i, i + BATCH_SIZE);
 
       await Promise.all(
         batch.map(async (plot) => {
-          await prisma.landPlot.update({
-            where: { id: plot.id },
-            data: { growthStage: 4 },
-          });
-          updatedCount++;
+          try {
+            const newStage = GameService.calculateGrowthStage(plot);
+            
+            if (newStage !== plot.growthStage) {
+              await prisma.landPlot.update({
+                where: { id: plot.id },
+                data: { growthStage: newStage },
+              });
+              updatedCount++;
+            }
+          } catch (plotError) {
+            console.error(`[Crop Maturity] Error updating plot ${plot.id}:`, plotError);
+          }
         })
       );
     }

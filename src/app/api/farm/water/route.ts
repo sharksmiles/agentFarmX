@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { mapUserToFrontend } from '@/utils/func/userMapper';
-import { calculateRecoveredEnergy, getSystemConfig, GAME_CONSTANTS, processExpGain } from '@/utils/func/gameLogic';
+import { GameService, GAME_CONSTANTS, FarmStateWithPlots } from '@/services/gameService';
 import { errorResponse, successResponse, internalErrorResponse, notFoundResponse } from '@/utils/api/response';
 
 const WATER_ENERGY_COST = 1;
@@ -18,56 +18,68 @@ export async function POST(request: NextRequest) {
 
     const now = new Date();
 
-    // 1. 先在事务外获取必要的静态配置
-    const recoveryInterval = await getSystemConfig('energy_recovery_rate', GAME_CONSTANTS.ENERGY_RECOVERY_INTERVAL_MINS);
-
-    // 2. 在事务中处理浇水逻辑 (设置超时时间为 15秒)
+    // 1. 在事务中处理浇水逻辑 (设置超时时间为 15秒)
     const updatedUser = await prisma.$transaction(async (tx) => {
-      // 获取农场状态并处理能量恢复
-      const farmState = await tx.farmState.findUnique({
-        where: { userId },
-        include: { landPlots: true },
+      // 获取农场状态并处理能量恢复 (Lazy Sync)
+      // 在同一查询中获取所有地块，避免竞态条件
+      const farmState = await GameService.syncUserStamina<FarmStateWithPlots>(userId, tx, {
+        landPlots: true
       });
 
       if (!farmState) throw new Error('Farm state not found');
 
-      const { newEnergy, newLastUpdate } = calculateRecoveredEnergy({
-        currentEnergy: farmState.energy,
-        maxEnergy: farmState.maxEnergy,
-        lastUpdate: farmState.lastEnergyUpdate,
-        recoveryIntervalMins: recoveryInterval
+      // 校验能量
+      if (farmState.energy < WATER_ENERGY_COST) throw new Error('Insufficient energy');
+
+      // 校验地块
+      const dbPlotIndex = plotIndex > 0 ? plotIndex - 1 : plotIndex;
+      const plot = farmState.landPlots?.find((p) => p.plotIndex === dbPlotIndex);
+
+      if (!plot) throw new Error(`Plot ${plotIndex} not found for user ${userId}`);
+      if (!plot.cropId) throw new Error(`No crop to water on plot ${plotIndex}`);
+
+      // 计算缩短后的收获时间 (SubTask 3.2: 缩短 5% 或最多 5 分钟)
+      let newHarvestAt = plot.harvestAt;
+      if (plot.harvestAt && plot.plantedAt && plot.plantedAt.getTime() <= plot.harvestAt.getTime()) {
+        const totalDurationMs = plot.harvestAt.getTime() - plot.plantedAt.getTime();
+        const FIVE_MINUTES_MS = 5 * 60 * 1000;
+        
+        // 缩短总周期的 5%，但封顶缩短 5 分钟 (统一毫秒单位)
+        const reductionMs = Math.min(totalDurationMs * 0.05, FIVE_MINUTES_MS);
+        newHarvestAt = new Date(plot.harvestAt.getTime() - reductionMs);
+        
+        // 确保不会比现在早
+        if (newHarvestAt.getTime() < now.getTime()) {
+          newHarvestAt = now;
+        }
+      }
+
+      // 执行浇水操作并更新生长阶段
+      const growthStage = GameService.calculateGrowthStage({
+        ...plot,
+        harvestAt: newHarvestAt,
       });
 
-      // 校验能量
-      if (newEnergy < WATER_ENERGY_COST) throw new Error('Insufficient energy');
-
-      // 获取并校验地块
-      const dbPlotIndex = plotIndex > 0 ? plotIndex - 1 : plotIndex;
-      const plot = farmState.landPlots.find((p) => p.plotIndex === dbPlotIndex);
-
-      if (!plot) throw new Error('Plot not found');
-      if (!plot.cropId) throw new Error('No crop to water');
-
-      // 执行浇水操作 (增加收益倍率)
-      await tx.landPlot.update({
+      const updatedPlot = await tx.landPlot.update({
         where: { id: plot.id },
         data: {
           boostMultiplier: plot.boostMultiplier * WATER_BOOST_MULTIPLIER,
           boostExpireAt: new Date(now.getTime() + 60 * 60 * 1000), // 1 hour boost
           lastWateredAt: now,
           nextWateringDue: new Date(now.getTime() + 10 * 60 * 1000), // Next watering in 10 mins
+          harvestAt: newHarvestAt,
+          growthStage,
         } as any,
       });
 
       // 增加少量经验
-      await processExpGain(tx, userId, 2);
+      await GameService.processExpGain(userId, 2, tx);
 
       // 更新农场状态 (扣除能量)
       await tx.farmState.update({
         where: { id: farmState.id },
         data: {
-          energy: { decrement: WATER_ENERGY_COST }, // 使用 increment/decrement 原子操作
-          lastEnergyUpdate: newLastUpdate,
+          energy: { decrement: WATER_ENERGY_COST },
         },
       });
 
@@ -88,11 +100,12 @@ export async function POST(request: NextRequest) {
 
     return successResponse(mapUserToFrontend(updatedUser));
   } catch (error: any) {
-    if (error.message === 'Farm state not found' || error.message === 'Plot not found') {
-      return notFoundResponse(error.message);
+    const message = error.message || 'Internal server error';
+    if (message.includes('not found')) {
+      return notFoundResponse(message);
     }
-    if (error.message === 'Insufficient energy' || error.message === 'No crop to water') {
-      return errorResponse(error.message, 400);
+    if (message.includes('Insufficient energy') || message.includes('No crop to water')) {
+      return errorResponse(message, 400);
     }
     return internalErrorResponse(error);
   }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { mapUserToFrontend } from '@/utils/func/userMapper';
-import { getCropConfig, processExpGain } from '@/utils/func/gameLogic';
+import { GameService } from '@/services/gameService';
 import { errorResponse, successResponse, internalErrorResponse, notFoundResponse } from '@/utils/api/response';
 
 // POST /api/farm/harvest - Harvest a crop
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
       if (!plot.cropId) throw new Error('No crop to harvest');
 
       // 2. 获取作物配置以计算收益
-      const cropConfig = await getCropConfig(plot.cropId, tx);
+      const cropConfig = await GameService.getCropConfig(plot.cropId, tx);
       const reward = Math.floor((cropConfig?.harvestPrice || 10) * (plot.boostMultiplier || 1.0));
       const expGain = cropConfig?.harvestExp || 10;
 
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
         },
       });
       
-      await processExpGain(tx, userId, expGain);
+      await GameService.processExpGain(userId, expGain, tx);
 
       // 5. 更新统计数据
       await tx.farmState.update({

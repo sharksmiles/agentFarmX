@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { SiweMessage } from 'siwe';
 import { prisma } from '@/lib/prisma';
 import { mapUserToFrontend } from '@/utils/func/userMapper';
-import { GAME_CONSTANTS, getSystemConfig, calculateRecoveredEnergy } from '@/utils/func/gameLogic';
+import { GAME_CONSTANTS, GameService } from '@/services/gameService';
 import { errorResponse, successResponse, internalErrorResponse } from '@/utils/api/response';
 
 export async function POST(request: NextRequest) {
@@ -113,8 +113,8 @@ export async function POST(request: NextRequest) {
 
         // 2. 处理能量恢复逻辑 (追溯计算)
         if (user.farmState) {
-          const recoveryInterval = await getSystemConfig('energy_recovery_rate', GAME_CONSTANTS.ENERGY_RECOVERY_INTERVAL_MINS);
-          const { newEnergy, newLastUpdate } = calculateRecoveredEnergy({
+          const recoveryInterval = await GameService.getSystemConfig('energy_recovery_rate', GAME_CONSTANTS.ENERGY_RECOVERY_INTERVAL_MINS, tx);
+          const { newEnergy, newLastUpdate } = GameService.calculateRecoveredEnergy({
             currentEnergy: user.farmState.energy,
             maxEnergy: user.farmState.maxEnergy,
             lastUpdate: user.farmState.lastEnergyUpdate,

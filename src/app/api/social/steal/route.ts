@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { GAME_CONSTANTS, getSystemConfig, calculateRecoveredEnergy } from '@/utils/func/gameLogic';
+import { GameService, GAME_CONSTANTS } from '@/services/gameService';
 import { errorResponse, successResponse, internalErrorResponse, notFoundResponse } from '@/utils/api/response';
 
 // 计算偷盗成功率
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
     const now = new Date();
 
     // 1. 在事务外获取配置，减少事务时间
-    const recoveryInterval = await getSystemConfig('energy_recovery_rate', GAME_CONSTANTS.ENERGY_RECOVERY_INTERVAL_MINS);
+    const recoveryIntervalMins = await GameService.getEnergyRecoveryInterval();
 
     // 2. 在事务中执行偷盗逻辑 (设置超时时间为 15秒)
     const result = await prisma.$transaction(async (tx) => {
@@ -97,11 +97,11 @@ export async function POST(request: NextRequest) {
 
       if (!stealer || !stealer.farmState) throw new Error('Stealer not found');
 
-      const { newEnergy, newLastUpdate } = calculateRecoveredEnergy({
+      const { newEnergy, newLastUpdate } = GameService.calculateRecoveredEnergy({
         currentEnergy: stealer.farmState.energy,
         maxEnergy: stealer.farmState.maxEnergy,
         lastUpdate: stealer.farmState.lastEnergyUpdate,
-        recoveryIntervalMins: recoveryInterval
+        recoveryIntervalMins: recoveryIntervalMins,
       });
 
       // 检查资源是否足够

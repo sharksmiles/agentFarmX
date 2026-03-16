@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { mapUserToFrontend } from '@/utils/func/userMapper';
-import { calculateRecoveredEnergy, getSystemConfig, GAME_CONSTANTS } from '@/utils/func/gameLogic';
+import { GameService, GAME_CONSTANTS } from '@/services/gameService';
 import { errorResponse, successResponse, internalErrorResponse, notFoundResponse } from '@/utils/api/response';
 
 const ENERGY_PACKS: Record<string, { energy: number; cost: number; dailyLimit: number }> = {
@@ -38,12 +38,13 @@ export async function POST(request: NextRequest) {
 
       if (!user || !user.farmState) throw new Error('User or farm state not found');
 
-      const recoveryInterval = await getSystemConfig('energy_recovery_rate', GAME_CONSTANTS.ENERGY_RECOVERY_INTERVAL_MINS);
-      const { newEnergy, newLastUpdate } = calculateRecoveredEnergy({
+      const recoveryIntervalMins = await GameService.getEnergyRecoveryInterval(tx);
+
+      const { newEnergy, newLastUpdate } = GameService.calculateRecoveredEnergy({
         currentEnergy: user.farmState.energy,
         maxEnergy: user.farmState.maxEnergy,
         lastUpdate: user.farmState.lastEnergyUpdate,
-        recoveryIntervalMins: recoveryInterval
+        recoveryIntervalMins: recoveryIntervalMins
       });
 
       // 2. 校验每日购买限制

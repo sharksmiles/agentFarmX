@@ -1,5 +1,6 @@
 import { User as PrismaUser, FarmState, LandPlot, Inventory } from '@prisma/client';
 import { User as FrontendUser, GrowingCrop, CropItem, LandIdTypes } from '../types';
+import { GameService } from '@/services/gameService';
 
 type UserWithRelations = PrismaUser & {
   farmState: (FarmState & {
@@ -36,13 +37,14 @@ export function mapUserToFrontend(user: UserWithRelations): FrontendUser {
       const cropDetails: GrowingCrop['crop_details'] = {};
       if (plot && plot.cropId) {
         const plotAny = plot as any;
+        const currentStage = GameService.calculateGrowthStage(plot);
+        
         cropDetails.crop_id = plot.cropId;
         cropDetails.crop_type = plot.cropId as any; // Cast from string to CropTypes
         cropDetails.planted_time = plot.plantedAt?.toISOString();
-        cropDetails.is_mature = plot.growthStage >= 4; // Assuming 4 is mature
-        cropDetails.status = plot.growthStage >= 4 ? 'mature' : 'growing';
+        cropDetails.is_mature = currentStage >= 4;
+        cropDetails.status = currentStage >= 4 ? 'mature' : 'growing';
         cropDetails.maturing_time = plot.harvestAt ? new Date(plot.harvestAt).getTime() : undefined;
-        cropDetails.growth_time_hours = 2; // Hardcoded in login route
         cropDetails.last_watered_time = plotAny.lastWateredAt ? plotAny.lastWateredAt.toISOString() : plot.plantedAt?.toISOString();
         cropDetails.next_watering_due = plotAny.nextWateringDue ? plotAny.nextWateringDue.toISOString() : (plot.plantedAt ? new Date(new Date(plot.plantedAt).getTime() + 10 * 60 * 1000).toISOString() : undefined);
       }
