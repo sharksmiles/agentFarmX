@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { mapUserToFrontend } from '@/utils/func/userMapper';
+import { calculateRecoveredEnergy, getSystemConfig, GAME_CONSTANTS, processExpGain } from '@/utils/func/gameLogic';
+import { errorResponse, successResponse, internalErrorResponse, notFoundResponse } from '@/utils/api/response';
 
 const WATER_ENERGY_COST = 1;
 const WATER_BOOST_MULTIPLIER = 1.1;
@@ -11,117 +13,87 @@ export async function POST(request: NextRequest) {
     const { userId, plotIndex } = body;
 
     if (!userId || plotIndex === undefined) {
-      return NextResponse.json(
-        { error: 'userId and plotIndex are required' },
-        { status: 400 }
-      );
+      return errorResponse('userId and plotIndex are required', 400);
     }
 
-    // Get farm state
-    const farmState = await prisma.farmState.findUnique({
-      where: { userId },
-      include: {
-        landPlots: true,
-      },
-    });
-
-    if (!farmState) {
-      return NextResponse.json(
-        { error: 'Farm state not found' },
-        { status: 404 }
-      );
-    }
-
-    // Check energy and handle recovery
     const now = new Date();
-    let currentEnergy = farmState.energy;
-    let lastEnergyUpdate = new Date(farmState.lastEnergyUpdate);
 
-    if (currentEnergy < farmState.maxEnergy) {
-      const msPassed = now.getTime() - lastEnergyUpdate.getTime();
-      const config = await prisma.systemConfig.findUnique({
-        where: { key: 'energy_recovery_rate' },
+    // 1. 先在事务外获取必要的静态配置
+    const recoveryInterval = await getSystemConfig('energy_recovery_rate', GAME_CONSTANTS.ENERGY_RECOVERY_INTERVAL_MINS);
+
+    // 2. 在事务中处理浇水逻辑 (设置超时时间为 15秒)
+    const updatedUser = await prisma.$transaction(async (tx) => {
+      // 获取农场状态并处理能量恢复
+      const farmState = await tx.farmState.findUnique({
+        where: { userId },
+        include: { landPlots: true },
       });
-      const recoveryIntervalMinutes = (config?.value as any)?.intervalMinutes || 5;
-      const msPerEnergy = recoveryIntervalMinutes * 60 * 1000;
-      
-      const energyToRecover = Math.floor(msPassed / msPerEnergy);
-      if (energyToRecover > 0) {
-        const actualRecovery = Math.min(energyToRecover, farmState.maxEnergy - currentEnergy);
-        currentEnergy += actualRecovery;
-        lastEnergyUpdate = new Date(lastEnergyUpdate.getTime() + actualRecovery * msPerEnergy);
-      }
-    }
 
-    if (currentEnergy < WATER_ENERGY_COST) {
-      return NextResponse.json(
-        { error: 'Insufficient energy' },
-        { status: 400 }
-      );
-    }
+      if (!farmState) throw new Error('Farm state not found');
 
-    // Find the plot
-    const dbPlotIndex = plotIndex > 0 ? plotIndex - 1 : plotIndex;
-    const plot = farmState.landPlots.find((p) => p.plotIndex === dbPlotIndex);
+      const { newEnergy, newLastUpdate } = calculateRecoveredEnergy({
+        currentEnergy: farmState.energy,
+        maxEnergy: farmState.maxEnergy,
+        lastUpdate: farmState.lastEnergyUpdate,
+        recoveryIntervalMins: recoveryInterval
+      });
 
-    if (!plot) {
-      return NextResponse.json(
-        { error: 'Plot not found' },
-        { status: 404 }
-      );
-    }
+      // 校验能量
+      if (newEnergy < WATER_ENERGY_COST) throw new Error('Insufficient energy');
 
-    // Water the crop
-    await prisma.$transaction([
-      prisma.landPlot.update({
+      // 获取并校验地块
+      const dbPlotIndex = plotIndex > 0 ? plotIndex - 1 : plotIndex;
+      const plot = farmState.landPlots.find((p) => p.plotIndex === dbPlotIndex);
+
+      if (!plot) throw new Error('Plot not found');
+      if (!plot.cropId) throw new Error('No crop to water');
+
+      // 执行浇水操作 (增加收益倍率)
+      await tx.landPlot.update({
         where: { id: plot.id },
         data: {
           boostMultiplier: plot.boostMultiplier * WATER_BOOST_MULTIPLIER,
-          boostExpireAt: new Date(Date.now() + 60 * 60 * 1000), // 1 hour
-          lastWateredAt: new Date(),
-          nextWateringDue: new Date(Date.now() + 10 * 60 * 1000), // Next watering in 10 minutes
+          boostExpireAt: new Date(now.getTime() + 60 * 60 * 1000), // 1 hour boost
+          lastWateredAt: now,
+          nextWateringDue: new Date(now.getTime() + 10 * 60 * 1000), // Next watering in 10 mins
         } as any,
-      }),
-      prisma.user.update({
-        where: { id: userId },
-        data: {
-          experience: { increment: 2 }, // Small exp for watering
-        },
-      }),
-      prisma.farmState.update({
+      });
+
+      // 增加少量经验
+      await processExpGain(tx, userId, 2);
+
+      // 更新农场状态 (扣除能量)
+      await tx.farmState.update({
         where: { id: farmState.id },
         data: {
-          energy: currentEnergy - WATER_ENERGY_COST,
-          lastEnergyUpdate: currentEnergy - WATER_ENERGY_COST >= farmState.maxEnergy ? now : lastEnergyUpdate,
+          energy: { decrement: WATER_ENERGY_COST }, // 使用 increment/decrement 原子操作
+          lastEnergyUpdate: newLastUpdate,
         },
-      }),
-    ]);
+      });
 
-    // Fetch updated user with relations
-    const updatedUser = await prisma.user.findUnique({
+      // 返回最新用户数据
+      return await tx.user.findUnique({
         where: { id: userId },
         include: {
-            farmState: {
-                include: {
-                    landPlots: true
-                }
-            },
-            inventory: true
+          farmState: { include: { landPlots: true } },
+          inventory: true,
+          agents: true
         }
+      });
+    }, {
+      timeout: 15000 // 增加超时时间到 15 秒
     });
 
-    if (!updatedUser) {
-        throw new Error('User not found after update');
+    if (!updatedUser) throw new Error('User data corruption after watering');
+
+    return successResponse(mapUserToFrontend(updatedUser));
+  } catch (error: any) {
+    if (error.message === 'Farm state not found' || error.message === 'Plot not found') {
+      return notFoundResponse(error.message);
     }
-
-    return NextResponse.json(mapUserToFrontend(updatedUser));
-
-  } catch (error) {
-    console.error('POST /api/farm/water error:', error);
-
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    if (error.message === 'Insufficient energy' || error.message === 'No crop to water') {
+      return errorResponse(error.message, 400);
+    }
+    return internalErrorResponse(error);
   }
 }

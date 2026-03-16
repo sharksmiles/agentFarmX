@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { errorResponse, successResponse, internalErrorResponse, notFoundResponse } from '@/utils/api/response';
 
-const WATER_REWARD = 5; // Coins for watering friend's crop
-const WATER_BOOST = 1.05; // 5% boost
+const WATER_REWARD = 5; // 帮助好友浇水的金币奖励
+const WATER_BOOST = 1.05; // 5% 的收益加成
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,72 +11,52 @@ export async function POST(request: NextRequest) {
     const { userId, friendId, plotIndex } = body;
 
     if (!userId || !friendId || plotIndex === undefined) {
-      return NextResponse.json(
-        { error: 'userId, friendId, and plotIndex are required' },
-        { status: 400 }
-      );
+      return errorResponse('userId, friendId, and plotIndex are required', 400);
     }
 
-    // Get friend's farm
-    const friendFarm = await prisma.farmState.findUnique({
-      where: { userId: friendId },
-      include: { landPlots: true },
-    });
+    // 在单个事务中处理帮好友浇水逻辑
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. 获取好友农场状态
+      const friendFarm = await tx.farmState.findUnique({
+        where: { userId: friendId },
+        include: { landPlots: true },
+      });
 
-    if (!friendFarm) {
-      return NextResponse.json(
-        { error: 'Friend farm not found' },
-        { status: 404 }
-      );
-    }
+      if (!friendFarm) throw new Error('Friend farm not found');
 
-    const plot = friendFarm.landPlots.find((p) => p.plotIndex === plotIndex);
+      // 2. 获取并校验地块
+      const plot = friendFarm.landPlots.find((p) => p.plotIndex === plotIndex);
+      if (!plot || !plot.cropId) throw new Error('No crop to water');
 
-    if (!plot || !plot.cropId) {
-      return NextResponse.json(
-        { error: 'No crop to water' },
-        { status: 400 }
-      );
-    }
-
-    // Water the crop and give reward
-    const [updatedPlot, socialAction, updatedUser] = await prisma.$transaction([
-      prisma.landPlot.update({
+      // 3. 执行浇水操作并给奖励
+      const updatedPlot = await tx.landPlot.update({
         where: { id: plot.id },
         data: {
           boostMultiplier: plot.boostMultiplier * WATER_BOOST,
         },
-      }),
-      prisma.socialAction.create({
+      });
+
+      const socialAction = await tx.socialAction.create({
         data: {
           fromUserId: userId,
           toUserId: friendId,
           actionType: 'water',
-          metadata: {
-            plotIndex,
-            reward: WATER_REWARD,
-            cropId: plot.cropId,
-          },
+          metadata: { plotIndex, reward: WATER_REWARD, cropId: plot.cropId },
         },
-      }),
-      prisma.user.update({
-        where: { id: userId },
-        data: {
-          farmCoins: { increment: WATER_REWARD },
-        },
-      }),
-    ]);
+      });
 
-    return NextResponse.json({
-      plot: updatedPlot,
-      reward: WATER_REWARD,
-      user: updatedUser,
+      const updatedUser = await tx.user.update({
+        where: { id: userId },
+        data: { farmCoins: { increment: WATER_REWARD } },
+      });
+
+      return { plot: updatedPlot, reward: WATER_REWARD, user: updatedUser, action: socialAction };
     });
-  } catch (error) {
-    console.error('POST /api/social/water error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+
+    return successResponse(result);
+  } catch (error: any) {
+    if (error.message === 'Friend farm not found') return notFoundResponse(error.message);
+    if (error.message === 'No crop to water') return errorResponse(error.message, 400);
+    return internalErrorResponse(error);
   }
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { errorResponse, successResponse, internalErrorResponse, notFoundResponse } from '@/utils/api/response';
 
 export async function POST(request: NextRequest) {
   try {
@@ -7,74 +8,58 @@ export async function POST(request: NextRequest) {
     const { userId } = body;
 
     if (!userId) {
-      return NextResponse.json(
-        { error: 'userId is required' },
-        { status: 400 }
-      );
+      return errorResponse('userId is required', 400);
     }
 
-    const today = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    const checkInKey = `daily_checkin_${userId}`;
 
-    // Get user's last check-in
-    const checkInConfig = await prisma.systemConfig.findUnique({
-      where: { key: `daily_checkin_${userId}` },
-    });
+    // 在单个事务中处理每日签到逻辑
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. 获取签到记录
+      const checkInConfig = await tx.systemConfig.findUnique({
+        where: { key: checkInKey },
+      });
 
-    const lastCheckIn = checkInConfig?.value as any;
-    const lastCheckInDate = lastCheckIn?.date;
+      const lastCheckIn = checkInConfig?.value as any;
+      const lastCheckInDate = lastCheckIn?.date;
 
-    if (lastCheckInDate === today) {
-      return NextResponse.json(
-        { error: 'Already checked in today' },
-        { status: 400 }
-      );
-    }
+      if (lastCheckInDate === todayStr) {
+        throw new Error('Already checked in today');
+      }
 
-    // Calculate streak
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().split('T')[0];
+      // 2. 计算连续签到与奖励
+      const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      const yesterdayStr = yesterday.toISOString().split('T')[0];
 
-    const isConsecutive = lastCheckInDate === yesterdayStr;
-    const newStreak = isConsecutive ? (lastCheckIn?.streak || 0) + 1 : 1;
-    const reward = newStreak * 10; // Increasing reward based on streak
+      const isConsecutive = lastCheckInDate === yesterdayStr;
+      const newStreak = isConsecutive ? (lastCheckIn?.streak || 0) + 1 : 1;
+      const reward = Math.min(newStreak * 10, 100); // 阶梯奖励，上限 100
 
-    // Update check-in
-    const [updatedConfig, updatedUser] = await prisma.$transaction([
-      prisma.systemConfig.upsert({
-        where: { key: `daily_checkin_${userId}` },
+      // 3. 更新签到状态与发放奖励
+      await tx.systemConfig.upsert({
+        where: { key: checkInKey },
         create: {
-          key: `daily_checkin_${userId}`,
-          value: {
-            date: today,
-            streak: newStreak,
-          },
+          key: checkInKey,
+          value: { date: todayStr, streak: newStreak },
         },
         update: {
-          value: {
-            date: today,
-            streak: newStreak,
-          },
+          value: { date: todayStr, streak: newStreak },
         },
-      }),
-      prisma.user.update({
-        where: { id: userId },
-        data: {
-          farmCoins: { increment: reward },
-        },
-      }),
-    ]);
+      });
 
-    return NextResponse.json({
-      streak: newStreak,
-      reward,
-      user: updatedUser,
+      const updatedUser = await tx.user.update({
+        where: { id: userId },
+        data: { farmCoins: { increment: reward } },
+      });
+
+      return { streak: newStreak, reward, user: updatedUser };
     });
-  } catch (error) {
-    console.error('POST /api/tasks/daily/claim error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+
+    return successResponse(result);
+  } catch (error: any) {
+    if (error.message === 'Already checked in today') return errorResponse(error.message, 400);
+    return internalErrorResponse(error);
   }
 }

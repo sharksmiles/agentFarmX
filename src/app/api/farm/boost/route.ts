@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { mapUserToFrontend } from '@/utils/func/userMapper';
+import { errorResponse, successResponse, internalErrorResponse, notFoundResponse } from '@/utils/api/response';
 
 const BOOST_MULTIPLIER = 2.0;
 const BOOST_DURATION = 30 * 60 * 1000; // 30 minutes
@@ -11,103 +12,68 @@ export async function POST(request: NextRequest) {
     const { userId, plotIndex } = body;
 
     if (!userId || plotIndex === undefined) {
-      return NextResponse.json(
-        { error: 'userId and plotIndex are required' },
-        { status: 400 }
-      );
+      return errorResponse('userId and plotIndex are required', 400);
     }
 
-    // Get farm state
-    const farmState = await prisma.farmState.findUnique({
-      where: { userId },
-      include: {
-        landPlots: true,
-      },
-    });
+    const now = new Date();
 
-    if (!farmState) {
-      return NextResponse.json(
-        { error: 'Farm state not found' },
-        { status: 404 }
-      );
-    }
+    // 在单个事务中执行加速逻辑
+    const updatedUser = await prisma.$transaction(async (tx) => {
+      // 1. 获取用户及其农场状态
+      const user = await tx.user.findUnique({
+        where: { id: userId },
+        include: { farmState: { include: { landPlots: true } }, inventory: true },
+      });
 
-    // Handle 1-based vs 0-based index
-    const dbPlotIndex = plotIndex > 0 ? plotIndex - 1 : plotIndex;
+      if (!user || !user.farmState) throw new Error('User or farm state not found');
 
-    // Find the plot
-    const plot = farmState.landPlots.find((p) => p.plotIndex === dbPlotIndex);
+      // 2. 获取并校验地块
+      const dbPlotIndex = plotIndex > 0 ? plotIndex - 1 : plotIndex;
+      const plot = user.farmState.landPlots.find((p) => p.plotIndex === dbPlotIndex);
 
-    if (!plot) {
-      return NextResponse.json(
-        { error: 'Plot not found' },
-        { status: 404 }
-      );
-    }
+      if (!plot) throw new Error('Plot not found');
+      if (!plot.cropId) throw new Error('No crop to boost');
 
-    if (!plot.cropId) {
-      return NextResponse.json(
-        { error: 'No crop to boost' },
-        { status: 400 }
-      );
-    }
+      // 3. 校验加速道具
+      const boostItem = user.inventory.find(i => i.itemType === 'boost' && i.quantity > 0);
+      if (!boostItem) throw new Error('No boost item available');
 
-    // Check if user has boost item in inventory
-    const boostItem = await prisma.inventory.findFirst({
-      where: {
-        userId,
-        itemType: 'boost',
-        quantity: { gt: 0 },
-      },
-    });
-
-    if (!boostItem) {
-      return NextResponse.json(
-        { error: 'No boost item available' },
-        { status: 400 }
-      );
-    }
-
-    // Apply boost
-    await prisma.$transaction([
-      prisma.landPlot.update({
+      // 4. 执行加速操作
+      await tx.landPlot.update({
         where: { id: plot.id },
         data: {
           boostMultiplier: BOOST_MULTIPLIER,
-          boostExpireAt: new Date(Date.now() + BOOST_DURATION),
+          boostExpireAt: new Date(now.getTime() + BOOST_DURATION),
         },
-      }),
-      prisma.inventory.update({
-        where: { id: boostItem.id },
-        data: {
-          quantity: boostItem.quantity - 1,
-        },
-      }),
-    ]);
+      });
 
-    // Fetch updated user with relations
-    const updatedUser = await prisma.user.findUnique({
-      where: { id: userId },
-      include: {
-        farmState: {
-          include: {
-            landPlots: true,
-          },
-        },
-        inventory: true,
-      },
+      // 5. 扣除道具
+      await tx.inventory.update({
+        where: { id: boostItem.id },
+        data: { quantity: { decrement: 1 } },
+      });
+
+      // 6. 返回最新用户数据
+      return await tx.user.findUnique({
+        where: { id: userId },
+        include: {
+          farmState: { include: { landPlots: true } },
+          inventory: true,
+          agents: true
+        }
+      });
     });
 
-    if (!updatedUser) {
-      throw new Error('User not found after update');
-    }
+    if (!updatedUser) throw new Error('User data corruption after boost');
 
-    return NextResponse.json(mapUserToFrontend(updatedUser));
-  } catch (error) {
-    console.error('POST /api/farm/boost error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return successResponse(mapUserToFrontend(updatedUser));
+  } catch (error: any) {
+    if (error.message === 'User or farm state not found' || error.message === 'Plot not found') {
+      return notFoundResponse(error.message);
+    }
+    if (error.message === 'No crop to boost' || error.message === 'No boost item available') {
+      return errorResponse(error.message, 400);
+    }
+    return internalErrorResponse(error);
   }
 }

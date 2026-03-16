@@ -1,19 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { mapUserToFrontend } from '@/utils/func/userMapper';
-
-// Crop configuration
-const CROPS = {
-  Apple: { growTime: 60, baseReward: 50, energyCost: 10 },
-  Wheat: { growTime: 30, baseReward: 20, energyCost: 5 },
-  Corn: { growTime: 45, baseReward: 35, energyCost: 8 },
-  Tomato: { growTime: 40, baseReward: 30, energyCost: 7 },
-  Carrot: { growTime: 40, baseReward: 30, energyCost: 7 },
-  Potato: { growTime: 40, baseReward: 30, energyCost: 7 },
-  Strawberry: { growTime: 40, baseReward: 30, energyCost: 7 },
-  Pineapple: { growTime: 40, baseReward: 30, energyCost: 7 },
-  Watermelon: { growTime: 40, baseReward: 30, energyCost: 7 },
-};
+import { getCropConfig, processExpGain, calculateRecoveredEnergy, getSystemConfig, GAME_CONSTANTS } from '@/utils/func/gameLogic';
+import { errorResponse, successResponse, internalErrorResponse, notFoundResponse } from '@/utils/api/response';
 
 // POST /api/farm/plant - Plant a crop
 export async function POST(request: NextRequest) {
@@ -22,192 +11,115 @@ export async function POST(request: NextRequest) {
     const { userId, plotIndex, cropId } = body;
 
     if (!userId || plotIndex === undefined || !cropId) {
-      return NextResponse.json(
-        { error: 'userId, plotIndex, and cropId are required' },
-        { status: 400 }
-      );
+      return errorResponse('userId, plotIndex, and cropId are required', 400);
     }
 
-    // Validate crop
-    if (!(cropId in CROPS)) {
-      // Allow other crops but with default values if not in config
-      // Or just fail. Let's add more crops to config above.
-      if (!CROPS[cropId as keyof typeof CROPS]) {
-         // Fallback for unknown crops
-      }
-    }
-
-    const crop = CROPS[cropId as keyof typeof CROPS] || { growTime: 60, baseReward: 10, energyCost: 5 };
-
-    // Get farm state
-    const farmState = await prisma.farmState.findUnique({
-      where: { userId },
-      include: { landPlots: true },
-    });
-
-    if (!farmState) {
-      return NextResponse.json(
-        { error: 'Farm state not found' },
-        { status: 404 }
-      );
-    }
-
-    // Check energy and handle recovery
     const now = new Date();
-    let currentEnergy = farmState.energy;
-    let lastEnergyUpdate = new Date(farmState.lastEnergyUpdate);
 
-    if (currentEnergy < farmState.maxEnergy) {
-      const msPassed = now.getTime() - lastEnergyUpdate.getTime();
-      const config = await prisma.systemConfig.findUnique({
-        where: { key: 'energy_recovery_rate' },
+    // 在单个事务中执行种植逻辑，确保资源扣除与状态更新的原子性
+    const updatedUser = await prisma.$transaction(async (tx) => {
+      // 1. 获取作物配置
+      const cropConfig = await getCropConfig(cropId);
+      if (!cropConfig) throw new Error('Crop configuration not found');
+
+      // 2. 获取用户农场状态并处理能量恢复
+      const farmState = await tx.farmState.findUnique({
+        where: { userId },
+        include: { landPlots: true },
       });
-      const recoveryIntervalMinutes = (config?.value as any)?.intervalMinutes || 5;
-      const msPerEnergy = recoveryIntervalMinutes * 60 * 1000;
-      
-      const energyToRecover = Math.floor(msPassed / msPerEnergy);
-      if (energyToRecover > 0) {
-        const actualRecovery = Math.min(energyToRecover, farmState.maxEnergy - currentEnergy);
-        currentEnergy += actualRecovery;
-        lastEnergyUpdate = new Date(lastEnergyUpdate.getTime() + actualRecovery * msPerEnergy);
-      }
-    }
 
-    if (currentEnergy < crop.energyCost) {
-      return NextResponse.json(
-        { error: 'Insufficient energy' },
-        { status: 400 }
-      );
-    }
+      if (!farmState) throw new Error('Farm state not found');
 
-    // Check inventory
-    const inventoryItem = await prisma.inventory.findUnique({
-      where: {
-        userId_itemType_itemId: {
-          userId,
-          itemType: 'crop',
-          itemId: cropId,
+      const recoveryInterval = await getSystemConfig('energy_recovery_rate', GAME_CONSTANTS.ENERGY_RECOVERY_INTERVAL_MINS);
+      const { newEnergy, newLastUpdate } = calculateRecoveredEnergy({
+        currentEnergy: farmState.energy,
+        maxEnergy: farmState.maxEnergy,
+        lastUpdate: farmState.lastEnergyUpdate,
+        recoveryIntervalMins: recoveryInterval
+      });
+
+      // 3. 校验能量与库存
+      // 假设种植成本从 CropConfig 获取，如果没有则默认 5 (这里逻辑可根据实际配置调整)
+      const energyCost = 5; 
+      if (newEnergy < energyCost) throw new Error('Insufficient energy');
+
+      const inventoryItem = await tx.inventory.findUnique({
+        where: {
+          userId_itemType_itemId: {
+            userId,
+            itemType: 'crop',
+            itemId: cropId,
+          },
         },
-      },
-    });
+      });
 
-    if (!inventoryItem || inventoryItem.quantity <= 0) {
-      return NextResponse.json(
-        { error: `Insufficient seeds for ${cropId}` },
-        { status: 400 }
-      );
-    }
+      if (!inventoryItem || inventoryItem.quantity <= 0) {
+        throw new Error(`Insufficient seeds for ${cropId}`);
+      }
 
-    // Find the plot
-    // plotIndex from frontend is 1-based usually (LandIdTypes), but DB is 0-based or 1-based?
-    // Let's check how it was created.
-    // In login route: plotIndex: i (0 to 5).
-    // In frontend: selectedLandId (1 to 9).
-    // So we need to handle the conversion.
-    // The previous code used `p.plotIndex === plotIndex`.
-    // We should assume plotIndex passed is what's in the DB.
-    // But frontend `apiPlantCrop(selectedLandId, ...)` passes 1-based ID.
-    // So we should subtract 1 if the DB uses 0-based.
-    
-    // Let's assume the frontend passes the 1-based ID and we convert it, OR the frontend passes 0-based.
-    // Looking at plantmodal.tsx: `apiPlantCrop(selectedLandId, selectedCrop)` where selectedLandId is 1-9.
-    // So we need to convert 1-based to 0-based for DB if DB is 0-based.
-    // The login route creates plots with `plotIndex: i` where i is 0-5.
-    // So DB is 0-based.
-    // So we need `plotIndex - 1`.
-    
-    const dbPlotIndex = plotIndex > 0 ? plotIndex - 1 : plotIndex;
+      // 4. 获取并校验地块
+      const dbPlotIndex = plotIndex > 0 ? plotIndex - 1 : plotIndex;
+      const plot = farmState.landPlots.find((p) => p.plotIndex === dbPlotIndex);
 
-    const plot = farmState.landPlots.find((p) => p.plotIndex === dbPlotIndex);
+      if (!plot) throw new Error('Plot not found');
+      if (!plot.isUnlocked) throw new Error('Plot is locked');
+      if (plot.cropId) throw new Error('Plot already has a crop');
 
-    if (!plot) {
-      return NextResponse.json(
-        { error: 'Plot not found' },
-        { status: 404 }
-      );
-    }
+      // 5. 执行种植操作
+      const harvestAt = new Date(now.getTime() + cropConfig.matureTime * 60 * 1000);
+      const wateringInterval = cropConfig.wateringPeriod || 10;
 
-    if (!plot.isUnlocked) {
-      return NextResponse.json(
-        { error: 'Plot is locked' },
-        { status: 400 }
-      );
-    }
-
-    if (plot.cropId) {
-      return NextResponse.json(
-        { error: 'Plot already has a crop' },
-        { status: 400 }
-      );
-    }
-
-    // Plant the crop
-    const harvestAt = new Date(now.getTime() + crop.growTime * 60 * 1000);
-
-    // Get crop config from DB for exp
-    const dbCropConfig = await prisma.cropConfig.findUnique({
-      where: { cropType: cropId }
-    });
-    const expGain = dbCropConfig?.seedingExp || 5;
-
-    await prisma.$transaction([
-      prisma.landPlot.update({
+      await tx.landPlot.update({
         where: { id: plot.id },
         data: {
           cropId,
           plantedAt: now,
           harvestAt,
           lastWateredAt: now,
-          nextWateringDue: new Date(now.getTime() + 10 * 60 * 1000), // Default 10 minutes
+          nextWateringDue: new Date(now.getTime() + wateringInterval * 60 * 1000),
           growthStage: 1,
         } as any,
-      }),
-      prisma.inventory.update({
-        where: { id: inventoryItem!.id },
-        data: {
-          quantity: { decrement: 1 },
-        },
-      }),
-      prisma.user.update({
-        where: { id: userId },
-        data: {
-          experience: { increment: expGain },
-        },
-      }),
-      prisma.farmState.update({
+      });
+
+      // 6. 扣除种子并增加经验
+      await tx.inventory.update({
+        where: { id: inventoryItem.id },
+        data: { quantity: { decrement: 1 } },
+      });
+
+      await processExpGain(tx, userId, cropConfig.seedingExp || 5);
+
+      // 7. 更新农场状态 (扣除能量)
+      await tx.farmState.update({
         where: { id: farmState.id },
         data: {
-          energy: currentEnergy - crop.energyCost,
+          energy: newEnergy - energyCost,
           totalPlants: { increment: 1 },
-          lastEnergyUpdate: currentEnergy - crop.energyCost >= farmState.maxEnergy ? now : lastEnergyUpdate,
+          lastEnergyUpdate: newLastUpdate,
         },
-      }),
-    ]);
+      });
 
-    // Fetch updated user with relations
-    const updatedUser = await prisma.user.findUnique({
+      // 8. 返回最新用户数据
+      return await tx.user.findUnique({
         where: { id: userId },
         include: {
-            farmState: {
-                include: {
-                    landPlots: true
-                }
-            },
-            inventory: true
+          farmState: { include: { landPlots: true } },
+          inventory: true,
+          agents: true
         }
+      });
     });
 
-    if (!updatedUser) {
-        throw new Error('User not found after update');
+    if (!updatedUser) throw new Error('User data corruption after planting');
+
+    return successResponse(mapUserToFrontend(updatedUser));
+  } catch (error: any) {
+    if (error.message === 'Farm state not found' || error.message === 'Plot not found' || error.message === 'Crop configuration not found') {
+      return notFoundResponse(error.message);
     }
-
-    return NextResponse.json(mapUserToFrontend(updatedUser));
-
-  } catch (error) {
-    console.error('POST /api/farm/plant error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    if (error.message === 'Insufficient energy' || error.message === 'Plot is locked' || error.message === 'Plot already has a crop' || error.message.startsWith('Insufficient seeds')) {
+      return errorResponse(error.message, 400);
+    }
+    return internalErrorResponse(error);
   }
 }

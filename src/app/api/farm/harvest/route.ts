@@ -1,18 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { mapUserToFrontend } from '@/utils/func/userMapper';
-
-const CROPS = {
-  Apple: { growTime: 60, baseReward: 50, energyCost: 10 },
-  Wheat: { growTime: 30, baseReward: 20, energyCost: 5 },
-  Corn: { growTime: 45, baseReward: 35, energyCost: 8 },
-  Tomato: { growTime: 40, baseReward: 30, energyCost: 7 },
-  Carrot: { growTime: 40, baseReward: 30, energyCost: 7 },
-  Potato: { growTime: 40, baseReward: 30, energyCost: 7 },
-  Strawberry: { growTime: 40, baseReward: 30, energyCost: 7 },
-  Pineapple: { growTime: 40, baseReward: 30, energyCost: 7 },
-  Watermelon: { growTime: 40, baseReward: 30, energyCost: 7 },
-};
+import { getCropConfig, processExpGain } from '@/utils/func/gameLogic';
+import { errorResponse, successResponse, internalErrorResponse, notFoundResponse } from '@/utils/api/response';
 
 // POST /api/farm/harvest - Harvest a crop
 export async function POST(request: NextRequest) {
@@ -21,126 +11,105 @@ export async function POST(request: NextRequest) {
     const { userId, plotIndex } = body;
 
     if (!userId || plotIndex === undefined) {
-      return NextResponse.json(
-        { error: 'userId and plotIndex are required' },
-        { status: 400 }
-      );
+      return errorResponse('userId and plotIndex are required', 400);
     }
 
-    // Get farm state
-    const farmState = await prisma.farmState.findUnique({
-      where: { userId },
-      include: { landPlots: true, user: true },
-    });
-
-    if (!farmState) {
-      return NextResponse.json(
-        { error: 'Farm state not found' },
-        { status: 404 }
-      );
-    }
-
-    // Find the plot
-    // Handle 1-based vs 0-based index
+    // 1-based vs 0-based index normalization
     const dbPlotIndex = plotIndex > 0 ? plotIndex - 1 : plotIndex;
-    const plot = farmState.landPlots.find((p) => p.plotIndex === dbPlotIndex);
 
-    if (!plot) {
-      return NextResponse.json(
-        { error: 'Plot not found' },
-        { status: 404 }
-      );
-    }
+    // 在单个事务中处理收获逻辑 (设置超时时间为 15秒)
+    const updatedUser = await prisma.$transaction(async (tx) => {
+      // 1. 获取农场和地块状态
+      const farmState = await tx.farmState.findUnique({
+        where: { userId },
+        include: { landPlots: true },
+      });
 
-    if (!plot.cropId) {
-      return NextResponse.json(
-        { error: 'No crop to harvest' },
-        { status: 400 }
-      );
-    }
+      if (!farmState) throw new Error('Farm state not found');
 
-    // Get crop config from DB for accurate reward and exp
-    const dbCropConfig = await prisma.cropConfig.findUnique({
-      where: { cropType: plot.cropId }
-    });
+      const plot = farmState.landPlots.find((p) => p.plotIndex === dbPlotIndex);
+      if (!plot) throw new Error('Plot not found');
+      if (!plot.cropId) throw new Error('No crop to harvest');
 
-    const reward = Math.floor((dbCropConfig?.harvestPrice || 10) * (plot.boostMultiplier || 1.0));
-    const expGain = dbCropConfig?.harvestExp || 10;
+      // 2. 获取作物配置以计算收益
+      const cropConfig = await getCropConfig(plot.cropId, tx);
+      const reward = Math.floor((cropConfig?.harvestPrice || 10) * (plot.boostMultiplier || 1.0));
+      const expGain = cropConfig?.harvestExp || 10;
 
-    // Harvest the crop
-    await prisma.$transaction([
-        // Clear the plot
-        prisma.landPlot.update({
-          where: { id: plot.id },
-          data: {
-            cropId: null,
-            plantedAt: null,
-            harvestAt: null,
-            growthStage: 0,
-            boostMultiplier: 1.0,
-            boostExpireAt: null,
-          },
-        }),
-        // Add coins and experience to user using increment to avoid race conditions
-        prisma.user.update({
-          where: { id: userId },
-          data: {
-            farmCoins: { increment: reward },
-            experience: { increment: expGain },
-          },
-        }),
-        // Update farm stats
-        prisma.farmState.update({
-          where: { id: farmState.id },
-          data: {
-            totalHarvests: { increment: 1 },
-          },
-        }),
-        // Add crop to inventory
-        prisma.inventory.upsert({
-          where: {
-            userId_itemType_itemId: {
-              userId,
-              itemType: 'crop',
-              itemId: plot.cropId,
-            },
-          },
-          update: {
-            quantity: { increment: 1 },
-          },
-          create: {
+      // 3. 更新地块状态 (重置)
+      await tx.landPlot.update({
+        where: { id: plot.id },
+        data: {
+          cropId: null,
+          plantedAt: null,
+          harvestAt: null,
+          growthStage: 0,
+          boostMultiplier: 1.0,
+          boostExpireAt: null,
+        },
+      });
+
+      // 4. 更新用户金币和经验 (处理可能的升级)
+      await tx.user.update({
+        where: { id: userId },
+        data: {
+          farmCoins: { increment: reward },
+        },
+      });
+      
+      await processExpGain(tx, userId, expGain);
+
+      // 5. 更新统计数据
+      await tx.farmState.update({
+        where: { id: farmState.id },
+        data: {
+          totalHarvests: { increment: 1 },
+        },
+      });
+
+      // 6. 更新库存
+      await tx.inventory.upsert({
+        where: {
+          userId_itemType_itemId: {
             userId,
             itemType: 'crop',
             itemId: plot.cropId,
-            quantity: 1,
           },
-        }),
-    ]);
+        },
+        update: {
+          quantity: { increment: 1 },
+        },
+        create: {
+          userId,
+          itemType: 'crop',
+          itemId: plot.cropId,
+          quantity: 1,
+        },
+      });
 
-    // Fetch updated user with relations
-    const updatedUser = await prisma.user.findUnique({
+      // 7. 返回最新状态
+      return await tx.user.findUnique({
         where: { id: userId },
         include: {
-            farmState: {
-                include: {
-                    landPlots: true
-                }
-            },
-            inventory: true
+          farmState: { include: { landPlots: true } },
+          inventory: true,
+          agents: true
         }
+      });
+    }, {
+      timeout: 15000 // 增加超时时间到 15 秒
     });
 
-    if (!updatedUser) {
-        throw new Error('User not found after update');
+    if (!updatedUser) throw new Error('User data corruption after harvest');
+
+    return successResponse(mapUserToFrontend(updatedUser));
+  } catch (error: any) {
+    if (error.message === 'Farm state not found' || error.message === 'Plot not found') {
+      return notFoundResponse(error.message);
     }
-
-    return NextResponse.json(mapUserToFrontend(updatedUser));
-
-  } catch (error) {
-    console.error('POST /api/farm/harvest error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    if (error.message === 'No crop to harvest') {
+      return errorResponse(error.message, 400);
+    }
+    return internalErrorResponse(error);
   }
 }

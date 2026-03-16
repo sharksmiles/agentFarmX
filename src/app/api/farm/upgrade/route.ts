@@ -1,22 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { mapUserToFrontend } from '@/utils/func/userMapper';
+import { errorResponse, successResponse, internalErrorResponse, notFoundResponse } from '@/utils/api/response';
 
-const UPGRADE_COSTS = {
-  1: 1000,   // Level 2
-  2: 2500,   // Level 3
-  3: 5000,   // Level 4
-  4: 10000,  // Level 5
-  5: 20000,  // Level 6
-};
-
-const MAX_ENERGY_PER_LEVEL = {
-  1: 100,
-  2: 120,
-  3: 150,
-  4: 200,
-  5: 250,
-  6: 300,
+// 升级配置的兜底逻辑 (建议优先使用数据库 LevelConfig)
+const MAX_ENERGY_PER_LEVEL: Record<number, number> = {
+  1: 100, 2: 120, 3: 150, 4: 200, 5: 250, 6: 300,
 };
 
 export async function POST(request: NextRequest) {
@@ -25,118 +14,87 @@ export async function POST(request: NextRequest) {
     const { userId } = body;
 
     if (!userId) {
-      return NextResponse.json(
-        { error: 'userId is required' },
-        { status: 400 }
-      );
+      return errorResponse('userId is required', 400);
     }
 
-    // Get user and farm state
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      include: {
-        farmState: true,
-      },
-    });
+    // 在单个事务中执行升级逻辑
+    const updatedUser = await prisma.$transaction(async (tx) => {
+      // 1. 获取用户及其农场状态
+      const user = await tx.user.findUnique({
+        where: { id: userId },
+        include: { farmState: true },
+      });
 
-    if (!user || !user.farmState) {
-      return NextResponse.json(
-        { error: 'User or farm state not found' },
-        { status: 404 }
-      );
-    }
+      if (!user || !user.farmState) throw new Error('User or farm state not found');
 
-    const currentLevel = user.level;
-    const nextLevel = currentLevel + 1;
+      const currentLevel = user.level;
+      const nextLevel = currentLevel + 1;
 
-    // Check if max level reached
-    if (nextLevel > 6) {
-      return NextResponse.json(
-        { error: 'Max level reached' },
-        { status: 400 }
-      );
-    }
+      // 2. 获取等级配置
+      const currentLevelConfig = await tx.levelConfig.findUnique({
+        where: { level: currentLevel }
+      });
 
-    // Get current level config for cost and exp requirements
-    const currentLevelConfig = await prisma.levelConfig.findUnique({
-      where: { level: currentLevel }
-    });
+      if (!currentLevelConfig) throw new Error('Level configuration not found');
+      if (nextLevel > 6) throw new Error('Max level reached');
 
-    if (!currentLevelConfig) {
-      return NextResponse.json(
-        { error: 'Level configuration not found' },
-        { status: 404 }
-      );
-    }
+      // 3. 校验经验值与金币
+      if (user.experience < currentLevelConfig.requiredExp) {
+        throw new Error(`Insufficient experience. Need ${currentLevelConfig.requiredExp} exp.`);
+      }
 
-    // Check if user has enough experience
-    if (user.experience < currentLevelConfig.requiredExp) {
-      return NextResponse.json(
-        { error: `Insufficient experience. Need ${currentLevelConfig.requiredExp} exp.` },
-        { status: 400 }
-      );
-    }
+      const cost = currentLevelConfig.upgradeCost;
+      if (user.farmCoins < cost) throw new Error('Insufficient coins');
 
-    // Get upgrade cost from DB if possible, fallback to hardcoded
-    const cost = currentLevelConfig.upgradeCost;
+      // 4. 获取下一级配置
+      const nextLevelConfig = await tx.levelConfig.findUnique({
+        where: { level: nextLevel }
+      });
 
-    // Check if user has enough coins
-    if (user.farmCoins < cost) {
-      return NextResponse.json(
-        { error: 'Insufficient coins' },
-        { status: 400 }
-      );
-    }
+      const newMaxEnergy = nextLevelConfig 
+        ? (nextLevelConfig.maxLand * 10 + 40) 
+        : (MAX_ENERGY_PER_LEVEL[nextLevel] || 100);
 
-    // Upgrade farm
-    // Get next level config for max land and energy
-    const nextLevelConfig = await prisma.levelConfig.findUnique({
-      where: { level: nextLevel }
-    });
-
-    const newMaxEnergy = nextLevelConfig?.maxLand ? (nextLevelConfig.maxLand * 10 + 40) : (MAX_ENERGY_PER_LEVEL[nextLevel as keyof typeof MAX_ENERGY_PER_LEVEL] || 100);
-
-    await prisma.$transaction([
-      prisma.user.update({
+      // 5. 执行升级操作
+      await tx.user.update({
         where: { id: userId },
         data: {
           level: nextLevel,
           farmCoins: { decrement: cost },
-          experience: user.experience - currentLevelConfig.requiredExp, // Deduct required exp or reset to 0
+          experience: { decrement: currentLevelConfig.requiredExp }, // 扣除升级所需经验
         },
-      }),
-      prisma.farmState.update({
+      });
+
+      await tx.farmState.update({
         where: { id: user.farmState.id },
         data: {
           maxEnergy: newMaxEnergy,
-          energy: newMaxEnergy, // Refill energy on upgrade
+          energy: newMaxEnergy, // 升级后自动补满能量
+          lastEnergyUpdate: new Date()
         },
-      }),
-    ]);
+      });
 
-    // Fetch updated user with relations
-    const updatedUser = await prisma.user.findUnique({
-      where: { id: userId },
-      include: {
-        farmState: {
-          include: {
-            landPlots: true,
-          },
+      // 6. 返回最新用户数据
+      return await tx.user.findUnique({
+        where: { id: userId },
+        include: {
+          farmState: { include: { landPlots: true } },
+          inventory: true,
+          agents: true
         },
-        inventory: true,
-      },
+      });
     });
 
-    if (!updatedUser) {
-      throw new Error('User not found after update');
-    }
+    if (!updatedUser) throw new Error('User data corruption after upgrade');
 
-    return NextResponse.json(mapUserToFrontend(updatedUser));
-  } catch (error) {
-    console.error('POST /api/farm/upgrade error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return successResponse(mapUserToFrontend(updatedUser));
+  } catch (error: any) {
+    if (error.message === 'User or farm state not found' || error.message === 'Level configuration not found') {
+      return notFoundResponse(error.message);
+    }
+    if (error.message === 'Max level reached' || error.message.includes('Insufficient experience') || error.message === 'Insufficient coins') {
+      return errorResponse(error.message, 400);
+    }
+    return internalErrorResponse(error);
   }
 }

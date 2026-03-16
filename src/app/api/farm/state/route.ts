@@ -1,17 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { mapUserToFrontend } from '@/utils/func/userMapper';
+import { calculateRecoveredEnergy, getSystemConfig, GAME_CONSTANTS } from '@/utils/func/gameLogic';
+import { errorResponse, successResponse, internalErrorResponse, notFoundResponse } from '@/utils/api/response';
 
+// GET /api/farm/state - 获取农场当前状态
+// 重构说明：移除了 GET 请求中的数据库写入副作用。
+// 能量恢复逻辑改为“内存计算”，仅用于返回给前端展示，实际能量扣除时会再次精确计算。
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
 
     if (!userId) {
-      return NextResponse.json(
-        { error: 'userId is required' },
-        { status: 400 }
-      );
+      return errorResponse('userId is required', 400);
     }
 
     const user = await prisma.user.findUnique({
@@ -28,74 +30,25 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
+    if (!user || !user.farmState) {
+      return notFoundResponse('User or farm state not found');
     }
 
-    // Calculate energy recovery since last update
-    const now = new Date();
-    const farmState = user.farmState;
-    if (farmState) {
-      if (farmState.energy < farmState.maxEnergy) {
-        const lastUpdate = new Date(farmState.lastEnergyUpdate);
-        const msPassed = now.getTime() - lastUpdate.getTime();
-        
-        // Get energy recovery rate
-        const config = await prisma.systemConfig.findUnique({
-          where: { key: 'energy_recovery_rate' },
-        });
-        const recoveryIntervalMinutes = (config?.value as any)?.intervalMinutes || 5;
-        const msPerEnergy = recoveryIntervalMinutes * 60 * 1000;
+    // 内存中计算当前能量（不写入数据库）
+    const recoveryInterval = await getSystemConfig('energy_recovery_rate', GAME_CONSTANTS.ENERGY_RECOVERY_INTERVAL_MINS);
+    const { newEnergy } = calculateRecoveredEnergy({
+      currentEnergy: user.farmState.energy,
+      maxEnergy: user.farmState.maxEnergy,
+      lastUpdate: user.farmState.lastEnergyUpdate,
+      recoveryIntervalMins: recoveryInterval
+    });
 
-        const energyToRecover = Math.floor(msPassed / msPerEnergy);
-
-        if (energyToRecover > 0) {
-          const actualRecovery = Math.min(
-            energyToRecover,
-            farmState.maxEnergy - farmState.energy
-          );
-          
-          const newLastUpdate = new Date(lastUpdate.getTime() + actualRecovery * msPerEnergy);
-
-          const updatedFarmState = await prisma.farmState.update({
-            where: { id: farmState.id },
-            data: {
-              energy: Math.min(farmState.energy + actualRecovery, farmState.maxEnergy),
-              lastEnergyUpdate: farmState.energy + actualRecovery >= farmState.maxEnergy ? now : newLastUpdate,
-            },
-          });
-          // Update the object in memory for mapping
-          user.farmState = {
-            ...farmState,
-            ...updatedFarmState
-          };
-        }
-      } else {
-        // If energy is already full, keep lastEnergyUpdate current
-        if (new Date(farmState.lastEnergyUpdate).getTime() < now.getTime() - 60000) {
-          const updatedFarmState = await prisma.farmState.update({
-            where: { id: farmState.id },
-            data: { lastEnergyUpdate: now },
-          });
-          user.farmState = {
-            ...farmState,
-            ...updatedFarmState
-          };
-        }
-      }
-    }
+    // 临时更新对象用于映射返回
+    user.farmState.energy = newEnergy;
 
     const mappedUser = mapUserToFrontend(user);
-
-    return NextResponse.json({ farmState: mappedUser.farm_stats });
+    return successResponse({ farmState: mappedUser.farm_stats });
   } catch (error) {
-    console.error('GET /api/farm/state error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return internalErrorResponse(error);
   }
 }

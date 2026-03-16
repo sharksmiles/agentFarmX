@@ -1,14 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { mapUserToFrontend } from '@/utils/func/userMapper';
+import { errorResponse, successResponse, internalErrorResponse, notFoundResponse } from '@/utils/api/response';
 
-const LAND_UNLOCK_COSTS = {
-  6: 500,   // 7th plot
-  7: 1000,  // 8th plot
-  8: 2000,  // 9th plot
-  9: 5000,  // 10th plot
-  10: 10000, // 11th plot
-  11: 20000, // 12th plot
+// 解锁地块的硬编码成本（建议后续移至 LevelConfig 或 SystemConfig）
+const LAND_UNLOCK_COSTS: Record<number, number> = {
+  6: 500,   // 第7块地 (索引6)
+  7: 1000,  // 第8块地 (索引7)
+  8: 2000,  // 第9块地 (索引8)
+  9: 5000,  // 第10块地 (索引9)
+  10: 10000, 
+  11: 20000, 
 };
 
 export async function POST(request: NextRequest) {
@@ -17,127 +19,77 @@ export async function POST(request: NextRequest) {
     const { userId, plotIndex } = body;
 
     if (!userId || plotIndex === undefined) {
-      return NextResponse.json(
-        { error: 'userId and plotIndex are required' },
-        { status: 400 }
-      );
+      return errorResponse('userId and plotIndex are required', 400);
     }
 
-    // Get farm state
-    const farmState = await prisma.farmState.findUnique({
-      where: { userId },
-      include: {
-        user: true,
-        landPlots: true,
-      },
-    });
+    // 在单个事务中执行解锁逻辑
+    const updatedUser = await prisma.$transaction(async (tx) => {
+      // 1. 获取用户及其农场状态
+      const user = await tx.user.findUnique({
+        where: { id: userId },
+        include: { farmState: { include: { landPlots: true } } },
+      });
 
-    if (!farmState) {
-      return NextResponse.json(
-        { error: 'Farm state not found' },
-        { status: 404 }
-      );
-    }
+      if (!user || !user.farmState) throw new Error('User or Farm state not found');
 
-    // Handle 1-based vs 0-based index
-    const dbPlotIndex = plotIndex > 0 ? plotIndex - 1 : plotIndex;
+      // 2. 索引转换与成本校验
+      const dbPlotIndex = plotIndex > 0 ? plotIndex - 1 : plotIndex;
+      const cost = LAND_UNLOCK_COSTS[dbPlotIndex];
+      
+      if (cost === undefined) throw new Error('Invalid plot index or not unlockable');
+      if (user.farmCoins < cost) throw new Error('Insufficient coins');
 
-    // Check if plot already exists
-    const existingPlot = farmState.landPlots.find(
-      (p) => p.plotIndex === dbPlotIndex
-    );
+      // 3. 校验是否已解锁
+      const existingPlot = user.farmState.landPlots.find((p) => p.plotIndex === dbPlotIndex);
+      if (existingPlot && existingPlot.isUnlocked) throw new Error('Plot already unlocked');
 
-    if (existingPlot) {
-        if (existingPlot.isUnlocked) {
-            return NextResponse.json(
-                { error: 'Plot already unlocked' },
-                { status: 400 }
-            );
-        }
-        // If plot exists but locked, we can proceed to unlock it
-        // But usually plot existence means unlocked in the current model?
-        // Wait, landPlots table has `isUnlocked`.
-        // So existingPlot means it's in the DB.
-        // We should check isUnlocked.
-    }
-
-    // Get unlock cost
-    // Use dbPlotIndex for cost lookup
-    const cost = LAND_UNLOCK_COSTS[dbPlotIndex as keyof typeof LAND_UNLOCK_COSTS];
-    if (!cost) {
-      return NextResponse.json(
-        { error: 'Invalid plot index or not unlockable' },
-        { status: 400 }
-      );
-    }
-
-    // Check if user has enough coins
-    if (farmState.user.farmCoins < cost) {
-      return NextResponse.json(
-        { error: 'Insufficient coins' },
-        { status: 400 }
-      );
-    }
-
-    // Unlock plot
-    await prisma.$transaction([
-      // Upsert plot just in case
-      prisma.landPlot.upsert({
+      // 4. 执行解锁操作
+      await tx.landPlot.upsert({
         where: {
-            farmStateId_plotIndex: {
-                farmStateId: farmState.id,
-                plotIndex: dbPlotIndex
-            }
+          farmStateId_plotIndex: {
+            farmStateId: user.farmState.id,
+            plotIndex: dbPlotIndex
+          }
         },
         create: {
-          farmStateId: farmState.id,
+          farmStateId: user.farmState.id,
           plotIndex: dbPlotIndex,
           isUnlocked: true,
           growthStage: 0,
         },
-        update: {
-            isUnlocked: true
-        }
-      }),
-      prisma.user.update({
-        where: { id: userId },
-        data: {
-          farmCoins: farmState.user.farmCoins - cost,
-        },
-      }),
-      prisma.farmState.update({
-        where: { id: farmState.id },
-        data: {
-          unlockedLands: farmState.unlockedLands + 1,
-        },
-      }),
-    ]);
+        update: { isUnlocked: true }
+      });
 
-    // Fetch updated user with relations
-    const updatedUser = await prisma.user.findUnique({
+      // 5. 扣除金币并更新农场状态
+      await tx.user.update({
+        where: { id: userId },
+        data: { farmCoins: { decrement: cost } }
+      });
+
+      await tx.farmState.update({
+        where: { id: user.farmState.id },
+        data: { unlockedLands: { increment: 1 } }
+      });
+
+      // 6. 返回最新用户数据
+      return await tx.user.findUnique({
         where: { id: userId },
         include: {
-            farmState: {
-                include: {
-                    landPlots: true
-                }
-            },
-            inventory: true
+          farmState: { include: { landPlots: true } },
+          inventory: true,
+          agents: true
         }
+      });
     });
 
-    if (!updatedUser) {
-        throw new Error('User not found after update');
+    if (!updatedUser) throw new Error('User data corruption after unlocking plot');
+
+    return successResponse(mapUserToFrontend(updatedUser));
+  } catch (error: any) {
+    if (error.message === 'User or Farm state not found') return notFoundResponse(error.message);
+    if (error.message === 'Insufficient coins' || error.message === 'Plot already unlocked' || error.message === 'Invalid plot index or not unlockable') {
+      return errorResponse(error.message, 400);
     }
-
-    return NextResponse.json(mapUserToFrontend(updatedUser));
-
-  } catch (error) {
-    console.error('POST /api/farm/unlock error:', error);
-
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return internalErrorResponse(error);
   }
 }

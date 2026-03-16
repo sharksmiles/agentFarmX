@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { mapUserToFrontend } from '@/utils/func/userMapper';
+import { calculateRecoveredEnergy, getSystemConfig, GAME_CONSTANTS } from '@/utils/func/gameLogic';
+import { errorResponse, successResponse, internalErrorResponse, notFoundResponse } from '@/utils/api/response';
 
-const ENERGY_PACKS = {
+const ENERGY_PACKS: Record<string, { energy: number; cost: number; dailyLimit: number }> = {
   small: { energy: 10, cost: 500, dailyLimit: 10 },
   large: { energy: 50, cost: 2000, dailyLimit: 5 },
-  full: { energy: 0, cost: 100, dailyLimit: 3 }, // Cost per energy point, calculated dynamically
+  full: { energy: 0, cost: 100, dailyLimit: 3 }, // 每点能量的成本
 };
 
 export async function POST(request: NextRequest) {
@@ -14,122 +16,74 @@ export async function POST(request: NextRequest) {
     const { userId, pack } = body;
 
     if (!userId || !pack) {
-      return NextResponse.json(
-        { error: 'userId and pack are required' },
-        { status: 400 }
-      );
+      return errorResponse('userId and pack are required', 400);
     }
 
-    if (!(pack in ENERGY_PACKS)) {
-      return NextResponse.json(
-        { error: 'Invalid pack type' },
-        { status: 400 }
-      );
+    const packInfo = ENERGY_PACKS[pack];
+    if (!packInfo) {
+      return errorResponse('Invalid pack type', 400);
     }
 
-    const packInfo = ENERGY_PACKS[pack as keyof typeof ENERGY_PACKS];
-
-    // Get user and farm state
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      include: {
-        farmState: true,
-      },
-    });
-
-    if (!user || !user.farmState) {
-      return NextResponse.json(
-        { error: 'User or farm state not found' },
-        { status: 404 }
-      );
-    }
-
-    // Check daily purchase limit
-    const today = new Date().toISOString().split('T')[0];
-    const purchaseKey = `energy_purchase_${userId}_${pack}_${today}`;
-    
-    const purchaseRecord = await prisma.systemConfig.findUnique({
-      where: { key: purchaseKey },
-    });
-
-    const purchaseCount = (purchaseRecord?.value as any)?.count || 0;
-    const dailyLimit = packInfo.dailyLimit;
-
-    if (purchaseCount >= dailyLimit) {
-      console.warn(`[Energy API] Daily limit reached for user ${userId}, pack ${pack}: ${purchaseCount}/${dailyLimit}`);
-      return NextResponse.json(
-        { 
-          error: 'Daily purchase limit reached',
-          details: {
-            pack,
-            limit: dailyLimit,
-            purchased: purchaseCount,
-            resetsAt: new Date(new Date(today).getTime() + 24 * 60 * 60 * 1000).toISOString()
-          }
-        },
-        { status: 429 }
-      );
-    }
-
-    // Check energy and handle recovery
     const now = new Date();
-    let currentEnergy = user.farmState.energy;
-    let lastEnergyUpdate = new Date(user.farmState.lastEnergyUpdate);
+    const todayStr = now.toISOString().split('T')[0];
+    const purchaseKey = `energy_purchase_${userId}_${pack}_${todayStr}`;
 
-    if (currentEnergy < user.farmState.maxEnergy) {
-      const msPassed = now.getTime() - lastEnergyUpdate.getTime();
-      const config = await prisma.systemConfig.findUnique({
-        where: { key: 'energy_recovery_rate' },
-      });
-      const recoveryIntervalMinutes = (config?.value as any)?.intervalMinutes || 5;
-      const msPerEnergy = recoveryIntervalMinutes * 60 * 1000;
-      
-      const energyToRecover = Math.floor(msPassed / msPerEnergy);
-      if (energyToRecover > 0) {
-        const actualRecovery = Math.min(energyToRecover, user.farmState.maxEnergy - currentEnergy);
-        currentEnergy += actualRecovery;
-        lastEnergyUpdate = new Date(lastEnergyUpdate.getTime() + actualRecovery * msPerEnergy);
-      }
-    }
-
-    // Calculate actual cost and energy for 'full' pack
-    let actualCost = packInfo.cost;
-    let actualEnergy = packInfo.energy;
-
-    if (pack === 'full') {
-      const energyNeeded = Math.max(0, user.farmState.maxEnergy - currentEnergy);
-      actualCost = energyNeeded * 100; // 100 coins per energy point
-      actualEnergy = energyNeeded;
-    }
-
-    // Check if user has enough coins
-    if (user.farmCoins < actualCost) {
-      return NextResponse.json(
-        { error: 'Insufficient coins' },
-        { status: 400 }
-      );
-    }
-
-    // Buy energy pack and update purchase count
-    const newBalance = user.farmCoins - actualCost;
-    await prisma.$transaction([
-      prisma.user.update({
+    // 在单个事务中执行购买逻辑
+    const updatedUser = await prisma.$transaction(async (tx) => {
+      // 1. 获取用户状态并处理能量恢复
+      const user = await tx.user.findUnique({
         where: { id: userId },
-        data: {
-          farmCoins: newBalance,
-        },
-      }),
-      prisma.farmState.update({
+        include: { farmState: true },
+      });
+
+      if (!user || !user.farmState) throw new Error('User or farm state not found');
+
+      const recoveryInterval = await getSystemConfig('energy_recovery_rate', GAME_CONSTANTS.ENERGY_RECOVERY_INTERVAL_MINS);
+      const { newEnergy, newLastUpdate } = calculateRecoveredEnergy({
+        currentEnergy: user.farmState.energy,
+        maxEnergy: user.farmState.maxEnergy,
+        lastUpdate: user.farmState.lastEnergyUpdate,
+        recoveryIntervalMins: recoveryInterval
+      });
+
+      // 2. 校验每日购买限制
+      const purchaseRecord = await tx.systemConfig.findUnique({ where: { key: purchaseKey } });
+      const purchaseCount = (purchaseRecord?.value as any)?.count || 0;
+
+      if (purchaseCount >= packInfo.dailyLimit) {
+        throw new Error('Daily purchase limit reached');
+      }
+
+      // 3. 计算实际成本与增加的能量
+      let actualCost = packInfo.cost;
+      let actualEnergy = packInfo.energy;
+
+      if (pack === 'full') {
+        const energyNeeded = Math.max(0, user.farmState.maxEnergy - newEnergy);
+        actualCost = energyNeeded * 100;
+        actualEnergy = energyNeeded;
+      }
+
+      if (actualEnergy <= 0) throw new Error('Energy is already full');
+      if (user.farmCoins < actualCost) throw new Error('Insufficient coins');
+
+      // 4. 执行扣款与增加能量
+      const newBalance = user.farmCoins - actualCost;
+      await tx.user.update({
+        where: { id: userId },
+        data: { farmCoins: { decrement: actualCost } }
+      });
+
+      await tx.farmState.update({
         where: { id: user.farmState.id },
         data: {
-          energy: Math.min(
-            currentEnergy + actualEnergy,
-            user.farmState.maxEnergy
-          ),
-          lastEnergyUpdate: currentEnergy + actualEnergy >= user.farmState.maxEnergy ? now : lastEnergyUpdate,
+          energy: Math.min(newEnergy + actualEnergy, user.farmState.maxEnergy),
+          lastEnergyUpdate: newEnergy + actualEnergy >= user.farmState.maxEnergy ? now : newLastUpdate,
         },
-      }),
-      prisma.transaction.create({
+      });
+
+      // 5. 记录交易与购买次数
+      await tx.transaction.create({
         data: {
           userId,
           type: 'spend',
@@ -138,43 +92,39 @@ export async function POST(request: NextRequest) {
           balance: newBalance,
           description: `Bought ${pack} energy pack (+${actualEnergy} energy)`,
         },
-      }),
-      // Update daily purchase count
-      prisma.systemConfig.upsert({
+      });
+
+      await tx.systemConfig.upsert({
         where: { key: purchaseKey },
         create: {
           key: purchaseKey,
-          value: { count: 1, lastPurchase: new Date().toISOString() },
+          value: { count: 1, lastPurchase: now.toISOString() },
         },
         update: {
-          value: { count: purchaseCount + 1, lastPurchase: new Date().toISOString() },
+          value: { count: purchaseCount + 1, lastPurchase: now.toISOString() },
         },
-      }),
-    ]);
+      });
 
-    // Fetch updated user with relations
-    const updatedUser = await prisma.user.findUnique({
-      where: { id: userId },
-      include: {
-        farmState: {
-          include: {
-            landPlots: true,
-          },
-        },
-        inventory: true,
-      },
+      // 6. 返回最新数据
+      return await tx.user.findUnique({
+        where: { id: userId },
+        include: {
+          farmState: { include: { landPlots: true } },
+          inventory: true,
+          agents: true
+        }
+      });
     });
 
-    if (!updatedUser) {
-      throw new Error('User not found after update');
-    }
+    if (!updatedUser) throw new Error('User data corruption after energy purchase');
 
-    return NextResponse.json(mapUserToFrontend(updatedUser));
-  } catch (error) {
-    console.error('POST /api/energy/buy error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return successResponse(mapUserToFrontend(updatedUser));
+  } catch (error: any) {
+    if (error.message === 'User or farm state not found') return notFoundResponse(error.message);
+    if (error.message === 'Daily purchase limit reached') return errorResponse(error.message, 429);
+    if (error.message === 'Insufficient coins' || error.message === 'Energy is already full') {
+      return errorResponse(error.message, 400);
+    }
+    return internalErrorResponse(error);
   }
 }

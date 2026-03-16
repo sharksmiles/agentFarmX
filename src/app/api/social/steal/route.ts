@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-
-const BASE_SUCCESS_RATE = 0.5; // 50% base success rate
-const STEAL_AMOUNT = 0.2; // Steal 20% of crop value
-const STEAL_ENERGY_COST = 1;
-const STEAL_COIN_COST = 100;
+import { GAME_CONSTANTS, getSystemConfig, calculateRecoveredEnergy } from '@/utils/func/gameLogic';
+import { errorResponse, successResponse, internalErrorResponse, notFoundResponse } from '@/utils/api/response';
 
 // 计算偷盗成功率
 function calculateStealSuccessRate(params: {
@@ -18,17 +15,15 @@ function calculateStealSuccessRate(params: {
   recentStealCount: number;
   targetIsNewFarmer: boolean;
 }): { rate: number; details: Record<string, string> } {
-  let rate = BASE_SUCCESS_RATE;
+  let rate = GAME_CONSTANTS.BASE_SUCCESS_RATE;
   const details: Record<string, string> = {
-    base_success_rate: `${BASE_SUCCESS_RATE * 100}%`,
+    base_success_rate: `${GAME_CONSTANTS.BASE_SUCCESS_RATE * 100}%`,
   };
 
   // 1. 在线状态：目标在线降低成功率
   if (params.isTargetOnline) {
     rate -= 0.15;
     details.online = '-15% (target is online)';
-  } else {
-    details.online = '0% (target offline)';
   }
 
   // 2. 作物等级差：高级作物更难偷
@@ -36,58 +31,40 @@ function calculateStealSuccessRate(params: {
   if (cropLevelDiff > 0) {
     const penalty = Math.min(cropLevelDiff * 0.02, 0.2);
     rate -= penalty;
-    details.crop_level_diff = `-${(penalty * 100).toFixed(0)}% (crop level ${params.cropUnlockLevel} vs stealer level ${params.stealerLevel})`;
-  } else {
-    details.crop_level_diff = '0%';
+    details.crop_level_diff = `-${(penalty * 100).toFixed(0)}%`;
   }
 
-  // 3. 等级差：等级高的偷等级低的更容易
+  // 3. 等级差
   const levelDiff = params.stealerLevel - params.targetLevel;
   if (levelDiff > 0) {
     const bonus = Math.min(levelDiff * 0.01, 0.1);
     rate += bonus;
-    details.level_diff = `+${(bonus * 100).toFixed(0)}% (stealer level ${params.stealerLevel} vs target level ${params.targetLevel})`;
+    details.level_diff = `+${(bonus * 100).toFixed(0)}%`;
   } else if (levelDiff < 0) {
     const penalty = Math.min(Math.abs(levelDiff) * 0.015, 0.15);
     rate -= penalty;
-    details.level_diff = `-${(penalty * 100).toFixed(0)}% (target is higher level)`;
-  } else {
-    details.level_diff = '0%';
+    details.level_diff = `-${(penalty * 100).toFixed(0)}%`;
   }
 
-  // 4. 邀请数差：邀请多的人偷邀请少的更容易
+  // 4. 邀请数差
   const inviteDiff = params.stealerInvites - params.targetInvites;
   if (inviteDiff > 0) {
     const bonus = Math.min(inviteDiff * 0.005, 0.05);
     rate += bonus;
-    details.invite_diff = `+${(bonus * 100).toFixed(0)}% (stealer has ${params.stealerInvites} invites vs target ${params.targetInvites})`;
-  } else {
-    details.invite_diff = '0%';
+    details.invite_diff = `+${(bonus * 100).toFixed(0)}%`;
   }
 
-  // 5. 好友关系：偷好友降低成功率
+  // 5. 好友关系
   if (params.isFriend) {
     rate -= 0.1;
-    details.friendship_diff = '-10% (stealing from friend)';
-  } else {
-    details.friendship_diff = '0%';
+    details.friendship_diff = '-10%';
   }
 
-  // 6. 惯犯惩罚：最近24小时内偷盗次数过多
+  // 6. 惯犯惩罚
   if (params.recentStealCount > 5) {
     const penalty = Math.min((params.recentStealCount - 5) * 0.03, 0.15);
     rate -= penalty;
-    details.recidivist = `-${(penalty * 100).toFixed(0)}% (${params.recentStealCount} recent steals)`;
-  } else {
-    details.recidivist = '0%';
-  }
-
-  // 7. 新手保护：目标是新手（等级<5）提高成功率
-  if (params.targetIsNewFarmer) {
-    rate += 0.1;
-    details.new_farmer = '+10% (target is new farmer)';
-  } else {
-    details.new_farmer = '0%';
+    details.recidivist = `-${(penalty * 100).toFixed(0)}%`;
   }
 
   // 限制在 10% - 90% 之间
@@ -102,213 +79,137 @@ export async function POST(request: NextRequest) {
     const { userId, friendId, plotIndex } = body;
 
     if (!userId || !friendId || plotIndex === undefined) {
-      return NextResponse.json(
-        { error: 'userId, friendId, and plotIndex are required' },
-        { status: 400 }
-      );
+      return errorResponse('userId, friendId, and plotIndex are required', 400);
     }
 
-    // 获取偷盗者信息
-    const stealer = await prisma.user.findUnique({
-      where: { id: userId },
-      include: { farmState: true },
-    });
-
-    if (!stealer) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
-    }
-
-    // Check energy and handle recovery
     const now = new Date();
-    let currentEnergy = stealer.farmState?.energy || 0;
-    let lastEnergyUpdate = new Date(stealer.farmState?.lastEnergyUpdate || now);
 
-    if (currentEnergy < (stealer.farmState?.maxEnergy || 100)) {
-      const msPassed = now.getTime() - lastEnergyUpdate.getTime();
-      const config = await prisma.systemConfig.findUnique({
-        where: { key: 'energy_recovery_rate' },
-      });
-      const recoveryIntervalMinutes = (config?.value as any)?.intervalMinutes || 5;
-      const msPerEnergy = recoveryIntervalMinutes * 60 * 1000;
-      
-      const energyToRecover = Math.floor(msPassed / msPerEnergy);
-      if (energyToRecover > 0) {
-        const actualRecovery = Math.min(energyToRecover, (stealer.farmState?.maxEnergy || 100) - currentEnergy);
-        currentEnergy += actualRecovery;
-        lastEnergyUpdate = new Date(lastEnergyUpdate.getTime() + actualRecovery * msPerEnergy);
-      }
-    }
+    // 1. 在事务外获取配置，减少事务时间
+    const recoveryInterval = await getSystemConfig('energy_recovery_rate', GAME_CONSTANTS.ENERGY_RECOVERY_INTERVAL_MINS);
 
-    if (currentEnergy < STEAL_ENERGY_COST) {
-      return NextResponse.json(
-        { error: 'Not enough energy' },
-        { status: 400 }
-      );
-    }
-
-    // 检查金币
-    if (stealer.farmCoins < STEAL_COIN_COST) {
-      return NextResponse.json(
-        { error: 'Not enough coins' },
-        { status: 400 }
-      );
-    }
-
-    // 获取目标农场
-    const target = await prisma.user.findUnique({
-      where: { id: friendId },
-      include: {
-        farmState: {
-          include: { landPlots: true },
-        },
-      },
-    });
-
-    if (!target || !target.farmState) {
-      return NextResponse.json(
-        { error: 'Target farm not found' },
-        { status: 404 }
-      );
-    }
-
-    const plot = target.farmState.landPlots.find((p) => p.plotIndex === plotIndex);
-
-    if (!plot || !plot.cropId || plot.growthStage < 4) {
-      return NextResponse.json(
-        { error: 'No mature crop to steal' },
-        { status: 400 }
-      );
-    }
-
-    // 检查是否是好友
-    const friendship = await prisma.socialAction.findFirst({
-      where: {
-        OR: [
-          { fromUserId: userId, toUserId: friendId, actionType: 'friend_accept' },
-          { fromUserId: friendId, toUserId: userId, actionType: 'friend_accept' },
-        ],
-      },
-    });
-
-    // 获取最近24小时的偷盗次数
-    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const recentSteals = await prisma.socialAction.count({
-      where: {
-        fromUserId: userId,
-        actionType: 'steal',
-        createdAt: { gte: oneDayAgo },
-      },
-    });
-
-    // 检查目标是否在线（最近5分钟有活动）
-    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
-    const isTargetOnline = target.lastLoginAt > fiveMinutesAgo;
-
-    // 获取作物解锁等级（这里简化处理，实际应从 CropConfig 读取）
-    const cropUnlockLevels: Record<string, number> = {
-      Wheat: 1, Corn: 3, Potato: 5, Tomato: 7, Carrot: 9,
-      Apple: 19, Banana: 21, Pear: 23,
-    };
-    const cropUnlockLevel = cropUnlockLevels[plot.cropId] || 1;
-
-    // 计算成功率
-    const { rate: successRate, details } = calculateStealSuccessRate({
-      isTargetOnline,
-      stealerLevel: stealer.level,
-      targetLevel: target.level,
-      cropUnlockLevel,
-      stealerInvites: stealer.inviteCount,
-      targetInvites: target.inviteCount,
-      isFriend: !!friendship,
-      recentStealCount: recentSteals,
-      targetIsNewFarmer: target.level < 5,
-    });
-
-    // 执行偷盗
-    const success = Math.random() < successRate;
-    let reward = 0;
-
-    // 扣除能量和金币
-    await prisma.user.update({
-      where: { id: userId },
-      data: {
-        farmCoins: { decrement: STEAL_COIN_COST },
-      },
-    });
-
-    await prisma.farmState.update({
-      where: { userId: userId },
-      data: {
-        energy: currentEnergy - STEAL_ENERGY_COST,
-        lastEnergyUpdate: currentEnergy - STEAL_ENERGY_COST >= (stealer.farmState?.maxEnergy || 100) ? now : lastEnergyUpdate,
-      },
-    });
-
-    if (success) {
-      // 获取作物价值（应从 CropConfig 读取）
-      const cropValues: Record<string, number> = {
-        Wheat: 30, Corn: 60, Potato: 90, Tomato: 120, Carrot: 150,
-        Apple: 300, Banana: 330, Pear: 360,
-      };
-      const baseValue = cropValues[plot.cropId] || 50;
-      reward = Math.floor(baseValue * STEAL_AMOUNT * plot.boostMultiplier);
-
-      // 给予奖励
-      await prisma.user.update({
+    // 2. 在事务中执行偷盗逻辑 (设置超时时间为 15秒)
+    const result = await prisma.$transaction(async (tx) => {
+      // 获取偷盗者并处理能量恢复
+      const stealer = await tx.user.findUnique({
         where: { id: userId },
-        data: {
-          farmCoins: { increment: reward },
+        include: { farmState: true },
+      });
+
+      if (!stealer || !stealer.farmState) throw new Error('Stealer not found');
+
+      const { newEnergy, newLastUpdate } = calculateRecoveredEnergy({
+        currentEnergy: stealer.farmState.energy,
+        maxEnergy: stealer.farmState.maxEnergy,
+        lastUpdate: stealer.farmState.lastEnergyUpdate,
+        recoveryIntervalMins: recoveryInterval
+      });
+
+      // 检查资源是否足够
+      if (newEnergy < GAME_CONSTANTS.STEAL_ENERGY_COST) throw new Error('Not enough energy');
+      if (stealer.farmCoins < GAME_CONSTANTS.STEAL_COIN_COST) throw new Error('Not enough coins');
+
+      // 获取目标农场及作物
+      const target = await tx.user.findUnique({
+        where: { id: friendId },
+        include: { farmState: { include: { landPlots: true } } },
+      });
+
+      if (!target || !target.farmState) throw new Error('Target farm not found');
+      
+      const plot = target.farmState.landPlots.find((p) => p.plotIndex === plotIndex);
+      if (!plot || !plot.cropId || plot.growthStage < 4) throw new Error('No mature crop to steal');
+
+      // 获取社交行为背景
+      const friendship = await tx.socialAction.findFirst({
+        where: {
+          OR: [
+            { fromUserId: userId, toUserId: friendId, actionType: 'friend_accept' },
+            { fromUserId: friendId, toUserId: userId, actionType: 'friend_accept' },
+          ],
         },
       });
 
-      // 标记作物为已偷
-      await prisma.landPlot.update({
-        where: { id: plot.id },
-        data: {
-          growthStage: 0,
-          cropId: null,
-          plantedAt: null,
-          harvestAt: null,
-        },
+      const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      const recentSteals = await tx.socialAction.count({
+        where: { fromUserId: userId, actionType: 'steal', createdAt: { gte: oneDayAgo } },
       });
+
+      const isTargetOnline = target.lastLoginAt > new Date(now.getTime() - 5 * 60 * 1000);
+      
+      // 简化处理作物等级
+      const cropUnlockLevel = 1; 
+
+      const { rate: successRate, details } = calculateStealSuccessRate({
+        isTargetOnline,
+        stealerLevel: stealer.level,
+        targetLevel: target.level,
+        cropUnlockLevel,
+        stealerInvites: stealer.inviteCount,
+        targetInvites: target.inviteCount,
+        isFriend: !!friendship,
+        recentStealCount: recentSteals,
+        targetIsNewFarmer: target.level < 5,
+      });
+
+      // 执行扣除与奖励
+      const success = Math.random() < successRate;
+      let reward = 0;
+
+      // 扣除偷盗者资源
+      await tx.user.update({
+        where: { id: userId },
+        data: { farmCoins: { decrement: GAME_CONSTANTS.STEAL_COIN_COST } }
+      });
+
+      await tx.farmState.update({
+        where: { userId: userId },
+        data: { 
+          energy: { decrement: GAME_CONSTANTS.STEAL_ENERGY_COST },
+          lastEnergyUpdate: newLastUpdate 
+        }
+      });
+
+      if (success) {
+        // 计算奖励 (100 是假设的基础价值)
+        reward = Math.floor(100 * GAME_CONSTANTS.STEAL_AMOUNT * plot.boostMultiplier);
+        
+        await tx.user.update({
+          where: { id: userId },
+          data: { farmCoins: { increment: reward } }
+        });
+
+        // 清除目标地块
+        await tx.landPlot.update({
+          where: { id: plot.id },
+          data: {
+            growthStage: 0,
+            cropId: null,
+            plantedAt: null,
+            harvestAt: null,
+          }
+        });
+      }
+
+      // 记录社交动作
+      const action = await tx.socialAction.create({
+        data: {
+          fromUserId: userId,
+          toUserId: friendId,
+          actionType: 'steal',
+          metadata: { success, reward, successRate: Math.round(successRate * 100), details }
+        }
+      });
+
+      return { success, reward, successRate, details, action };
+    }, {
+      timeout: 15000 // 增加超时时间到 15 秒
+    });
+
+    return successResponse(result);
+  } catch (error: any) {
+    if (error.message === 'Not enough energy' || error.message === 'Not enough coins') {
+      return errorResponse(error.message, 400);
     }
-
-    // 记录偷盗行为
-    const socialAction = await prisma.socialAction.create({
-      data: {
-        fromUserId: userId,
-        toUserId: friendId,
-        actionType: 'steal',
-        metadata: {
-          plotIndex,
-          success,
-          reward,
-          cropId: plot.cropId,
-          successRate: Math.round(successRate * 100),
-          successRateDetails: details,
-          energyCost: STEAL_ENERGY_COST,
-          coinCost: STEAL_COIN_COST,
-        },
-      },
-    });
-
-    return NextResponse.json({
-      success,
-      reward,
-      successRate: Math.round(successRate * 100),
-      successRateDetails: details,
-      energyCost: STEAL_ENERGY_COST,
-      coinCost: STEAL_COIN_COST,
-      action: socialAction,
-    });
-  } catch (error) {
-    console.error('POST /api/social/steal error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return internalErrorResponse(error);
   }
 }
