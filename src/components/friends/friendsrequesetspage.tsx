@@ -1,11 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from "react"
 import { useLanguage } from "../context/languageContext"
-import { FriendsData } from "./friendsearchpage"
-import { fetchFriendRequests, respondFriendRequest } from "@/utils/api/social"
+import { fetchFriendRequests, respondFriendRequest, FriendRequest } from "@/utils/api/social"
 import Image from "next/image"
 import { useData } from "../context/dataContext"
 import { useRouter } from "next/navigation"
-import { ArrowUpFromDot } from "lucide-react"
+import { ArrowUpFromDot, ArrowLeft } from "lucide-react"
 import { truncateText } from "@/utils/func/utils"
 
 const FriendsRequestsPage = () => {
@@ -13,7 +12,7 @@ const FriendsRequestsPage = () => {
     const router = useRouter()
     const observerRef = useRef<HTMLDivElement>(null)
     const [cursor, setCursor] = useState<string>("")
-    const [requestResults, setRequestResults] = useState<FriendsData[]>([])
+    const [requestResults, setRequestResults] = useState<FriendRequest[]>([])
     const [loadingFriend, setLoadingFriend] = useState<boolean>(false)
     const [isVisible, setIsVisible] = useState<boolean>(false)
     const { setNotification } = useData()
@@ -79,9 +78,17 @@ const FriendsRequestsPage = () => {
 
     return (
         <div className="w-full h-full flex flex-col">
-            <h1 className="text-[17px] font-bold w-full text-center text-white py-[11px]">
-                {t("Friends Request")}
-            </h1>
+            <div className="flex items-center justify-center relative py-[11px]">
+                <button
+                    onClick={() => router.back()}
+                    className="absolute left-[16px] p-1 hover:opacity-70"
+                >
+                    <ArrowLeft size={24} color="white" />
+                </button>
+                <h1 className="text-[17px] font-bold text-white">
+                    {t("Friends Request")}
+                </h1>
+            </div>
             <div
                 className="w-full h-auto px-4 py-6 flex flex-col text-white gap-3 overflow-auto"
                 ref={observerRef}
@@ -121,7 +128,7 @@ const FriendsRequestsPage = () => {
                                             </p>
                                         </span>
                                         <span className="text-[16px] font-bold">
-                                            {truncateText(friend.user_name, 10)}
+                                            {truncateText(friend.from_user_name, 10)}
                                         </span>
                                     </div>
                                     <div className="flex justify-between gap-[8px] items-center text-[14px]">

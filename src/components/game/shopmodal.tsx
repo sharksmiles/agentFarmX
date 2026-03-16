@@ -230,8 +230,7 @@ const ShopModal = () => {
                                                                         )} ${t(
                                                                             "will unlock at Lv"
                                                                         )}${
-                                                                            user?.farm_stats
-                                                                                ?.level + 1
+                                                                            crop.unlock_level
                                                                         }.`,
                                                                     })
                                                                 } else {
@@ -262,8 +261,7 @@ const ShopModal = () => {
                                                                         )} ${t(
                                                                             "will unlock at Lv"
                                                                         )}${
-                                                                            user?.farm_stats
-                                                                                ?.level + 1
+                                                                            crop.unlock_level
                                                                         }.`,
                                                                     })
                                                                 } else {

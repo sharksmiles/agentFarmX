@@ -27,6 +27,20 @@ export async function GET(request: NextRequest) {
             username: true,
             avatar: true,
             level: true,
+            farmCoins: true,
+            lastLoginAt: true,
+            farmState: {
+              include: {
+                landPlots: {
+                  where: {
+                    OR: [
+                      { growthStage: 4 }, // Mature
+                      { nextWateringDue: { lt: new Date() }, cropId: { not: null }, growthStage: { lt: 4 } }
+                    ]
+                  }
+                }
+              }
+            }
           },
         },
       },

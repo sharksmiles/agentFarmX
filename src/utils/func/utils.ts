@@ -10,7 +10,8 @@ export function devSee(user: User | null) {
     return DEV_WALLET_LIST.includes(user.wallet_address)
 }
 
-export function truncateText(text: string, maxLength: number) {
+export function truncateText(text: string | undefined | null, maxLength: number) {
+    if (!text) return ""
     return text.length > maxLength ? text.substring(0, maxLength) + "..." : text
 }
 

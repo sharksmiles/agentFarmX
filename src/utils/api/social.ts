@@ -91,15 +91,25 @@ export const searchUsers = async (query: string): Promise<FriendsData[]> => {
 
 // New API: Search users
 export const searchUsersNew = async (query: string) => {
-    const res = await apiClient.get<FriendsData[]>(`/api/social/friends/search?q=${query}`)
+    const user = await import("./auth").then(m => m.fetchMe());
+    const params = new URLSearchParams({ q: query });
+    if (user?.id) {
+        params.append('userId', user.id);
+    }
+    const res = await apiClient.get<FriendsData[]>(`/api/social/friends/search?${params.toString()}`)
     return res.data
 }
 
 // ── Friend requests ───────────────────────────────────────────────────────────
 export interface FriendRequest {
-    id: string
-    from_user_id: string
+    id: string  // 请求记录ID
+    from_user_id: string  // 发送者用户ID
     from_user_name: string
+    user_game_level: number
+    user_coin_balance: number
+    need_water: number
+    need_harvest: number
+    last_login: string
     created_at: string
 }
 
@@ -108,12 +118,28 @@ export const fetchFriendRequests = async (): Promise<FriendRequest[]> => {
     if (!user) throw new Error("User not found");
     
     const res = await fetchFriendRequestsNew(user.id);
-    return res.requests.map((req: any) => ({
-        id: req.id,
-        from_user_id: req.fromUserId,
-        from_user_name: req.fromUser?.username || `X Layer-${req.fromUser?.walletAddress.slice(-4)}`,
-        created_at: req.createdAt
-    }));
+    const now = new Date();
+    
+    return res.requests.map((req: any) => {
+        const fromUser = req.fromUser || {};
+        const plots = fromUser.farmState?.landPlots || [];
+        const needWater = plots.filter((p: any) => 
+            p.nextWateringDue && new Date(p.nextWateringDue) <= now && p.cropId && p.growthStage < 4
+        ).length;
+        const needHarvest = plots.filter((p: any) => p.growthStage === 4).length;
+        
+        return {
+            id: req.id,  // 请求记录ID，用于接受/拒绝操作
+            from_user_id: fromUser.id,
+            from_user_name: fromUser.username || `X Layer-${fromUser.walletAddress?.slice(-4) || ''}`,
+            user_game_level: fromUser.level || 1,
+            user_coin_balance: fromUser.farmCoins || 0,
+            need_water: needWater,
+            need_harvest: needHarvest,
+            last_login: fromUser.lastLoginAt || new Date().toISOString(),
+            created_at: req.createdAt
+        };
+    });
 }
 
 // New API: Get friend requests

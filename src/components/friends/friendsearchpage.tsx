@@ -3,7 +3,7 @@ import { useLanguage } from "../context/languageContext"
 import Image from "next/image"
 import { searchUsers, sendFriendRequest } from "@/utils/api/social"
 import { useData } from "../context/dataContext"
-import { UserSearch, X } from "lucide-react"
+import { UserSearch, X, ArrowLeft } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { timeAgo, truncateText } from "@/utils/func/utils"
 
@@ -15,6 +15,8 @@ export type FriendsData = {
     need_water: number
     need_harvest: number
     last_login: string
+    is_friend?: boolean
+    has_pending_request?: boolean
 }
 
 export type FriendInfoStats = {
@@ -88,9 +90,17 @@ const FriendRequest = () => {
 
     return (
         <div className="w-full h-full flex flex-col">
-            <h1 className="text-[17px] font-bold w-full text-center text-white pt-[11px]">
-                {t("Search Friends")}
-            </h1>
+            <div className="flex items-center justify-center relative pt-[11px]">
+                <button
+                    onClick={() => router.back()}
+                    className="absolute left-[16px] p-1 hover:opacity-70"
+                >
+                    <ArrowLeft size={24} color="white" />
+                </button>
+                <h1 className="text-[17px] font-bold text-white">
+                    {t("Search Friends")}
+                </h1>
+            </div>
             <div className="w-full px-[21px] py-4 relative flex items-center justify-center">
                 <UserSearch
                     size={24}
@@ -175,16 +185,39 @@ const FriendRequest = () => {
                                         <button
                                             onClick={() => handleSendFriendsRequest(friend.id)}
                                             className="flex flex-col justify-center items-center"
+                                            disabled={friend.is_friend || friend.has_pending_request}
                                         >
-                                            <Image
-                                                src="/icon/addfriend.png"
-                                                width={32}
-                                                height={32}
-                                                alt="friends"
-                                            />
-                                            <p className="text-[10px] font-semibold whitespace-nowrap">
-                                                {t("Add")}
-                                            </p>
+                                            {friend.is_friend ? (
+                                                <>
+                                                    <div className="w-[32px] h-[32px] rounded-full bg-green-500/20 flex items-center justify-center">
+                                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-green-400">
+                                                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                                            <circle cx="12" cy="7" r="4"/>
+                                                        </svg>
+                                                    </div>
+                                                    <p className="text-[10px] font-semibold whitespace-nowrap text-green-400">{t("Friends")}</p>
+                                                </>
+                                            ) : friend.has_pending_request ? (
+                                                <>
+                                                    <div className="w-[32px] h-[32px] rounded-full bg-yellow-500/20 flex items-center justify-center">
+                                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-yellow-400">
+                                                            <circle cx="12" cy="12" r="10"/>
+                                                            <polyline points="12 6 12 12 16 14"/>
+                                                        </svg>
+                                                    </div>
+                                                    <p className="text-[10px] font-semibold whitespace-nowrap text-yellow-400">{t("Pending")}</p>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Image
+                                                        src="/icon/addfriend.png"
+                                                        width={32}
+                                                        height={32}
+                                                        alt="friends"
+                                                    />
+                                                    <p className="text-[10px] font-semibold whitespace-nowrap">{t("Add")}</p>
+                                                </>
+                                            )}
                                         </button>
                                         <button
                                             className="ml-[12px]"
