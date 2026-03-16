@@ -152,8 +152,24 @@ export const deleteFriend = async (friendId: string): Promise<void> => {
 }
 
 // ── Friend farm operations ────────────────────────────────────────────────────
+// 辅助函数：将日期转换为 ISO 字符串
+const toISOString = (date: any): string | undefined => {
+    if (!date) return undefined
+    if (typeof date === 'string') return date
+    if (date instanceof Date) return date.toISOString()
+    return new Date(date).toISOString()
+}
+
 export const fetchFriendFarm = async (friendId: string): Promise<FriendStats> => {
     const res = await visitFriendFarm(friendId)
+    const now = new Date()
+    
+    // 创建完整的地块数组（9个）
+    const allPlots = Array.from({ length: 9 }, (_, i) => {
+        const plot = res.landPlots?.find((p: any) => p.plotIndex === i)
+        return plot || { plotIndex: i, isUnlocked: false, cropId: null }
+    })
+    
     // Map to FriendStats format expected by frontend
     return {
         id: res.userId,
@@ -161,21 +177,43 @@ export const fetchFriendFarm = async (friendId: string): Promise<FriendStats> =>
         if_friend_status: "friend", // Should be checked properly
         farm_stats: {
             inventory: [],
-            growing_crops: res.landPlots.map((p: any) => ({
-                coin_balance: res.user?.farmCoins || 0,
-                land_id: p.plotIndex + 1,
-                land_owned: p.isUnlocked,
-                land_can_buy: false,
-                is_planted: !!p.cropId,
-                crop_details: p.cropId ? {
-                    crop_id: p.cropId,
-                    crop_type: p.cropId,
-                    planted_time: p.plantedAt,
-                    is_mature: p.growthStage >= 4,
-                    status: p.growthStage >= 4 ? 'mature' : 'growing',
-                    maturing_time: p.harvestAt ? new Date(p.harvestAt).getTime() : undefined,
-                } : {}
-            })),
+            growing_crops: allPlots.map((p: any) => {
+                // 计算作物是否成熟
+                const isMature = p.growthStage >= 4 || (p.harvestAt && now >= new Date(p.harvestAt))
+                
+                // 计算成熟所需时间（小时）
+                let maturingTimeHours: number | undefined = undefined
+                let growthTimeHours: number | undefined = undefined
+                if (p.plantedAt && p.harvestAt) {
+                    const plantedAt = new Date(p.plantedAt)
+                    const harvestAt = new Date(p.harvestAt)
+                    maturingTimeHours = (harvestAt.getTime() - plantedAt.getTime()) / (1000 * 60 * 60)
+                    
+                    // 计算上次浇水时已经生长的时间（小时）
+                    const lastWateredAt = p.lastWateredAt ? new Date(p.lastWateredAt) : plantedAt
+                    growthTimeHours = (lastWateredAt.getTime() - plantedAt.getTime()) / (1000 * 60 * 60)
+                }
+                
+                return {
+                    coin_balance: res.user?.farmCoins || 0,
+                    land_id: p.plotIndex + 1,
+                    land_owned: p.isUnlocked,
+                    land_can_buy: false,
+                    is_planted: !!p.cropId,
+                    crop_details: p.cropId ? {
+                        crop_id: p.cropId,
+                        crop_type: p.cropId,
+                        planted_time: toISOString(p.plantedAt),
+                        last_watered_time: toISOString(p.lastWateredAt) || toISOString(p.plantedAt),
+                        next_watering_due: toISOString(p.nextWateringDue),
+                        harvest_at: toISOString(p.harvestAt), // 添加成熟时间
+                        is_mature: isMature,
+                        status: isMature ? 'mature' : 'growing',
+                        maturing_time: maturingTimeHours, // 成熟所需总时间（小时）
+                        growth_time_hours: growthTimeHours, // 上次浇水时已生长时间（小时）
+                    } : {}
+                }
+            }),
             level: res.user?.level || 1,
             level_exp: 0,
             coin_balance: res.user?.farmCoins || 0,
@@ -248,5 +286,22 @@ export const stealCrop = async (
 // New API: Steal crop from friend
 export const stealCropNew = async (userId: string, friendId: string, plotIndex: number) => {
     const res = await apiClient.post('/api/social/steal', { userId, friendId, plotIndex })
+    return res.data
+}
+
+// ── Explore (Radar) ──────────────────────────────────────────────────────────
+export interface ExploreResult {
+    friend: {
+        id: string
+        username: string
+        avatar: string | null
+        level: number
+        stealableCrops: number
+    }
+    cost: number
+}
+
+export const exploreFarm = async (): Promise<ExploreResult> => {
+    const res = await apiClient.post<ExploreResult>('/api/social/explore')
     return res.data
 }

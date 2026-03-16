@@ -138,7 +138,7 @@ const FriendGamePad = ({
                     .then(({ reward, updatedSelf }) => {
                         const newNextWatering = new Date(Date.now() + 3600000).toISOString()
                         setFriendStats((prev) => {
-                            if (!prev) return prev
+                            if (!prev || !prev.farm_stats) return prev
                             const crops = [...prev.farm_stats.growing_crops]
                             crops[landId - 1] = {
                                 ...crops[landId - 1],
@@ -153,26 +153,9 @@ const FriendGamePad = ({
                         setUser(updatedSelf)
                         addNotification({ notificationTitle: "Watered!", notificationMessage: `You helped water their crop +${reward} COIN`, reward, friend_name: friendStats.user_name, action: "Harvest" } as any, 3000)
                     })
-                    .catch(() => {
-                        const newNextWatering = new Date(Date.now() + 3600000).toISOString()
-                        setFriendStats((prev) => {
-                            if (!prev) return prev
-                            const crops = [...prev.farm_stats.growing_crops]
-                            crops[landId - 1] = {
-                                ...crops[landId - 1],
-                                crop_details: {
-                                    ...crops[landId - 1].crop_details,
-                                    last_watered_time: new Date().toISOString(),
-                                    next_watering_due: newNextWatering,
-                                },
-                            }
-                            return { ...prev, farm_stats: { ...prev.farm_stats, growing_crops: crops } }
-                        })
-                        setUser((prev) => {
-                            if (!prev) return prev
-                            return { ...prev, farm_stats: { ...prev.farm_stats, energy_left: Math.max((prev.farm_stats.energy_left ?? 0) - 1, 0) } }
-                        })
-                        addNotification({ notificationTitle: "Watered!", notificationMessage: "You helped water their crop +5 COIN", reward: 5, friend_name: friendStats.user_name, action: "Harvest" } as any, 3000)
+                    .catch((error) => {
+                        console.error('Water friend crop error:', error)
+                        addNotification({ notificationTitle: "Error!", notificationMessage: "Failed to water crop. Please try again." }, 3000)
                     })
                     .finally(() => {
                         setLandWatering((prev) => prev.filter((i) => i !== landId))
@@ -199,9 +182,9 @@ const FriendGamePad = ({
             if (currentGrowthTime >= growthDuration) {
                 const maturityExceededTime = currentGrowthTime - growthDuration
                 if (maturityExceededTime > 15) {
-                    if (crop_id === undefined) return
                     setStealLoading("caculate")
-                    checkSteal(friendStats.id, crop_id)
+                    // 传入 landId - 1 作为 plotIndex，而不是 crop_id
+                    checkSteal(friendStats.id, String(landId - 1))
                         .then((data) => setStealConfirmation(data))
                         .catch(() => setNotification({ notificationTitle: "Error", notificationMessage: "Failed to calculate steal odds" }))
                         .finally(() => setStealLoading(null))
@@ -228,37 +211,43 @@ const FriendGamePad = ({
                             let needWater: boolean = false
                             let needSteal: boolean = false
                             let stolen: boolean = crop_details?.status === "Stolen"
-                            if (
-                                land.is_planted &&
-                                crop_details.maturing_time &&
-                                crop_details.growth_time_hours != undefined &&
-                                crop_details.planted_time &&
-                                crop_details.last_watered_time &&
-                                crop_details.next_watering_due &&
-                                !stolen
-                            ) {
-                                const nextWateringDue = parseISO(crop_details.next_watering_due)
-                                const lastWateringTime = parseISO(crop_details.last_watered_time)
-                                const growthTime = crop_details.growth_time_hours * 60
-                                const growthDuration = crop_details.maturing_time * 60
-                                let currentGrowthTime: number =
-                                    differenceInMinutes(now, lastWateringTime) + growthTime
-
-                                if (now > nextWateringDue && !land.crop_details.is_mature) {
-                                    needWater = true
-                                    currentGrowthTime =
-                                        growthTime +
-                                        differenceInMinutes(nextWateringDue, lastWateringTime)
+                            
+                            // 简化判断逻辑，与好友列表 API 一致
+                            if (land.is_planted && !stolen) {
+                                // 判断是否需要浇水：next_watering_due <= now && !is_mature
+                                if (crop_details?.next_watering_due && !crop_details?.is_mature) {
+                                    const nextWateringDue = parseISO(crop_details.next_watering_due)
+                                    if (now > nextWateringDue) {
+                                        needWater = true
+                                    }
                                 }
-
-                                cropStage = Math.floor((currentGrowthTime / growthDuration) * 8)
-                                cropStage = Math.min(cropStage, 7)
-
-                                if (land.is_planted && currentGrowthTime >= growthDuration) {
-                                    const maturityExceededTime = currentGrowthTime - growthDuration
-                                    if (maturityExceededTime > 15) {
+                                
+                                // 判断是否可以偷取：is_mature && 成熟超过15分钟
+                                if (crop_details?.is_mature && crop_details?.harvest_at) {
+                                    const harvestAt = parseISO(crop_details.harvest_at)
+                                    const minutesSinceMature = differenceInMinutes(now, harvestAt)
+                                    if (minutesSinceMature > 15) {
                                         needSteal = true
                                     }
+                                }
+                                
+                                // 计算作物生长阶段（用于显示图片）
+                                if (
+                                    crop_details?.maturing_time &&
+                                    crop_details?.growth_time_hours != undefined &&
+                                    crop_details?.planted_time &&
+                                    crop_details?.last_watered_time
+                                ) {
+                                    const lastWateringTime = parseISO(crop_details.last_watered_time)
+                                    const growthTime = crop_details.growth_time_hours * 60
+                                    const growthDuration = crop_details.maturing_time * 60
+                                    let currentGrowthTime: number =
+                                        differenceInMinutes(now, lastWateringTime) + growthTime
+
+                                    cropStage = Math.floor((currentGrowthTime / growthDuration) * 8)
+                                    cropStage = Math.min(cropStage, 7)
+                                } else if (crop_details?.is_mature) {
+                                    cropStage = 7 // 成熟作物显示最高阶段
                                 }
                             }
 

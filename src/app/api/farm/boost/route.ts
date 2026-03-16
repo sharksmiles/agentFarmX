@@ -15,6 +15,8 @@ export async function POST(request: NextRequest) {
       return errorResponse('userId and plotIndex are required', 400);
     }
 
+    console.log('[Boost API] Request:', { userId, plotIndex });
+
     const now = new Date();
 
     // 在单个事务中执行加速逻辑
@@ -31,8 +33,19 @@ export async function POST(request: NextRequest) {
       const dbPlotIndex = plotIndex > 0 ? plotIndex - 1 : plotIndex;
       const plot = user.farmState.landPlots.find((p) => p.plotIndex === dbPlotIndex);
 
+      console.log('[Boost API] Plot lookup:', { 
+        dbPlotIndex, 
+        foundPlot: plot ? { id: plot.id, plotIndex: plot.plotIndex, cropId: plot.cropId } : null,
+        allPlots: user.farmState.landPlots.map(p => ({ plotIndex: p.plotIndex, cropId: p.cropId }))
+      });
+
       if (!plot) throw new Error('Plot not found');
       if (!plot.cropId) throw new Error('No crop to boost');
+      
+      // 检查作物是否已成熟
+      if (plot.harvestAt && now >= plot.harvestAt) {
+        throw new Error('Crop is already mature, harvest it instead');
+      }
 
       // 3. 校验加速道具
       const boostItem = user.inventory.find(i => i.itemType === 'boost' && i.quantity > 0);
@@ -71,7 +84,7 @@ export async function POST(request: NextRequest) {
     if (error.message === 'User or farm state not found' || error.message === 'Plot not found') {
       return notFoundResponse(error.message);
     }
-    if (error.message === 'No crop to boost' || error.message === 'No boost item available') {
+    if (error.message === 'No crop to boost' || error.message === 'No boost item available' || error.message === 'Crop is already mature, harvest it instead') {
       return errorResponse(error.message, 400);
     }
     return internalErrorResponse(error);

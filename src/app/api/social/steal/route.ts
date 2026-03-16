@@ -210,8 +210,6 @@ export const POST = withAuth(async (
       });
 
       return { success, reward, successRate, details, action };
-    }, {
-      timeout: 15000 // 增加超时时间到 15 秒
     });
 
     return successResponse(result);

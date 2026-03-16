@@ -68,34 +68,11 @@ const PlantModal = () => {
         try {
             const updatedUser = await apiPlantCrop(selectedLandId, selectedCrop)
             setUser(updatedUser)
-        } catch {
-            const cropInfo = gameStats?.crop_info?.find((c) => c.name === selectedCrop)
-            const now = new Date()
-            setUser((prev) => {
-                if (!prev) return prev
-                const crops = prev.farm_stats.growing_crops.map((c) =>
-                    c.land_id === selectedLandId
-                        ? {
-                              ...c,
-                              is_planted: true,
-                              crop_details: {
-                                  crop_id: `crop_${selectedLandId}_${Date.now()}`,
-                                  crop_type: selectedCrop!,
-                                  maturing_time: cropInfo?.mature_time ?? 60,
-                                  growth_time_hours: (cropInfo?.mature_time ?? 60) / 60,
-                                  planted_time: now.toISOString(),
-                                  last_watered_time: now.toISOString(),
-                                  next_watering_due: new Date(now.getTime() + (cropInfo?.watering_period ?? 30) * 60000).toISOString(),
-                                  is_mature: false,
-                                  status: "growing",
-                              },
-                          }
-                        : c
-                )
-                const newInventory = prev.farm_stats.inventory
-                    .map((i) => i.crop_type === selectedCrop ? { ...i, quantity: i.quantity - 1 } : i)
-                    .filter((i) => i.quantity > 0)
-                return { ...prev, farm_stats: { ...prev.farm_stats, growing_crops: crops, inventory: newInventory } }
+        } catch (error: any) {
+            console.error("Planting error:", error)
+            OpenAgentFarmAlert({
+                notificationTitle: t("Error"),
+                notificationMessage: error.response?.data?.error || t("Failed to plant crop. Please try again."),
             })
         } finally {
             setPlanting(false)

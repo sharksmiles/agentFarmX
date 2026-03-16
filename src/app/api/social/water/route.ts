@@ -5,6 +5,7 @@ import { errorResponse, successResponse, internalErrorResponse, notFoundResponse
 
 const WATER_REWARD = 5; // 帮助好友浇水的金币奖励
 const WATER_BOOST = 1.05; // 5% 的收益加成
+const DEFAULT_WATERING_INTERVAL = 60; // 默认浇水间隔（分钟）
 
 /**
  * POST /api/social/water - 帮好友浇水
@@ -42,11 +43,23 @@ export const POST = withAuth(async (
       const plot = friendFarm.landPlots.find((p) => p.plotIndex === plotIndex);
       if (!plot || !plot.cropId) throw new Error('No crop to water');
 
-      // 3. 执行浇水操作并给奖励
+      // 3. 获取作物配置以确定浇水间隔
+      const cropConfig = await tx.cropConfig.findUnique({
+        where: { cropType: plot.cropId },
+      });
+      const wateringInterval = cropConfig?.wateringPeriod || DEFAULT_WATERING_INTERVAL;
+
+      // 4. 计算下次浇水时间
+      const now = new Date();
+      const nextWateringDue = new Date(now.getTime() + wateringInterval * 60 * 1000);
+
+      // 5. 执行浇水操作并给奖励
       const updatedPlot = await tx.landPlot.update({
         where: { id: plot.id },
         data: {
           boostMultiplier: plot.boostMultiplier * WATER_BOOST,
+          lastWateredAt: now,
+          nextWateringDue: nextWateringDue,
         },
       });
 

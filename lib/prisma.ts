@@ -16,6 +16,10 @@ const createPrismaClient = () => {
         url: urlWithPool,
       },
     },
+    transactionOptions: {
+      maxWait: 60000,  // 最大等待时间 60 秒
+      timeout: 60000,  // 事务超时时间 60 秒
+    },
   })
   
   // Ensure connections are cleaned up on process exit

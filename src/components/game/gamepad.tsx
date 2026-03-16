@@ -81,7 +81,7 @@ const GamePad = ({}) => {
                 notificationMessage: "Land not owned, level up to buy this land.",
             })
             return
-        } else if (openBoost && user?.farm_stats?.growing_crops?.[landId - 1]?.land_owned) {
+        } else if (openBoost && user?.farm_stats?.growing_crops?.[landId - 1]?.land_owned && user?.farm_stats?.growing_crops?.[landId - 1]?.is_planted && !user?.farm_stats?.growing_crops?.[landId - 1]?.crop_details?.is_mature) {
             if ((user?.farm_stats?.boost_left || 0) <= 0) {
                 setOpenBoost(false)
                 OpenAgentFarmAlert({
@@ -407,6 +407,7 @@ const GamePad = ({}) => {
                                             </motion.div>
                                         ))}
                                     {openBoost &&
+                                        land.is_planted &&
                                         !land.crop_details.is_mature &&
                                         land.land_owned && (
                                             <motion.div

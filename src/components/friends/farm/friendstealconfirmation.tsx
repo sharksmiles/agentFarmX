@@ -72,18 +72,38 @@ const FriendStealConfirmation = ({
         setStealConfirmation(null)
     }
 
-    const stealCrop = (crop_id: string) => {
-        if (crop_id === undefined) return
+    const stealCrop = (plotIndex: string) => {
+        if (plotIndex === undefined) return
         setStealLoading("steal")
-        stealCropApi(friendStats.id, crop_id)
+        stealCropApi(friendStats.id, plotIndex)
             .then(({ success, updatedSelf }) => {
                 setStealResult({ showSuccess: true, stealSuccess: success })
                 if (success) {
+                    // 偷窃成功后完全清除地块状态
                     setFriendStats(prev => {
                         if (!prev) return prev
                         const crops = [...prev.farm_stats.growing_crops]
-                        const idx = crops.findIndex(c => c.crop_details?.crop_id === crop_id)
-                        if (idx >= 0) crops[idx] = { ...crops[idx], crop_details: { ...crops[idx].crop_details, status: "Stolen" } }
+                        const idx = parseInt(plotIndex) // plotIndex 是 0-based
+                        if (idx >= 0 && idx < crops.length) {
+                            // 完全清除地块作物信息
+                            crops[idx] = {
+                                ...crops[idx],
+                                is_planted: false,
+                                crop_details: {
+                                    ...crops[idx].crop_details,
+                                    status: "Stolen",
+                                    crop_id: undefined,
+                                    crop_type: undefined,
+                                    is_mature: false,
+                                    maturing_time: undefined,
+                                    growth_time_hours: undefined,
+                                    planted_time: undefined,
+                                    last_watered_time: undefined,
+                                    next_watering_due: undefined,
+                                    harvest_at: undefined,
+                                }
+                            }
+                        }
                         return { ...prev, farm_stats: { ...prev.farm_stats, growing_crops: crops } }
                     })
                     setUser(updatedSelf)
@@ -316,7 +336,8 @@ const FriendStealConfirmation = ({
                             <button
                                 disabled={stealLoading === "steal"}
                                 onClick={() => {
-                                    stealCrop(stealConfirmation?.crop_id)
+                                    // 使用 plotIndex 而不是 crop_id
+                                    stealCrop(String(stealConfirmation?.plotIndex))
                                 }}
                                 className="mt-4 rounded-2xl w-full px-4 py-3 flex justify-center items-center gap-1"
                                 style={{

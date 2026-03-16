@@ -2,14 +2,15 @@
 
 import { useLanguage } from "../context/languageContext"
 import { useData } from "../context/dataContext"
-import { fetchFriends } from "@/utils/api/social"
+import { exploreFarm } from "@/utils/api/social"
 import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
-import { FriendsData } from "../friends/friendsearchpage"
+import { useEffect } from "react"
+import { useUser } from "../context/userContext"
 
 const RadarModal = () => {
     const { t } = useLanguage()
     const router = useRouter()
+    const { setUser } = useUser()
     const {
         openRadarModal,
         setOpenRadarModal,
@@ -19,34 +20,44 @@ const RadarModal = () => {
     } = useData()
     const handleRadar = () => {
         setRadaring(true)
-        fetchFriends("all")
+        exploreFarm()
             .then((res) => {
-                if (res.friends && res.friends.length > 0) {
-                    const randomFriend = res.friends[Math.floor(Math.random() * res.friends.length)]
-                    OpenAgentFarmAlert({
-                        notificationTitle: "Radar Found!",
-                        notificationMessage: `Found ${randomFriend.user_name}'s farm!`,
-                        progressBars: 100,
-                        progressTimeLeft: 0,
-                        leftHours: 0,
-                        leftMinutes: 0,
-                        needCopy: false,
-                    })
-                    router.push(`/friends/farm/ra/${randomFriend.id}`)
-                    setOpenRadarModal(false)
-                } else {
-                    OpenAgentFarmAlert({
-                        notificationTitle: "Error",
-                        notificationMessage: "No friends found"
-                    })
-                }
-                setRadaring(false)
+                // 更新用户金币（扣除100金币）
+                setUser((prev) => {
+                    if (!prev) return prev
+                    return {
+                        ...prev,
+                        farm_stats: {
+                            ...prev.farm_stats,
+                            coin_balance: prev.farm_stats.coin_balance - res.cost
+                        }
+                    }
+                })
+                
+                // 显示找到的农场信息
+                const stealInfo = res.friend.stealableCrops > 0 
+                    ? ` (${res.friend.stealableCrops} crops ready to steal!)` 
+                    : ''
+                
+                OpenAgentFarmAlert({
+                    notificationTitle: "Radar Found!",
+                    notificationMessage: `Found ${res.friend.username}'s farm!${stealInfo}`,
+                    progressBars: 100,
+                    progressTimeLeft: 0,
+                    leftHours: 0,
+                    leftMinutes: 0,
+                    needCopy: false,
+                })
+                router.push(`/friends/farm/ra/${res.friend.id}`)
+                setOpenRadarModal(false)
             })
-            .catch(() => {
+            .catch((err) => {
                 OpenAgentFarmAlert({
                     notificationTitle: "Error",
-                    notificationMessage: "Radar feature unavailable"
+                    notificationMessage: err.response?.data?.error || "Radar feature unavailable"
                 })
+            })
+            .finally(() => {
                 setRadaring(false)
             })
     }

@@ -39,12 +39,26 @@ export function mapUserToFrontend(user: UserWithRelations): FrontendUser {
         const plotAny = plot as any;
         const currentStage = GameService.calculateGrowthStage(plot);
         
+        // 计算成熟所需时间（小时）
+        let maturingTimeHours = 0;
+        let growthTimeHours = 0;
+        if (plot.plantedAt && plot.harvestAt) {
+          const plantedAt = new Date(plot.plantedAt);
+          const harvestAt = new Date(plot.harvestAt);
+          maturingTimeHours = (harvestAt.getTime() - plantedAt.getTime()) / (1000 * 60 * 60);
+          
+          // 计算上次浇水时已经生长的时间（小时）
+          const lastWateredAt = plotAny.lastWateredAt ? new Date(plotAny.lastWateredAt) : plantedAt;
+          growthTimeHours = (lastWateredAt.getTime() - plantedAt.getTime()) / (1000 * 60 * 60);
+        }
+        
         cropDetails.crop_id = plot.cropId;
         cropDetails.crop_type = plot.cropId as any; // Cast from string to CropTypes
         cropDetails.planted_time = plot.plantedAt?.toISOString();
         cropDetails.is_mature = currentStage >= 4;
         cropDetails.status = currentStage >= 4 ? 'mature' : 'growing';
-        cropDetails.maturing_time = plot.harvestAt ? new Date(plot.harvestAt).getTime() : undefined;
+        cropDetails.maturing_time = maturingTimeHours; // 成熟所需总时间（小时）
+        cropDetails.growth_time_hours = growthTimeHours; // 上次浇水时已生长时间（小时）
         cropDetails.last_watered_time = plotAny.lastWateredAt ? plotAny.lastWateredAt.toISOString() : plot.plantedAt?.toISOString();
         cropDetails.next_watering_due = plotAny.nextWateringDue ? plotAny.nextWateringDue.toISOString() : (plot.plantedAt ? new Date(new Date(plot.plantedAt).getTime() + 10 * 60 * 1000).toISOString() : undefined);
       }

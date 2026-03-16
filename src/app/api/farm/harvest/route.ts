@@ -104,8 +104,6 @@ export const POST = withAuth(async (
           agents: true
         }
       });
-    }, {
-      timeout: 15000 // 增加超时时间到 15 秒
     });
 
     if (!updatedUser) throw new Error('User data corruption after harvest');

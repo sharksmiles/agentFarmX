@@ -80,6 +80,7 @@ export type GrowingCrop = {
         planted_time?: string
         last_watered_time?: string
         next_watering_due?: string
+        harvest_at?: string
         is_mature?: boolean
         status?: string
     }
@@ -268,6 +269,7 @@ export type StealConfirmationTypes = {
     stealing_cost: string
     stealing_crop_name: string
     crop_id: string
+    plotIndex: number
 }
 
 export type AirDropStatsInfo = {

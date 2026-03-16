@@ -92,8 +92,6 @@ export async function POST(request: NextRequest) {
           agents: true
         }
       });
-    }, {
-      timeout: 15000 // 增加超时时间到 15 秒
     });
 
     if (!updatedUser) throw new Error('User data corruption after watering');
