@@ -1,17 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { withAuth, AuthContext } from '@/middleware/auth';
 import { errorResponse, successResponse, internalErrorResponse, notFoundResponse } from '@/utils/api/response';
 
 const WATER_REWARD = 5; // 帮助好友浇水的金币奖励
 const WATER_BOOST = 1.05; // 5% 的收益加成
 
-export async function POST(request: NextRequest) {
+/**
+ * POST /api/social/water - 帮好友浇水
+ * 需要认证：验证用户身份
+ */
+export const POST = withAuth(async (
+  request: NextRequest,
+  context: { params: Record<string, string>; auth: AuthContext }
+) => {
   try {
     const body = await request.json();
-    const { userId, friendId, plotIndex } = body;
+    const { friendId, plotIndex } = body;
+    const userId = context.auth.userId;
 
-    if (!userId || !friendId || plotIndex === undefined) {
-      return errorResponse('userId, friendId, and plotIndex are required', 400);
+    if (!friendId || plotIndex === undefined) {
+      return errorResponse('friendId and plotIndex are required', 400);
+    }
+
+    // 验证不能给自己浇水
+    if (friendId === userId) {
+      return errorResponse('Cannot water your own crops for reward', 400);
     }
 
     // 在单个事务中处理帮好友浇水逻辑
@@ -59,4 +73,4 @@ export async function POST(request: NextRequest) {
     if (error.message === 'No crop to water') return errorResponse(error.message, 400);
     return internalErrorResponse(error);
   }
-}
+});

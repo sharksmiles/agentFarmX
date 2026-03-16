@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { withAuth, AuthContext } from '@/middleware/auth';
 
 // Define available tasks
 const TASKS = [
@@ -53,18 +54,18 @@ const TASKS = [
   },
 ];
 
-export async function GET(request: NextRequest) {
+/**
+ * GET /api/tasks - 获取用户任务列表
+ * 需要认证：验证用户身份，只能查看自己的任务
+ */
+export const GET = withAuth(async (
+  request: NextRequest,
+  context: { params: Record<string, string>; auth: AuthContext }
+) => {
   try {
+    const userId = context.auth.userId;
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
     const type = searchParams.get('type'); // 'daily' | 'achievement' | 'all'
-
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'userId is required' },
-        { status: 400 }
-      );
-    }
 
     // Get user's task progress from AgentTask (reusing existing table)
     const userTasks = await prisma.agentTask.findMany({
@@ -97,12 +98,12 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    return NextResponse.json({ tasks: tasksWithProgress });
+    return NextResponse.json({ success: true, data: { tasks: tasksWithProgress } });
   } catch (error) {
     console.error('GET /api/tasks error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { success: false, error: 'Internal server error', code: 'INTERNAL_ERROR' },
       { status: 500 }
     );
   }
-}
+});

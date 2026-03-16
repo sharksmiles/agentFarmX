@@ -1,18 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { withAuth, AuthContext } from '@/middleware/auth';
 
-// GET /api/inventory - Get user inventory
-export async function GET(request: NextRequest) {
+/**
+ * GET /api/inventory - 获取用户库存
+ * 需要认证：验证用户身份，只能查看自己的库存
+ */
+export const GET = withAuth(async (
+  request: NextRequest,
+  context: { params: Record<string, string>; auth: AuthContext }
+) => {
   try {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
-
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'userId is required' },
-        { status: 400 }
-      );
-    }
+    const userId = context.auth.userId;
 
     const inventory = await prisma.inventory.findMany({
       where: { userId },
@@ -22,25 +21,40 @@ export async function GET(request: NextRequest) {
       ],
     });
 
-    return NextResponse.json({ inventory });
+    return NextResponse.json({ success: true, data: { inventory } });
   } catch (error) {
     console.error('GET /api/inventory error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { success: false, error: 'Internal server error', code: 'INTERNAL_ERROR' },
       { status: 500 }
     );
   }
-}
+});
 
-// POST /api/inventory - Add item to inventory
-export async function POST(request: NextRequest) {
+/**
+ * POST /api/inventory - 添加物品到库存
+ * 需要认证：验证用户身份，只能添加到自己的库存
+ */
+export const POST = withAuth(async (
+  request: NextRequest,
+  context: { params: Record<string, string>; auth: AuthContext }
+) => {
   try {
     const body = await request.json();
-    const { userId, itemType, itemId, quantity = 1 } = body;
+    const { itemType, itemId, quantity = 1 } = body;
+    const userId = context.auth.userId;
 
-    if (!userId || !itemType || !itemId) {
+    if (!itemType || !itemId) {
       return NextResponse.json(
-        { error: 'userId, itemType, and itemId are required' },
+        { success: false, error: 'itemType and itemId are required', code: 'BAD_REQUEST' },
+        { status: 400 }
+      );
+    }
+
+    // 验证数量有效
+    if (quantity <= 0) {
+      return NextResponse.json(
+        { success: false, error: 'Quantity must be positive', code: 'BAD_REQUEST' },
         { status: 400 }
       );
     }
@@ -65,12 +79,12 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({ inventory });
+    return NextResponse.json({ success: true, data: { inventory } });
   } catch (error) {
     console.error('POST /api/inventory error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { success: false, error: 'Internal server error', code: 'INTERNAL_ERROR' },
       { status: 500 }
     );
   }
-}
+});

@@ -1,17 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { withAuth, AuthContext } from '@/middleware/auth';
 
-export async function GET(request: NextRequest) {
+/**
+ * GET /api/invite/code - 获取用户邀请码
+ * 需要认证：验证用户身份，只能查看自己的邀请码
+ */
+export const GET = withAuth(async (
+  request: NextRequest,
+  context: { params: Record<string, string>; auth: AuthContext }
+) => {
   try {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
-
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'userId is required' },
-        { status: 400 }
-      );
-    }
+    const userId = context.auth.userId;
 
     // Get or create invite code
     const inviteConfig = await prisma.systemConfig.findUnique({
@@ -30,12 +30,12 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    return NextResponse.json({ inviteCode });
+    return NextResponse.json({ success: true, data: { inviteCode } });
   } catch (error) {
     console.error('GET /api/invite/code error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { success: false, error: 'Internal server error', code: 'INTERNAL_ERROR' },
       { status: 500 }
     );
   }
-}
+});

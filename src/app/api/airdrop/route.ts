@@ -1,17 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { withAuth, AuthContext } from '@/middleware/auth';
 
-export async function GET(request: NextRequest) {
+/**
+ * GET /api/airdrop - 获取空投列表
+ * 需要认证：验证用户身份，查看空投状态
+ */
+export const GET = withAuth(async (
+  request: NextRequest,
+  context: { params: Record<string, string>; auth: AuthContext }
+) => {
   try {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
-
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'userId is required' },
-        { status: 400 }
-      );
-    }
+    const userId = context.auth.userId;
 
     // Get active airdrops from SystemConfig
     const airdropConfig = await prisma.systemConfig.findUnique({
@@ -47,15 +47,18 @@ export async function GET(request: NextRequest) {
     }));
 
     return NextResponse.json({
-      airdrops: airdropsWithStatus,
-      totalAirdrops: airdrops.length,
-      claimedCount: claimedIds.length,
+      success: true,
+      data: {
+        airdrops: airdropsWithStatus,
+        totalAirdrops: airdrops.length,
+        claimedCount: claimedIds.length,
+      },
     });
   } catch (error) {
     console.error('GET /api/airdrop error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { success: false, error: 'Internal server error', code: 'INTERNAL_ERROR' },
       { status: 500 }
     );
   }
-}
+});
