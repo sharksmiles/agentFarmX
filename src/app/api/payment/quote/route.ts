@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyPaymentTransaction, verifyPaymentSignature, generatePaymentMessage } from '@/utils/blockchain/verifyPayment';
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 /**
  * x402 Payment Quote Endpoint
  * Returns payment information for HTTP 402 Payment Required flow

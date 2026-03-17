@@ -3,6 +3,9 @@ import { prisma } from '@/lib/prisma';
 import { mapUserToFrontend } from '@/utils/func/userMapper';
 import { errorResponse, successResponse, internalErrorResponse, notFoundResponse } from '@/utils/api/response';
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 // GET /api/users - Get user by wallet address
 // 重构说明：移除了自动注册和库存更新的副作用，保持 GET 幂等性
 export async function GET(request: NextRequest) {

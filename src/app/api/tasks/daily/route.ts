@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 // 7天签到奖励配置
 const DAILY_REWARDS = [100, 200, 300, 400, 500, 600, 1000];
 

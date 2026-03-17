@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { AgentService } from '@/services/agentService';
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // Agent ticks can take a while due to LLM calls
 
 export async function GET(request: NextRequest) {

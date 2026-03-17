@@ -5,6 +5,9 @@ import { GameService } from '@/services/gameService';
 import { errorResponse, successResponse, internalErrorResponse, notFoundResponse } from '@/utils/api/response';
 import { withAuth, AuthContext } from '@/middleware/auth';
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 /**
  * POST /api/farm/harvest - Harvest a crop
  * 需要认证：从Token中获取用户ID

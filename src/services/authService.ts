@@ -3,6 +3,16 @@ import { JWTService, SessionPayload, TokenResponse } from '@/lib/jwt';
 import { GAME_CONSTANTS, GameService } from './gameService';
 
 /**
+ * 新手引导相关常量
+ */
+const ONBOARDING_CONSTANTS = {
+  INITIAL_SEED_TYPE: 'Wheat',      // 初始种子类型
+  INITIAL_SEED_COUNT: 5,          // 初始种子数量
+  PRE_PLANTED_PLOT_INDEX: 0,      // 预种植地块索引（第一个地块）
+  PRE_PLANTED_CROP: 'Wheat',      // 预种植作物类型
+};
+
+/**
  * 认证服务
  * 处理用户认证、会话管理、Token刷新等
  */
@@ -42,6 +52,20 @@ export class AuthService {
 
       if (!user) {
         // 新用户注册
+        // 获取初始作物的配置
+        const initialCropConfig = await tx.cropConfig.findUnique({
+          where: { cropType: ONBOARDING_CONSTANTS.PRE_PLANTED_CROP },
+        });
+        
+        // 计算预种植作物的成熟时间（设置为已成熟，即 harvestAt 为当前时间）
+        const now = new Date();
+        const prePlantedHarvestAt = initialCropConfig 
+          ? new Date(now.getTime() - 1000) // 设置为过去的时间，表示已成熟
+          : now;
+        const prePlantedPlantedAt = initialCropConfig
+          ? new Date(now.getTime() - initialCropConfig.matureTime * 60 * 1000 - 1000)
+          : new Date(now.getTime() - 6 * 60 * 1000); // 默认 6 分钟前种植
+
         user = await tx.user.create({
           data: {
             walletAddress: normalizedAddress,
@@ -56,6 +80,15 @@ export class AuthService {
                     plotIndex: i,
                     isUnlocked: true,
                     growthStage: 0,
+                    // 第一个地块预种植已成熟的作物，用于新手引导 Step 3
+                    ...(i === ONBOARDING_CONSTANTS.PRE_PLANTED_PLOT_INDEX && initialCropConfig ? {
+                      cropId: ONBOARDING_CONSTANTS.PRE_PLANTED_CROP,
+                      plantedAt: prePlantedPlantedAt,
+                      harvestAt: prePlantedHarvestAt,
+                      growthStage: 4, // 成熟状态
+                      lastWateredAt: prePlantedPlantedAt,
+                      nextWateringDue: null, // 已成熟不需要浇水
+                    } : {}),
                   })),
                 },
               },
@@ -66,7 +99,13 @@ export class AuthService {
                   itemType: 'boost',
                   itemId: 'daily_boost',
                   quantity: GAME_CONSTANTS.DAILY_BOOST_COUNT,
-                }
+                },
+                // 添加初始种子库存
+                {
+                  itemType: 'crop',
+                  itemId: ONBOARDING_CONSTANTS.INITIAL_SEED_TYPE,
+                  quantity: ONBOARDING_CONSTANTS.INITIAL_SEED_COUNT,
+                },
               ]
             }
           },

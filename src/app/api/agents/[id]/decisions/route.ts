@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 // GET /api/agents/[id]/decisions - Get agent's decision history
 export async function GET(
   request: NextRequest,

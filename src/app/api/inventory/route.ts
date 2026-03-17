@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withAuth, AuthContext } from '@/middleware/auth';
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/inventory - 获取用户库存
  * 需要认证：验证用户身份，只能查看自己的库存

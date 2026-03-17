@@ -3,6 +3,9 @@ import { prisma } from '@/lib/prisma';
 import { GameService, GAME_CONSTANTS } from '@/services/gameService';
 import { withAuth, AuthContext } from '@/middleware/auth';
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/energy - 获取用户能量状态
  * 需要认证：验证用户身份，只能查看自己的能量

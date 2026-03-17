@@ -7,6 +7,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { ethers } from 'ethers';
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 interface TopUpRequest {
   userId: string;
   amount: number; // Amount in USDC

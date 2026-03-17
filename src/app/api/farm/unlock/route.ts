@@ -4,6 +4,9 @@ import { mapUserToFrontend } from '@/utils/func/userMapper';
 import { errorResponse, successResponse, internalErrorResponse, notFoundResponse } from '@/utils/api/response';
 import { withAuth, AuthContext } from '@/middleware/auth';
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 // 解锁地块的硬编码成本（建议后续移至 LevelConfig 或 SystemConfig）
 const LAND_UNLOCK_COSTS: Record<number, number> = {
   6: 500,   // 第7块地 (索引6)

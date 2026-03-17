@@ -20,10 +20,10 @@ model User {
   inviteCode        String         @unique @default(cuid()) @db.VarChar(30)
   invitedBy         String?        @db.VarChar(30)
   inviteCount       Int            @default(0)
-  onboardingStep    Int            @default(0)    // 0=not started, 1-4=in progress, 5=completed
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
   lastLoginAt       DateTime       @default(now())
+  onboardingStep    Int            @default(0)
   agents            Agent[]
   farmState         FarmState?
   inventory         Inventory[]

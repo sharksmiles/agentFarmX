@@ -3,6 +3,9 @@ import { prisma } from '@/lib/prisma';
 import { mapUserToFrontend } from '@/utils/func/userMapper';
 import { JWTService } from '@/lib/jwt';
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     // Get JWT token from Authorization header

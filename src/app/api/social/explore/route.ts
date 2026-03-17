@@ -4,6 +4,9 @@ import { errorResponse, successResponse, internalErrorResponse } from '@/utils/a
 import { withAuth, AuthContext } from '@/middleware/auth';
 import { GAME_CONSTANTS } from '@/services/gameService';
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 /**
  * POST /api/social/explore - 探索世界，寻找可偷窃的农场
  * 消耗50金币，返回一个有成熟作物的用户农场（排除自己）

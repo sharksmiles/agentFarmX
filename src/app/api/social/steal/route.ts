@@ -4,6 +4,9 @@ import { GameService, GAME_CONSTANTS, calculateStealSuccessRate } from '@/servic
 import { errorResponse, successResponse, internalErrorResponse, notFoundResponse } from '@/utils/api/response';
 import { withAuth, AuthContext } from '@/middleware/auth';
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 /**
  * POST /api/social/steal - Steal from another farm
  * 需要认证：从Token中获取用户ID

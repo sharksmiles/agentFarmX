@@ -2,12 +2,14 @@
 
 import { DotLottiePlayer } from "@dotlottie/react-player"
 import { useData } from "../context/dataContext"
+import { useUser } from "../context/userContext"
 import Image from "next/image"
 import { useLanguage } from "../context/languageContext"
 import { updateOnboardingStep } from "@/utils/api/game"
 
 const GameModal = () => {
     const { t } = useLanguage()
+    const { user, setUser } = useUser()
     const {
         onBoardingStep,
         setOnBoardingStep,
@@ -21,12 +23,27 @@ const GameModal = () => {
     const openDetails = (taskUrl: string) => {
         window.open(taskUrl, "_blank")
     }
-    
+
     // 同步 onboarding 步骤到后端
     const handleSetOnBoardingStep = async (step: number) => {
+        // 先更新本地状态
         setOnBoardingStep(step)
+        
         try {
+            // 调用后端 API 更新
             await updateOnboardingStep(step)
+            
+            // 后端在 step 1→2 时发放 500 金币奖励
+            // 但 API 不返回新余额，所以前端需要手动更新本地状态以保持同步
+            if (step === 2 && user) {
+                setUser({
+                    ...user,
+                    farm_stats: {
+                        ...user.farm_stats,
+                        coin_balance: user.farm_stats.coin_balance + 500
+                    }
+                })
+            }
         } catch (error) {
             console.error("Failed to update onboarding step:", error)
         }
@@ -80,17 +97,9 @@ const GameModal = () => {
                             }}
                             className="mt-[36px] w-full p-[12px] bg-[#5964F5] text-white font-semibold rounded-xl"
                         >
-                            {t("I can't wait, Start Farming")}🌿
+                            {t("Start Farming")}🌿
                         </button>
-                        <button
-                            onClick={() => {
-                                openDetails(
-                                    "https://medium.com/@AgentFarm Xgame/artela-renaissance-event-tutorial-bc2a25de8694"
-                                )
-                            }}
-                            className="mt-[12px] w-full p-[12px] bg-[#e1a102] text-white font-semibold rounded-xl"
-                        >
-                            {t("I am confused, Help")}👩🏼‍⚕�?                        </button>
+       
                     </div>
                 </div>
             )}

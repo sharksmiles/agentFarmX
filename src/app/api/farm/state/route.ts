@@ -5,6 +5,9 @@ import { GameService, GAME_CONSTANTS } from '@/services/gameService';
 import { errorResponse, successResponse, internalErrorResponse, notFoundResponse } from '@/utils/api/response';
 import { withAuth, AuthContext } from '@/middleware/auth';
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/farm/state - 获取农场当前状态
  * 需要认证：从Token中获取用户ID

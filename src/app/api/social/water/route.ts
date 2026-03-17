@@ -3,6 +3,9 @@ import { prisma } from '@/lib/prisma';
 import { withAuth, AuthContext } from '@/middleware/auth';
 import { errorResponse, successResponse, internalErrorResponse, notFoundResponse } from '@/utils/api/response';
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 const WATER_REWARD = 5; // 帮助好友浇水的金币奖励
 const WATER_BOOST = 1.05; // 5% 的收益加成
 const DEFAULT_WATERING_INTERVAL = 60; // 默认浇水间隔（分钟）
