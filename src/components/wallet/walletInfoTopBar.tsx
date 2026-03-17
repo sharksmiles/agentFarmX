@@ -22,9 +22,9 @@ export default function WalletInfoTopBar() {
     }
 
     return (
-        <div className="w-full bg-[#1a1f25] h-[212px] flex flex-col justify-end relative">
+        <div className="w-full bg-[#1a1f25] flex flex-col justify-end">
             <div>
-                <div className="absolute top-0 left-0 w-full">
+                <div className="w-full">
                     <Image
                         className="w-full h-auto"
                         src={"/banner/banner.png"}

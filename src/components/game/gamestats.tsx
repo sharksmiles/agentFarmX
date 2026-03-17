@@ -127,7 +127,7 @@ const GameStats = ({}) => {
             <div className="w-full flex justify-between gap-[12px] p-[12px] text-[12px]">
                 <div className="flex w-full bg-light-dark rounded-[16px] p-[8px] justify-between items-center flex-col">
                     <p className="text-[#FC9069]">{t("User name")}</p>
-                    <p className="text-white text-[16px] font-bold">
+                    <p className="text-white text-[14px]">
                         {user?.username || formatWalletAddress(user?.wallet_address!, "X Layer")}
                     </p>
                 </div>
