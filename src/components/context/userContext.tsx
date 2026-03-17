@@ -17,8 +17,8 @@ interface UserContextValue {
     setWallet: React.Dispatch<React.SetStateAction<Wallet | null>>
     coinBalance: string | null
     setCoinBalance: React.Dispatch<React.SetStateAction<string | null>>
-    artBalance: string | null
-    setArtBalance: React.Dispatch<React.SetStateAction<string | null>>
+    okbBalance: string | null
+    setOkbBalance: React.Dispatch<React.SetStateAction<string | null>>
     airdropInfo: AirDropStatsInfo | null
     setAirdropInfo: React.Dispatch<React.SetStateAction<AirDropStatsInfo | null>>
     walletAddress: string | null
@@ -47,7 +47,7 @@ export const UserProvider: FC<UserProviderProps> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null)
     const [wallet, setWallet] = useState<Wallet | null>(null)
     const [coinBalance, setCoinBalance] = useState<string | null>(null)
-    const [artBalance, setArtBalance] = useState<string | null>(null)
+    const [okbBalance, setOkbBalance] = useState<string | null>(null)
     const [airdropInfo, setAirdropInfo] = useState<AirDropStatsInfo | null>(null)
     const [walletAddress, setWalletAddress] = useState<string | null>(null)
     const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false)
@@ -143,8 +143,8 @@ export const UserProvider: FC<UserProviderProps> = ({ children }) => {
         setWallet,
         coinBalance,
         setCoinBalance,
-        artBalance,
-        setArtBalance,
+        okbBalance,
+        setOkbBalance,
         airdropInfo,
         setAirdropInfo,
         walletAddress,
@@ -163,7 +163,7 @@ export const UserProvider: FC<UserProviderProps> = ({ children }) => {
         user, 
         wallet, 
         coinBalance, 
-        artBalance, 
+        okbBalance, 
         airdropInfo, 
         walletAddress, 
         isAuthenticated, 

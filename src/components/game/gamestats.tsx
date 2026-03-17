@@ -9,6 +9,7 @@ import CountUp from "react-countup"
 import { useRouter } from "next/navigation"
 import { useLanguage } from "../context/languageContext"
 import { formatWalletAddress } from "../../utils/func/utils"
+import { updateOnboardingStep } from "@/utils/api/game"
 
 const GameStats = ({}) => {
     const { user, setUser } = useUser()
@@ -122,6 +123,7 @@ const GameStats = ({}) => {
                             onClick={() => {
                                 if (onBoardingStep) {
                                     setOnBoardingStep(null)
+                                    updateOnboardingStep(5).catch(console.error) // 完成引导
                                 }
                                 upgradeLevel()
                             }}

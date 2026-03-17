@@ -33,8 +33,6 @@ export const claimAirdropNew = async (_userId: string, airdropId: string) => {
 export interface OnChainBalances {
     okb: string
     coin: number
-    stone: number
-    crystal: number
     art: string
 }
 

@@ -6,13 +6,7 @@ import { useLanguage } from "../context/languageContext"
 import { useRouter } from "next/navigation"
 import { BadgeCheck, CircleCheck } from "lucide-react"
 
-export default function WalletInfoTopBar({
-    tabOpen,
-    setTabOpen,
-}: {
-    tabOpen: string
-    setTabOpen: React.Dispatch<React.SetStateAction<"assets" | "Settings" | "history" | "Airdrop">>
-}) {
+export default function WalletInfoTopBar() {
     const { t } = useLanguage()
     const { user, wallet } = useUser()
     const router = useRouter()
@@ -106,50 +100,14 @@ export default function WalletInfoTopBar({
                         </button> */}
                 </div>
                 {/* balance */}
-                {/* {artBalance && (
+                {/* {okbBalance && (
                         <div className="pl-[32px]">
                             <p className="text-white text-[28px] h-[36px]">
-                                {Number(artBalance) * 304.2} USD
+                                {Number(okbBalance) * 304.2} USD
                             </p>
-                            <p className="text-white text-[12px]">{artBalance} OKB</p>
+                            <p className="text-white text-[12px]">{okbBalance} OKB</p>
                         </div>
                     )} */}
-            </div>
-            {/* choice */}
-            <div className="pl-[32px] mt-atuo flex gap-[16px]">
-                <button
-                    className="flex flex-col justify-end gap-[10px] mb-auto"
-                    onClick={() => {
-                        setTabOpen("assets")
-                    }}
-                >
-                    <p className={`${tabOpen == "assets" ? "text-white" : "text-[#C9C8E3]"}`}>
-                        {t("Assets")}
-                    </p>
-                    {tabOpen == "assets" && <span className="w-full bg-[#FD6E11] h-[4px]" />}
-                </button>
-                <button
-                    className="flex flex-col justify-end gap-[10px] mb-auto"
-                    onClick={() => {
-                        setTabOpen("Settings")
-                    }}
-                >
-                    <p className={`${tabOpen == "Settings" ? "text-white" : "text-[#C9C8E3]"}`}>
-                        {t("Settings")}
-                    </p>
-                    {tabOpen == "Settings" && <span className="w-full bg-[#FD6E11] h-[4px]" />}
-                </button>
-                {/* <button
-                    className="flex flex-col justify-end gap-[10px] mb-auto"
-                    onClick={() => {
-                        setTabOpen("Airdrop")
-                    }}
-                >
-                    <p className={`${tabOpen == "Airdrop" ? "text-white" : "text-[#C9C8E3]"}`}>
-                        {t("Airdrop")}
-                    </p>
-                    {tabOpen == "Airdrop" && <span className="w-full bg-[#FD6E11] h-[4px]" />}
-                </button> */}
             </div>
         </div>
     )

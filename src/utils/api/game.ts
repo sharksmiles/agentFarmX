@@ -159,6 +159,21 @@ export const upgradeFarmNew = async (userId: string) => {
 }
 
 // ── Onboarding ────────────────────────────────────────────────────────────────
+export interface OnboardingResponse {
+    onboarding_step: number
+}
+
+export const getOnboardingStep = async (): Promise<number> => {
+    const res = await apiClient.get<OnboardingResponse>("/api/onboarding")
+    return res.data.onboarding_step
+}
+
+export const updateOnboardingStep = async (step: number): Promise<number> => {
+    const res = await apiClient.patch<OnboardingResponse>("/api/onboarding", { step })
+    return res.data.onboarding_step
+}
+
+// Legacy function - now uses new endpoint
 export const completeOnboarding = async (phase: 1 | 2): Promise<void> => {
-    await apiClient.post("/u/onboarding", { phase })
+    await updateOnboardingStep(phase === 1 ? 5 : 5)
 }

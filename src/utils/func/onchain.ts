@@ -110,6 +110,28 @@ export async function transferUSDC(
 }
 
 /**
+ * Get OKB (native token) balance for an address.
+ * Returns the balance in OKB (not wei).
+ */
+export async function getOKBBalance(
+    provider: any,
+    address: string
+): Promise<string> {
+    await ensureXLayer(provider)
+
+    const balanceHex: string = await provider.request({
+        method: "eth_getBalance",
+        params: [address, "latest"],
+    })
+
+    // Convert from wei (hex) to OKB
+    const balanceWei = BigInt(balanceHex)
+    const balanceOKB = Number(balanceWei) / 1e18
+
+    return balanceOKB.toFixed(8).replace(/\.?0+$/, "")
+}
+
+/**
  * Wait for a transaction to be mined (poll eth_getTransactionReceipt).
  * Returns once the receipt is available or throws on timeout.
  */

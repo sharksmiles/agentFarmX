@@ -11,14 +11,11 @@ const EarnPage = () => {
     const { user, setUser } = useUser()
     const router = useRouter()
     const {
-        setArtelaTask,
         setDailyTask,
         taskHeight,
         setGameTask,
         setHarvestCoinAmount,
         setHarvestSuccess,
-        renaissanceTask,
-        setRenaissanceTask,
         inGameTask,
         setInGameTask,
         dailyRewardList,
@@ -27,10 +24,6 @@ const EarnPage = () => {
         setClaimable,
         gameReward,
         setGameReward,
-        stone,
-        crystal,
-        setStone,
-        setCrystal,
         completed,
         setCompleted,
     } = useData()
@@ -54,9 +47,6 @@ const EarnPage = () => {
                 setDailyRewardList(data.daily_reward)
                 setGameReward(data.game_reward)
                 setCompleted(data.completed ? 1 : 0)
-                if (data.renaissance_tasks?.length) {
-                    setRenaissanceTask(data.renaissance_tasks)
-                }
             })
             .catch((err) => {
                 console.error('Failed to fetch tasks:', err)
@@ -69,7 +59,7 @@ const EarnPage = () => {
                 setLoading(false)
                 isFetchingRef.current = false
             })
-    }, [user?.id, setCompleted, setDailyRewardList, setGameReward, setInGameTask, setRenaissanceTask])
+    }, [user?.id, setCompleted, setDailyRewardList, setGameReward, setInGameTask])
 
     const scrollToTop = () => {
         containerRef.current?.scrollTo({
@@ -165,7 +155,6 @@ const EarnPage = () => {
                 <div
                     onClick={() => {
                         setGameTask(null)
-                        setArtelaTask(null)
                         setDailyTask(dailyRewardList)
                     }}
                     className="h-auto w-full flex justify-between items-center py-[6px] border-b-2 border-[#252A31]"
@@ -243,7 +232,6 @@ const EarnPage = () => {
                                 onClick={() => {
                                     // 已完成的任务不再弹出提示
                                     if (task.completed) return
-                                    setArtelaTask(null)
                                     setDailyTask(null)
                                     setGameTask(task)
                                 }}

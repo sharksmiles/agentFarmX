@@ -10,7 +10,7 @@ import { ActionTypes, LandIdTypes } from "@/utils/types"
 import { motion } from "framer-motion"
 import { DotLottiePlayer } from "@dotlottie/react-player"
 import { useLanguage } from "../context/languageContext"
-import { waterCrop, harvestCrop, boostCrop } from "@/utils/api/game"
+import { waterCrop, harvestCrop, boostCrop, updateOnboardingStep } from "@/utils/api/game"
 
 const alertWindow = "absolute h-auto z-20 -top-[40%] -left-[10%]"
 const alertSize = "w-[35px] h-[35px]"
@@ -71,6 +71,7 @@ const GamePad = ({}) => {
     const handleAction = async (landId: LandIdTypes, crop_id: string | undefined) => {
         if (onBoardingStep === 3) {
             setOnBoardingStep(4)
+            updateOnboardingStep(4).catch(console.error)
         }
         if (
             !user?.farm_stats?.growing_crops?.[landId - 1]?.land_owned &&

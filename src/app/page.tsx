@@ -7,7 +7,7 @@ import GamePad from "@/components/game/gamepad"
 import GameStats from "@/components/game/gamestats"
 import HarvestModal from "@/components/game/harvestmodal"
 import LeaderBoardPopUpModal from "@/components/game/leaderboardpopupmodal"
-import LoadingModal from "@/components/game/loadingmodal"
+import GameModal from "@/components/game/gameModal"
 import PlantModal from "@/components/game/plantmodal"
 import RadarModal from "@/components/game/radarmodal"
 import ShopModal from "@/components/game/shopmodal"
@@ -15,7 +15,7 @@ import UpgradeModal from "@/components/game/upgrademodal"
 import { useEffect } from "react"
 
 export default function Home() {
-    const { setCurrentTab } = useData()
+    const { setCurrentTab, setOnBoardingStep } = useData()
     const { user, refreshUser, isAuthenticated } = useUser()
 
     useEffect(() => {
@@ -29,6 +29,20 @@ export default function Home() {
         }
     }, [isAuthenticated, user, refreshUser])
 
+    // 当用户数据加载完成后，设置 onBoardingStep
+    useEffect(() => {
+        if (user && user.onboarding_step !== undefined) {
+            // 如果 onboarding_step 为 0（新用户），设置为 1 开始引导
+            if (user.onboarding_step === 0) {
+                setOnBoardingStep(1)
+            } else if (user.onboarding_step < 5) {
+                // 如果正在引导中，恢复状态
+                setOnBoardingStep(user.onboarding_step)
+            }
+            // 如果 onboarding_step === 5，引导已完成，不需要设置
+        }
+    }, [user, setOnBoardingStep])
+
     return (
         <main className="h-screen w-full flex justify-center items-center flex-col z-10">
             <div className="background-image bg-cover" />
@@ -39,7 +53,7 @@ export default function Home() {
             <HarvestModal />
             <ShopModal />
             <BuylandModal />
-            <LoadingModal />
+            <GameModal />
             <EnergyModal />
             <RadarModal />
             <LeaderBoardPopUpModal />

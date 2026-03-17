@@ -9,7 +9,6 @@ import {
     LandIdTypes,
     NotificationTypes,
     Raffle,
-    RenaissanceTask,
     SelectedShopState,
     currentTabTypes,
 } from "@/utils/types"
@@ -62,16 +61,12 @@ interface DataContextValue {
     notification: NotificationTypes | null
     setNotification: React.Dispatch<React.SetStateAction<NotificationTypes | null>>
     OpenAgentFarmAlert: (args: NotificationTypes) => void
-    artelaTask: RenaissanceTask | null
-    setArtelaTask: React.Dispatch<React.SetStateAction<RenaissanceTask | null>>
     taskHeight: number | null
     setTaskHeight: React.Dispatch<React.SetStateAction<number | null>>
     dailyTask: number[] | null
     setDailyTask: React.Dispatch<React.SetStateAction<number[] | null>>
     gameTask: GameTask | null
     setGameTask: React.Dispatch<React.SetStateAction<GameTask | null>>
-    renaissanceTask: RenaissanceTask[]
-    setRenaissanceTask: React.Dispatch<React.SetStateAction<RenaissanceTask[]>>
     inGameTask: GameTask[]
     setInGameTask: React.Dispatch<React.SetStateAction<GameTask[]>>
     dailyRewardList: number[]
@@ -80,10 +75,6 @@ interface DataContextValue {
     setClaimable: React.Dispatch<React.SetStateAction<number>>
     gameReward: number
     setGameReward: React.Dispatch<React.SetStateAction<number>>
-    stone: number
-    setStone: React.Dispatch<React.SetStateAction<number>>
-    crystal: number
-    setCrystal: React.Dispatch<React.SetStateAction<number>>
     completed: number
     setCompleted: React.Dispatch<React.SetStateAction<number>>
     openRaffleEntry: Raffle | null
@@ -141,7 +132,6 @@ export const DataProvider: FC<DataProviderProps> = ({ children }) => {
     const [notification, setNotification] = useState<NotificationTypes | null>(null)
     const [friendFarmNotification, setFriendFarmNotification] =
         useState<FriendPageNotificationTypes | null>(null)
-    const [artelaTask, setArtelaTask] = useState<RenaissanceTask | null>(null)
     const [dailyTask, setDailyTask] = useState<number[] | null>(null)
     const [gameTask, setGameTask] = useState<GameTask | null>(null)
     const [imgLoaded, setImgLoaded] = useState<boolean>(false)
@@ -170,13 +160,11 @@ export const DataProvider: FC<DataProviderProps> = ({ children }) => {
     const [harvesting, setHarvesting] = useState<boolean>(false)
     const [harvestSuccess, setHarvestSuccess] = useState<boolean>(false)
     const [harvestCoinAmount, setHarvestCoinAmount] = useState<number>(0)
-    const [renaissanceTask, setRenaissanceTask] = useState<RenaissanceTask[]>([])
     const [inGameTask, setInGameTask] = useState<GameTask[]>([])
     const [dailyRewardList, setDailyRewardList] = useState<number[]>([])
     const [claimable, setClaimable] = useState<number>(0)
     const [gameReward, setGameReward] = useState<number>(0)
-    const [stone, setStone] = useState<number>(0)
-    const [crystal, setCrystal] = useState<number>(0)
+
     const [openLeaderBoardPopupModal, setOpenLeaderBoardPopupModal] = useState<boolean>(false)
     const [completed, setCompleted] = useState<number>(0)
     // raffle stats
@@ -269,16 +257,12 @@ export const DataProvider: FC<DataProviderProps> = ({ children }) => {
         notification,
         setNotification,
         OpenAgentFarmAlert,
-        artelaTask,
-        setArtelaTask,
         taskHeight,
         setTaskHeight,
         dailyTask,
         setDailyTask,
         gameTask,
         setGameTask,
-        renaissanceTask,
-        setRenaissanceTask,
         inGameTask,
         setInGameTask,
         dailyRewardList,
@@ -287,10 +271,7 @@ export const DataProvider: FC<DataProviderProps> = ({ children }) => {
         setClaimable,
         gameReward,
         setGameReward,
-        stone,
-        setStone,
-        crystal,
-        setCrystal,
+
         completed,
         setCompleted,
         openRaffleEntry,
@@ -347,17 +328,14 @@ export const DataProvider: FC<DataProviderProps> = ({ children }) => {
         walletSettingheight,
         notification,
         OpenAgentFarmAlert,
-        artelaTask,
         taskHeight,
         dailyTask,
         gameTask,
-        renaissanceTask,
         inGameTask,
         dailyRewardList,
         claimable,
         gameReward,
-        stone,
-        crystal,
+
         completed,
         openRaffleEntry,
         raffleList,

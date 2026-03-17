@@ -4,8 +4,9 @@ import { DotLottiePlayer } from "@dotlottie/react-player"
 import { useData } from "../context/dataContext"
 import Image from "next/image"
 import { useLanguage } from "../context/languageContext"
+import { updateOnboardingStep } from "@/utils/api/game"
 
-const LoadingModal = () => {
+const GameModal = () => {
     const { t } = useLanguage()
     const {
         onBoardingStep,
@@ -20,13 +21,23 @@ const LoadingModal = () => {
     const openDetails = (taskUrl: string) => {
         window.open(taskUrl, "_blank")
     }
+    
+    // 同步 onboarding 步骤到后端
+    const handleSetOnBoardingStep = async (step: number) => {
+        setOnBoardingStep(step)
+        try {
+            await updateOnboardingStep(step)
+        } catch (error) {
+            console.error("Failed to update onboarding step:", error)
+        }
+    }
     return (
         <>
             {onBoardingStep == 1 && (
                 <div
                     className="fixed w-full h-full bg-[rgba(0,0,0,0.65)] z-[2000] flex justify-center items-center"
                     onClick={() => {
-                        setOnBoardingStep(2)
+                        handleSetOnBoardingStep(2)
                     }}
                 >
                     <Image
@@ -65,7 +76,7 @@ const LoadingModal = () => {
                         </p>
                         <button
                             onClick={() => {
-                                setOnBoardingStep(3)
+                                handleSetOnBoardingStep(3)
                             }}
                             className="mt-[36px] w-full p-[12px] bg-[#5964F5] text-white font-semibold rounded-xl"
                         >
@@ -171,4 +182,4 @@ const LoadingModal = () => {
     )
 }
 
-export default LoadingModal
+export default GameModal

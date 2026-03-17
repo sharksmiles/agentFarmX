@@ -6,6 +6,7 @@ export type User = {
     username: string
     is_active: boolean
     lang: string
+    onboarding_step: number
     farm_stats: FarmStats
 }
 
@@ -194,19 +195,6 @@ export interface FriendPageNotificationTypes {
     friend_name?: string
     more_reward?: number
     action?: string
-}
-
-export type RenaissanceTask = {
-    task_id: string
-    completed: number // 0 or 1
-    claimable: number // 0 or 1
-    url: string // check button inside modal
-    Context: string // details of the task
-    logoUrl: string
-    name: string // title
-    reward: number
-    stone: number // stone reward
-    crystal: number // crystal reward
 }
 
 export type GameTask = {

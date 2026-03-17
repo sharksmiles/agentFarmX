@@ -1,5 +1,5 @@
 import apiClient from "./client"
-import { GameTask, RenaissanceTask } from "../types"
+import { GameTask } from "../types"
 
 // ── Task list ─────────────────────────────────────────────────────────────────
 export interface DailyRewardDay {
@@ -10,7 +10,6 @@ export interface DailyRewardDay {
 
 export interface TasksResponse {
     game_tasks: GameTask[]
-    renaissance_tasks: RenaissanceTask[]
     daily_reward: number[]  // 7天奖励金额数组
     game_reward: number
     completed: boolean
@@ -63,7 +62,6 @@ export const fetchTasks = async (userId?: string): Promise<TasksResponse> => {
     
     return {
         game_tasks,
-        renaissance_tasks: [],
         daily_reward: dailyStatus.daily_reward || [],
         game_reward: unclaimedReward,
         completed: false
@@ -148,22 +146,6 @@ export const claimGameTask = async (
 // New API: Claim task reward
 export const claimTaskReward = async (taskId: string, userId: string) => {
     const res = await apiClient.post(`/api/tasks/${taskId}/claim`, { userId })
-    return res.data
-}
-
-// ── Ecosystem / Renaissance task ──────────────────────────────────────────────
-export const checkEcosystemTask = async (taskId: string): Promise<RenaissanceTask> => {
-    const res = await apiClient.post<RenaissanceTask>("/g/rt/", { task_id: taskId, claim: 0 })
-    return res.data
-}
-
-export const claimEcosystemTask = async (
-    taskId: string
-): Promise<{ reward: number; stone: number; crystal: number }> => {
-    const res = await apiClient.post<{ reward: number; stone: number; crystal: number }>(
-        "/g/rt/",
-        { task_id: taskId, claim: 1 }
-    )
     return res.data
 }
 

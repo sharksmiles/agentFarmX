@@ -50,7 +50,7 @@ export const imagesToLoad = [
     "/game/success-container.png",
     "/game/onBoarding1.png",
     "/game/market.png",
-    "/artela.png",
+    "/xlayer.png",
     "/svg/walletPfp.svg",
     "/icon/earntab.png",
     "/icon/farmtab.png",

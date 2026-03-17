@@ -74,6 +74,7 @@ export function mapUserToFrontend(user: UserWithRelations): FrontendUser {
     username: user.username || `X Layer-${user.walletAddress.slice(-4)}`,
     is_active: true,
     lang: 'en',
+    onboarding_step: user.onboardingStep,
     farm_stats: {
       inventory,
       growing_crops,

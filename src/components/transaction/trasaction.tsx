@@ -19,7 +19,7 @@ type TrasactionDetails = {
 }
 
 const TransactionPage: FC<{ action: ActionTypes; id: string }> = ({ action, id: _id }) => {
-    const { wallet, coinBalance, artBalance } = useUser()
+    const { wallet, coinBalance, okbBalance } = useUser()
     const { setActionType, setSelectedShop } = useData()
     const [gasEstimate, setGasEstimate] = useState<GasEstimate | null>(null)
     const [fetchingGas, setFetchingGas] = useState<boolean>(true)
@@ -247,7 +247,7 @@ const TransactionPage: FC<{ action: ActionTypes; id: string }> = ({ action, id: 
                             <div className="h-auto w-full flex justify-between py-[16px] text-[16px] px-[8px]">
                                 <div className="flex gap-2">
                                     <p className="font-semibold">
-                                        {Number(artBalance).toFixed(8)} OKB
+                                        {Number(okbBalance || 0).toFixed(8)} OKB
                                     </p>{" "}
                                     <p className="">available</p>
                                 </div>
