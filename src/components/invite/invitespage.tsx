@@ -339,16 +339,16 @@ const InvitesPage = () => {
                                                         <path
                                                             d="M17.7094 10H2.29047"
                                                             stroke="#CFCFCF"
-                                                            stroke-width="2"
-                                                            stroke-miterlimit="10"
-                                                            stroke-linecap="round"
+                                                            strokeWidth="2"
+                                                            strokeMiterlimit="10"
+                                                            strokeLinecap="round"
                                                         />
                                                         <path
                                                             d="M10.7094 3L17.7094 10L10.7094 17"
                                                             stroke="#CFCFCF"
-                                                            stroke-width="2"
-                                                            stroke-miterlimit="10"
-                                                            stroke-linecap="round"
+                                                            strokeWidth="2"
+                                                            strokeMiterlimit="10"
+                                                            strokeLinecap="round"
                                                         />
                                                     </svg>
                                                 </button>
