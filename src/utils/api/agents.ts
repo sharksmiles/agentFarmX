@@ -38,24 +38,20 @@ export interface CreateAgentPayload {
     name: string
     personality?: string
     strategyType?: string
-    type?: string // Alias for strategyType
     aiModel?: string
     customPrompt?: string
     temperature?: number
     strategyConfig?: AgentConfig
-    config?: AgentConfig // Alias for strategyConfig
     initial_okb?: number
     initial_usdc?: number
 }
 
 export const createAgent = async (payload: CreateAgentPayload): Promise<Agent> => {
-    // Map aliases if needed
     const data = {
         ...payload,
-        strategyType: payload.strategyType || payload.type || 'farming',
-        strategyConfig: payload.strategyConfig || payload.config,
+        strategyType: payload.strategyType || 'farming',
     }
-    const res = await apiClient.post<{ agent: Agent }>("/api/agents", data)
+    const res = await apiClient.post<{ agent: Agent }>('/api/agents', data)
     return res.data.agent
 }
 

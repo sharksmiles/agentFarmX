@@ -17,18 +17,18 @@ export async function GET(request: NextRequest) {
     console.log('[Agent Heartbeat] Starting...');
 
     const now = new Date();
-    const TIMEOUT_MINUTES = 5; // Consider agent inactive after 5 minutes
+    // Only mark agents as error if they haven't been active for 30 minutes
+    // This gives enough time for agent-tick to run (every 5 minutes)
+    const TIMEOUT_MINUTES = 30;
 
-    // Find running agents that haven't been active recently
+    // Find running agents that haven't been active for a long time
     const timeoutThreshold = new Date(now.getTime() - TIMEOUT_MINUTES * 60000);
 
     const staleAgents = await prisma.agent.findMany({
       where: {
         status: 'running',
-        OR: [
-          { lastActiveAt: { lt: timeoutThreshold } },
-          { lastActiveAt: null },
-        ],
+        isActive: true,
+        lastActiveAt: { lt: timeoutThreshold },
       },
       select: {
         id: true,
@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    console.log(`[Agent Heartbeat] Found ${staleAgents.length} stale agents`);
+    console.log(`[Agent Heartbeat] Found ${staleAgents.length} stale agents (inactive > ${TIMEOUT_MINUTES}min)`);
 
     let updatedCount = 0;
 

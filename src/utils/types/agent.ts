@@ -26,17 +26,19 @@ export interface Agent {
 }
 
 export interface AgentConfig {
+    // Farming 策略 (种植)
     preferred_crops?: string[]
     auto_harvest?: boolean
     auto_replant?: boolean
-    profit_rate?: number
-    max_swap?: number
+
+    // Raider 策略 (社交/偷菜)
     radar_level?: 1 | 2 | 3
-    max_steals?: number
-    early_harvest?: number
-    max_daily_gas?: number
-    max_daily_usdc?: number
-    stop_balance?: number
+    max_daily_steals?: number
+
+    // 资金安全控制 (通用)
+    max_daily_gas_okb?: number
+    max_daily_spend_usdc?: number
+    emergency_stop_balance?: number
 }
 
 export interface AgentTask {

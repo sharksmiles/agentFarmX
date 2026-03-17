@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { AgentService } from '@/services/agentService';
+import { AgentExecutor } from '@/services/agentExecutor';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -31,29 +32,49 @@ export async function GET(request: NextRequest) {
     console.log(`[Agent Tick] Found ${activeAgents.length} active agents to tick`);
 
     let processedCount = 0;
-    let successCount = 0;
+    let decisionCount = 0;
+    let executionCount = 0;
 
     // Process agents one by one to avoid overwhelming LLM API and timeouts
-    // In a real production environment, this should be handled by a queue
     for (const agent of activeAgents) {
       console.log(`[Agent Tick] Ticking agent: ${agent.name} (${agent.id})`);
-      const result = await AgentService.triggerDecision(agent.id);
       
-      processedCount++;
-      if (result.success) {
-        successCount++;
+      try {
+        // 1. 触发 AI 决策
+        const result = await AgentService.triggerDecision(agent.id);
+        
+        processedCount++;
+        
+        if (result.success && result.decision) {
+          decisionCount++;
+          console.log(`[Agent Tick] Agent ${agent.name} decision made, executing...`);
+          
+          // 2. 执行决策
+          try {
+            await AgentExecutor.executeDecision(result.decision);
+            executionCount++;
+            console.log(`[Agent Tick] Agent ${agent.name} decision executed successfully`);
+          } catch (execError) {
+            console.error(`[Agent Tick] Agent ${agent.name} execution failed:`, execError);
+          }
+        } else {
+          console.log(`[Agent Tick] Agent ${agent.name} decision failed:`, result.error);
+        }
+      } catch (agentError) {
+        console.error(`[Agent Tick] Agent ${agent.name} error:`, agentError);
       }
     }
 
     const duration = Date.now() - startTime;
     console.log(
-      `[Agent Tick] Completed in ${duration}ms. Processed ${processedCount} agents, ${successCount} successful`
+      `[Agent Tick] Completed in ${duration}ms. Processed: ${processedCount}, Decisions: ${decisionCount}, Executed: ${executionCount}`
     );
 
     return NextResponse.json({
       success: true,
       processedCount,
-      successCount,
+      decisionCount,
+      executionCount,
       duration,
     });
   } catch (error) {

@@ -123,35 +123,6 @@ const SKILLS = [
     requiredLevel: 5,
   },
   
-  // Strategy Skills
-  {
-    name: 'analyze_market',
-    displayName: '分析市场',
-    description: '分析当前作物市场价格，找出最优种植策略。',
-    category: 'strategy',
-    parameters: {
-      type: 'object',
-      properties: {},
-      required: [],
-    },
-    energyCost: 0,
-    cooldown: 300,
-    requiredLevel: 3,
-  },
-  {
-    name: 'optimize_farm',
-    displayName: '优化农场布局',
-    description: '分析当前农场状态，提供优化建议。',
-    category: 'strategy',
-    parameters: {
-      type: 'object',
-      properties: {},
-      required: [],
-    },
-    energyCost: 0,
-    cooldown: 600,
-    requiredLevel: 5,
-  },
   {
     name: 'check_energy',
     displayName: '检查能量',

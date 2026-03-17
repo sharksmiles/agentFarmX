@@ -102,7 +102,7 @@ export const PATCH = withAuth<AgentParams>(async (
     }
 
     const body = await request.json();
-    const { name, personality, strategyType, aiModel, customPrompt, temperature } = body;
+    const { name, personality, strategyType, aiModel, customPrompt, temperature, strategyConfig, scaAddress } = body;
 
     const agent = await prisma.agent.update({
       where: { id: agentId },
@@ -113,6 +113,8 @@ export const PATCH = withAuth<AgentParams>(async (
         ...(aiModel && { aiModel }),
         ...(customPrompt !== undefined && { customPrompt }),
         ...(temperature !== undefined && { temperature }),
+        ...(strategyConfig !== undefined && { strategyConfig }),
+        ...(scaAddress && { scaAddress: scaAddress.toLowerCase() }),
       },
     });
 

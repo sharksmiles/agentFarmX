@@ -9,8 +9,12 @@
       "schedule": "* * * * *"
     },
     {
-      "path": "/api/cron/agent-heartbeat",
+      "path": "/api/cron/agent-tick",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/agent-heartbeat",
+      "schedule": "*/10 * * * *"
     },
     {
       "path": "/api/cron/daily-reset",
