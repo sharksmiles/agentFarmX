@@ -1,7 +1,7 @@
 "use client"
 
 import { AirDropStatsInfo, User, Wallet, WalletBlance } from "@/utils/types"
-import React, { createContext, useContext, useState, ReactNode, FC, useCallback, useMemo } from "react"
+import React, { createContext, useContext, useState, ReactNode, FC, useCallback, useMemo, useEffect } from "react"
 import { siweLogout, fetchMe } from "@/utils/api/auth"
 import {
     discoverWalletProviders,
@@ -81,19 +81,17 @@ export const UserProvider: FC<UserProviderProps> = ({ children }) => {
         try {
             const user = await performSiweLogin(providerDetail.provider)
             const address = user.wallet_address
+            
+            // Update all states with new user data
             setWalletAddress(address)
             setWallet({ address, hasPrivateKey: false, hasMnemonic: false })
-            
-            if (typeof window !== 'undefined') {
-                localStorage.setItem('walletAddress', address)
-            }
-            
-            // Set user immediately after login
             setUser(user)
             setIsAuthenticated(true)
             
-            // Still call refreshUser just to be sure everything is in sync
-            await refreshUser()
+            // Clear any stale data
+            setCoinBalance(null)
+            setOkbBalance(null)
+            setAirdropInfo(null)
         } catch (error: any) {
             console.error('Wallet connection failed:', error)
             let errorMessage = 'Failed to connect wallet'
@@ -113,15 +111,20 @@ export const UserProvider: FC<UserProviderProps> = ({ children }) => {
         } finally {
             setIsAuthLoading(false)
         }
-    }, [refreshUser])
+    }, [])
 
     const disconnectWallet = useCallback(async () => {
         try {
             await siweLogout()
         } catch { /* best effort */ }
+        
+        // Clear all user-related state
         setUser(null)
         setWallet(null)
         setWalletAddress(null)
+        setCoinBalance(null)
+        setOkbBalance(null)
+        setAirdropInfo(null)
         setIsAuthenticated(false)
         setAuthError(null)
 
@@ -135,6 +138,39 @@ export const UserProvider: FC<UserProviderProps> = ({ children }) => {
     const clearAuthError = useCallback(() => {
         setAuthError(null)
     }, [])
+
+    // Listen for account changes in wallet
+    useEffect(() => {
+        if (typeof window === 'undefined') return
+
+        const provider = (window as any).ethereum
+        if (!provider) return
+
+        const handleAccountsChanged = async (accounts: string[]) => {
+            // If no accounts, user disconnected all accounts
+            if (!accounts || accounts.length === 0) {
+                await disconnectWallet()
+                return
+            }
+
+            const newAddress = accounts[0].toLowerCase()
+            const currentAddress = walletAddress?.toLowerCase()
+
+            // If account changed and user was authenticated
+            if (currentAddress && newAddress !== currentAddress && isAuthenticated) {
+                console.log('Account changed from', currentAddress, 'to', newAddress)
+                // Clear current session and require re-login
+                await disconnectWallet()
+                setAuthError('Wallet account changed. Please reconnect your wallet.')
+            }
+        }
+
+        provider.on('accountsChanged', handleAccountsChanged)
+
+        return () => {
+            provider.removeListener('accountsChanged', handleAccountsChanged)
+        }
+    }, [walletAddress, isAuthenticated, disconnectWallet])
 
     const value = useMemo(() => ({
         user,

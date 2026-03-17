@@ -24,11 +24,10 @@ export default function WalletInfoTopBar() {
     return (
         <div className="w-full bg-[#1a1f25] h-[212px] flex flex-col justify-end relative">
             <div>
-                {/* Airdrop announcement */}
-                <div className="absolute top-0 w-full flex justify-center items-center">
+                <div className="absolute top-0 left-0 w-full">
                     <Image
-                        className="max-h-[88px] max-w-[90%] w-auto"
-                        src={"/game/wallet-banner.png"}
+                        className="w-full h-auto"
+                        src={"/banner/banner.png"}
                         width={1313}
                         height={277}
                         alt="coin"
@@ -36,32 +35,6 @@ export default function WalletInfoTopBar() {
                         loading="eager"
                         quality={100}
                     />
-                    {
-                        <button
-                            onClick={() => {
-                                router.push("/airdrop")
-                            }}
-                            className="absolute bottom-[8px] left-1/2 -translate-x-1/2 z-10 flex text-[12px] justify-center font-semibold items-center text-[#543D30] w-[127px] h-[30px] rounded-[8px] bg-[#FBDA02] hover:opacity-85 active:opacity-55"
-                        >
-                            {t("Check It Now")}
-                            <svg
-                                width="9"
-                                height="8"
-                                viewBox="0 0 9 8"
-                                fill="none"
-                                xmlns="http://www.w3.org/2000/svg"
-                            >
-                                <path
-                                    d="M3.1665 1.33301L5.83317 3.99967L3.1665 6.66634"
-                                    stroke="#543D30"
-                                    strokeWidth="1.33333"
-                                    strokeMiterlimit="10"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                />
-                            </svg>
-                        </button>
-                    }
                 </div>
                 {/* top bar */}
                 <div className="pl-[32px] pr-[24px] py-[12px] flex justify-between items-center">
