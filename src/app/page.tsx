@@ -1,5 +1,6 @@
 "use client"
 import { useData } from "@/components/context/dataContext"
+import { useUser } from "@/components/context/userContext"
 import BuylandModal from "@/components/game/buylandmodal"
 import EnergyModal from "@/components/game/energymodal"
 import GamePad from "@/components/game/gamepad"
@@ -15,10 +16,18 @@ import { useEffect } from "react"
 
 export default function Home() {
     const { setCurrentTab } = useData()
+    const { user, refreshUser, isAuthenticated } = useUser()
 
     useEffect(() => {
         setCurrentTab("Farm")
     }, [setCurrentTab])
+
+    // 当返回农场页面时，确保用户数据存在
+    useEffect(() => {
+        if (isAuthenticated && !user) {
+            refreshUser().catch(console.error)
+        }
+    }, [isAuthenticated, user, refreshUser])
 
     return (
         <main className="h-screen w-full flex justify-center items-center flex-col z-10">

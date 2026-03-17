@@ -310,7 +310,7 @@ export const stealCrop = async (
     return {
         reward: res.reward,
         success: res.success,
-        updatedSelf: res.user
+        updatedSelf: res.updatedSelf  // 后端返回的是 updatedSelf
     }
 }
 

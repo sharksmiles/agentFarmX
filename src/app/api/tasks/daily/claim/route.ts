@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { errorResponse, successResponse, internalErrorResponse, notFoundResponse } from '@/utils/api/response';
 
+// 7天签到奖励配置（与 GET 接口保持一致）
+const DAILY_REWARDS = [100, 200, 300, 400, 500, 600, 1000];
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -35,7 +38,9 @@ export async function POST(request: NextRequest) {
 
       const isConsecutive = lastCheckInDate === yesterdayStr;
       const newStreak = isConsecutive ? (lastCheckIn?.streak || 0) + 1 : 1;
-      const reward = Math.min(newStreak * 10, 100); // 阶梯奖励，上限 100
+      // 使用7天循环奖励，第7天后重新从第1天开始
+      const rewardIndex = (newStreak - 1) % 7;
+      const reward = DAILY_REWARDS[rewardIndex];
 
       // 3. 更新签到状态与发放奖励
       await tx.systemConfig.upsert({
@@ -57,7 +62,12 @@ export async function POST(request: NextRequest) {
       return { streak: newStreak, reward, user: updatedUser };
     });
 
-    return successResponse(result);
+    // 返回前端期望的格式
+    return successResponse({
+      reward: result.reward,
+      updated_user: result.user,
+      streak: result.streak,
+    });
   } catch (error: any) {
     if (error.message === 'Already checked in today') return errorResponse(error.message, 400);
     return internalErrorResponse(error);

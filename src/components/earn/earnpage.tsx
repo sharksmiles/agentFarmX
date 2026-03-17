@@ -51,7 +51,7 @@ const EarnPage = () => {
         fetchTasks(user.id)
             .then((data) => {
                 setInGameTask(data.game_tasks)
-                setDailyRewardList(data.daily_reward as any)
+                setDailyRewardList(data.daily_reward)
                 setGameReward(data.game_reward)
                 setCompleted(data.completed ? 1 : 0)
                 if (data.renaissance_tasks?.length) {

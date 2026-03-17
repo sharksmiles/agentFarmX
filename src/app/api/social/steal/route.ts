@@ -56,7 +56,11 @@ export const POST = withAuth(async (
       if (!target || !target.farmState) throw new Error('Target farm not found');
       
       const plot = target.farmState.landPlots.find((p) => p.plotIndex === plotIndex);
-      if (!plot || !plot.cropId || plot.growthStage < 4) throw new Error('No mature crop to steal');
+      if (!plot || !plot.cropId) throw new Error('Plot not found or no crop planted');
+      
+      // 判断作物是否成熟：growthStage >= 4 或者 harvestAt 时间已过
+      const isMature = plot.growthStage >= 4 || (plot.harvestAt && now >= new Date(plot.harvestAt));
+      if (!isMature) throw new Error('No mature crop to steal');
 
       // 获取社交行为背景
       const friendship = await tx.socialAction.findFirst({
@@ -156,7 +160,12 @@ export const POST = withAuth(async (
 
     return successResponse(result);
   } catch (error: any) {
-    if (error.message === 'Not enough energy' || error.message === 'Not enough coins') {
+    if (
+      error.message === 'Not enough energy' ||
+      error.message === 'Not enough coins' ||
+      error.message === 'No mature crop to steal' ||
+      error.message === 'Plot not found or no crop planted'
+    ) {
       return errorResponse(error.message, 400);
     }
     return internalErrorResponse(error);

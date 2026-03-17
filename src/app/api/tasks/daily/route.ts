@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+// 7天签到奖励配置
+const DAILY_REWARDS = [100, 200, 300, 400, 500, 600, 1000];
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -13,7 +16,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get user's check-in history from metadata
     const user = await prisma.user.findUnique({
       where: { id: userId },
     });
@@ -25,20 +27,27 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Calculate check-in status (simplified - should track in DB)
-    const today = new Date().toISOString().split('T')[0];
-    const lastCheckIn = user.updatedAt.toISOString().split('T')[0];
-    const canCheckInToday = today !== lastCheckIn;
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    const checkInKey = `daily_checkin_${userId}`;
 
-    // Generate 7-day reward structure
-    const daily_reward = Array.from({ length: 7 }, (_, i) => ({
-      day: i + 1,
-      reward: (i + 1) * 10, // 10, 20, 30, ... 70
-      claimed: false, // Should track in DB
-    }));
+    // 获取签到记录
+    const checkInConfig = await prisma.systemConfig.findUnique({
+      where: { key: checkInKey },
+    });
+
+    const lastCheckIn = checkInConfig?.value as any;
+    const lastCheckInDate = lastCheckIn?.date;
+    const streak = lastCheckIn?.streak || 0;
+
+    // 判断今天是否可以签到
+    const canCheckInToday = lastCheckInDate !== todayStr;
+
+    // 返回前端期望的格式：数字数组
+    const daily_reward = DAILY_REWARDS;
 
     return NextResponse.json({
-      total_days_checked_in: 0, // Should track in DB
+      total_days_checked_in: streak,
       can_check_in_today: canCheckInToday,
       daily_reward,
     });

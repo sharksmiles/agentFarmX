@@ -11,7 +11,7 @@ export interface DailyRewardDay {
 export interface TasksResponse {
     game_tasks: GameTask[]
     renaissance_tasks: RenaissanceTask[]
-    daily_reward: DailyRewardDay[]
+    daily_reward: number[]  // 7天奖励金额数组
     game_reward: number
     completed: boolean
 }
@@ -56,11 +56,16 @@ export const fetchTasks = async (userId?: string): Promise<TasksResponse> => {
         banner: TASK_BANNER_MAP[t.id],
     }));
     
+    // 计算已完成但未领取的任务奖励总额
+    const unclaimedReward = game_tasks
+        .filter(t => t.completed && !t.claimed)
+        .reduce((sum, t) => sum + t.reward, 0)
+    
     return {
         game_tasks,
         renaissance_tasks: [],
         daily_reward: dailyStatus.daily_reward || [],
-        game_reward: 0,
+        game_reward: unclaimedReward,
         completed: false
     }
 }
@@ -89,7 +94,7 @@ export const fetchTasksByUserId = async (userId: string, type: 'daily' | 'achiev
 export interface DailyCheckInStatus {
     total_days_checked_in: number
     can_check_in_today: boolean
-    daily_reward: DailyRewardDay[]
+    daily_reward: number[]  // 7天奖励金额数组
 }
 
 export const fetchDailyCheckIn = async (userId?: string): Promise<DailyCheckInStatus> => {

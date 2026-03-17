@@ -145,6 +145,21 @@ export async function GET(request: NextRequest) {
       availableTasks = TASKS.filter((t) => t.type === type);
     }
 
+    // 获取今日已领取的任务列表
+    const todayStr = today.toISOString().split('T')[0];
+    const claimedKey = `task_claimed_${userId}_${todayStr}`;
+    const claimedConfig = await prisma.systemConfig.findUnique({
+      where: { key: claimedKey },
+    });
+    const todayClaimedTasks = (claimedConfig?.value as string[]) || [];
+
+    // 对于成就类任务，检查是否已经领取过（不限日期）
+    const achievementClaimedKey = `task_achievement_claimed_${userId}`;
+    const achievementClaimedConfig = await prisma.systemConfig.findUnique({
+      where: { key: achievementClaimedKey },
+    });
+    const achievementClaimedTasks = (achievementClaimedConfig?.value as string[]) || [];
+
     // Calculate task progress and completion
     const tasksWithProgress = availableTasks.map((task) => {
       let progress = 0;
@@ -180,11 +195,16 @@ export async function GET(request: NextRequest) {
           completed = false;
       }
 
+      // 判断任务是否已领取：每日任务按日期追踪，成就任务永久追踪
+      const claimed = task.type === 'daily'
+        ? todayClaimedTasks.includes(task.id)
+        : achievementClaimedTasks.includes(task.id);
+
       return {
         ...task,
         progress,
         completed,
-        claimed: false, // TODO: Track claimed status in separate table
+        claimed,
       };
     });
 
