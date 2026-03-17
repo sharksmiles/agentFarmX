@@ -120,6 +120,8 @@ model Agent {
   logs           AgentLog[]
   skillUsages    AgentSkillUsage[]
   tasks          AgentTask[]
+  authorizations AgentAuthorization[]
+  services       AgentService[]
   user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
@@ -335,4 +337,76 @@ model SystemConfig {
 
   @@index([key])
   @@map("system_configs")
+}
+
+// Agent Authorization - User pre-authorization for Agent SCA operations
+model AgentAuthorization {
+  id             String   @id @default(cuid())
+  agentId        String
+  userId         String
+  maxAmount      Float    // Maximum authorized amount (USDC)
+  usedAmount     Float    @default(0) // Amount already used
+  validAfter     DateTime
+  validBefore    DateTime
+  allowedTypes   String[] // Allowed operation types: ['transfer', 'pay_service']
+  nonce          String   @unique
+  signature      String   // EIP-712 signature
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  agent          Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@index([agentId])
+  @@index([userId])
+  @@index([isActive])
+  @@index([validBefore])
+  @@map("agent_authorizations")
+}
+
+// Agent Service - Services that Agents can provide to other Agents
+model AgentService {
+  id              String   @id @default(cuid())
+  providerAgentId String
+  serviceType     String   // harvest, water, guard, boost
+  name            String   @db.VarChar(100)
+  description     String?
+  priceUsdc       Float    // Price in USDC
+  durationMinutes Int?     // Service duration in minutes
+  isActive        Boolean  @default(true)
+  totalOrders     Int      @default(0)
+  completedOrders Int      @default(0)
+  rating          Float    @default(0)
+  totalRatings    Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  agent           Agent    @relation(fields: [providerAgentId], references: [id], onDelete: Cascade)
+  orders          AgentServiceOrder[]
+
+  @@index([serviceType])
+  @@index([isActive])
+  @@index([providerAgentId])
+  @@map("agent_services")
+}
+
+// Agent Service Order - Orders for Agent services
+model AgentServiceOrder {
+  id              String   @id @default(cuid())
+  serviceId       String
+  clientAgentId   String
+  clientUserId    String
+  priceUsdc       Float    // Price at time of order
+  status          String   @default("pending") // pending, in_progress, completed, cancelled
+  txHash          String?  @db.VarChar(66) // Payment transaction hash
+  result          Json?    // Service execution result
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  completedAt     DateTime?
+  service         AgentService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@index([serviceId])
+  @@index([clientAgentId])
+  @@index([clientUserId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("agent_service_orders")
 }
