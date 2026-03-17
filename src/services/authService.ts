@@ -70,6 +70,8 @@ export class AuthService {
           data: {
             walletAddress: normalizedAddress,
             username: `X Layer-${normalizedAddress.slice(-4)}`,
+            // 新用户直接设置 onboardingStep 为 1，避免前端再调用 API 更新
+            onboardingStep: 1,
             farmState: {
               create: {
                 energy: GAME_CONSTANTS.BASE_MAX_ENERGY,

@@ -18,12 +18,23 @@ import { updateOnboardingStep } from "@/utils/api/game"
 export default function Home() {
     const { setCurrentTab, setOnBoardingStep, onBoardingStep } = useData()
     const { user, refreshUser, isAuthenticated } = useUser()
-    // 用于标记是否正在进行 onboarding 状态更新，避免 useEffect 覆盖
-    const isUpdatingOnboarding = useRef(false)
+    // 用于标记是否已初始化过 onboarding 状态
+    const hasInitializedRef = useRef(false)
+    // 用于追踪上一次的认证状态，检测登录事件
+    const prevIsAuthenticatedRef = useRef(isAuthenticated)
 
     useEffect(() => {
         setCurrentTab("Farm")
     }, [setCurrentTab])
+
+    // 监听认证状态变化，当用户登录时重置初始化标志
+    useEffect(() => {
+        // 如果从非认证变为认证（用户登录），重置初始化标志
+        if (!prevIsAuthenticatedRef.current && isAuthenticated) {
+            hasInitializedRef.current = false
+        }
+        prevIsAuthenticatedRef.current = isAuthenticated
+    }, [isAuthenticated])
 
     // 当返回农场页面时，确保用户数据存在
     useEffect(() => {
@@ -32,34 +43,51 @@ export default function Home() {
         }
     }, [isAuthenticated, user, refreshUser])
 
-    // 当用户数据加载完成后，设置 onBoardingStep
-    // 注意：只在初始化时设置，不覆盖用户交互导致的状态变化
+    // 当用户数据加载完成后，初始化 onBoardingStep
+    // 只在首次加载或页面刷新时执行一次
     useEffect(() => {
-        // 如果正在更新中，跳过
-        if (isUpdatingOnboarding.current) {
+        // 如果已经初始化过，跳过
+        if (hasInitializedRef.current) {
             return
         }
         
         if (user && user.onboarding_step !== undefined) {
-            // 如果 onboarding_step 为 0（新用户），设置为 1 开始引导并同步到后端
+            // 判断是否是老用户（通过 farm_stats 中的数据判断）
+            // 老用户特征：有收获记录、有种植记录、或等级>1
+            const isExistingUser = user.farm_stats && 
+                (user.farm_stats.level > 1 || 
+                 (user.farm_stats.growing_crops && user.farm_stats.growing_crops.some(c => c.is_planted)))
+            
+            // 老用户且 onboarding_step 为 0：直接标记为已完成，不显示引导
             if (user.onboarding_step === 0) {
-                isUpdatingOnboarding.current = true
-                setOnBoardingStep(1)
-                // 同步到后端，确保刷新页面后状态一致
-                updateOnboardingStep(1).catch((error) => {
-                    console.error("Failed to sync onboarding step:", error)
-                }).finally(() => {
-                    isUpdatingOnboarding.current = false
-                })
-            } else if (user.onboarding_step < 5) {
-                // 如果正在引导中，恢复状态（仅当本地状态为 null 时）
-                if (onBoardingStep === null) {
-                    setOnBoardingStep(user.onboarding_step)
+                // 标记已初始化
+                hasInitializedRef.current = true
+                
+                if (isExistingUser) {
+                    // 老用户：直接设置为已完成
+                    setOnBoardingStep(null)
+                    updateOnboardingStep(5).catch((error) => {
+                        console.error("Failed to mark onboarding as completed:", error)
+                    })
+                } else {
+                    // 新用户：开始引导
+                    setOnBoardingStep(1)
+                    updateOnboardingStep(1).catch((error) => {
+                        console.error("Failed to start onboarding:", error)
+                    })
                 }
+            } else if (user.onboarding_step < 5) {
+                // 如果正在引导中，恢复状态
+                // 标记已初始化
+                hasInitializedRef.current = true
+                setOnBoardingStep(user.onboarding_step)
+            } else {
+                // 引导已完成，设置为 null 隐藏引导 UI
+                hasInitializedRef.current = true
+                setOnBoardingStep(null)
             }
-            // 如果 onboarding_step === 5，引导已完成，不需要设置
         }
-    }, [user, setOnBoardingStep, onBoardingStep])
+    }, [user, setOnBoardingStep])
 
     return (
         <main className="h-screen w-full flex justify-center items-center flex-col z-10">

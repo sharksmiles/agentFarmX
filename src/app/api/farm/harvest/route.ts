@@ -29,16 +29,21 @@ export const POST = withAuth(async (
     const dbPlotIndex = plotIndex > 0 ? plotIndex - 1 : plotIndex;
 
     // 在单个事务中处理收获逻辑 (设置超时时间为 15秒)
-    const updatedUser = await prisma.$transaction(async (tx) => {
+    const updatedUser = await prisma.$transaction(async (tx: any) => {
+      // 0. 防抖：锁定用户记录，防止并发收获请求
+      // 使用 FOR UPDATE 锁定用户行，同一用户的并发请求会等待锁释放
+      await tx.$queryRaw`SELECT id FROM users WHERE id = ${userId}::text FOR UPDATE`;
+
       // 1. 获取农场和地块状态
       const farmState = await tx.farmState.findUnique({
         where: { userId },
-        include: { landPlots: true },
+        include: { landPlots: { orderBy: { plotIndex: 'asc' } } },
       });
 
       if (!farmState) throw new Error('Farm state not found');
 
-      const plot = farmState.landPlots.find((p) => p.plotIndex === dbPlotIndex);
+      const plot = farmState.landPlots.find((p: any) => p.plotIndex === dbPlotIndex);
+      
       if (!plot) throw new Error('Plot not found');
       if (!plot.cropId) throw new Error('No crop to harvest');
 

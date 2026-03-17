@@ -6,11 +6,11 @@ import { useUser } from "../context/userContext"
 import Image from "next/image"
 import { useLanguage } from "../context/languageContext"
 import { updateOnboardingStep } from "@/utils/api/game"
-import { useState, useCallback } from "react"
+import { useRef } from "react"
 
 const GameModal = () => {
     const { t } = useLanguage()
-    const { user, setUser } = useUser()
+    const { user, setUser, refreshUser } = useUser()
     const {
         onBoardingStep,
         setOnBoardingStep,
@@ -21,54 +21,44 @@ const GameModal = () => {
         harvestCoinAmount,
         harvestSuccess,
     } = useData()
-    const [isUpdatingStep, setIsUpdatingStep] = useState(false)
-    const openDetails = (taskUrl: string) => {
-        window.open(taskUrl, "_blank")
-    }
+    // 使用 ref 防止重复点击，避免闭包问题
+    const isUpdatingRef = useRef(false)
 
     // 同步 onboarding 步骤到后端（带防抖保护）
-    const handleSetOnBoardingStep = useCallback(async (step: number) => {
+    const handleSetOnBoardingStep = async (step: number) => {
+        // 验证步骤值
+        const validSteps = [1, 2, 3]
+        if (!validSteps.includes(step)) {
+            console.error(`Invalid onboarding step: ${step}`)
+            return
+        }
+
         // 防止重复点击
-        if (isUpdatingStep) return
-        
-        setIsUpdatingStep(true)
-        // 先更新本地状态
+        if (isUpdatingRef.current) return
+
+        // 保存当前步骤用于错误恢复
+        const previousStep = onBoardingStep
+
+        isUpdatingRef.current = true
+
+        // 先更新本地状态，让 UI 立即响应（乐观更新）
         setOnBoardingStep(step)
-        
+
         try {
-            // 调用后端 API 更新
-            await updateOnboardingStep(step)
-            
-            // 后端在 step 1→2 时发放 500 金币奖励
-            // 但 API 不返回新余额，所以前端需要手动更新本地状态以保持同步
-            if (step === 2 && user) {
-                setUser({
-                    ...user,
-                    farm_stats: {
-                        ...user.farm_stats,
-                        coin_balance: user.farm_stats.coin_balance + 500
-                    }
-                })
-            }
+            updateOnboardingStep(step)
+            refreshUser()
         } catch (error) {
             console.error("Failed to update onboarding step:", error)
         } finally {
-            setIsUpdatingStep(false)
+            isUpdatingRef.current = false
         }
-    }, [isUpdatingStep, setOnBoardingStep, user, setUser])
+    }
     return (
         <>
             {onBoardingStep == 1 && (
-                <div
-                    className="fixed w-full h-full bg-[rgba(0,0,0,0.65)] z-[2000] flex justify-center items-center"
-                    onClick={(e) => {
-                        e.preventDefault()
-                        e.stopPropagation()
-                        handleSetOnBoardingStep(2)
-                    }}
-                >
+                <div className="fixed w-full h-full bg-[rgba(0,0,0,0.65)] z-[2000] flex justify-center items-center">
                     <Image
-                        className="w-auto h-auto pointer-events-none"
+                        className="w-auto h-auto"
                         src="/game/onBoarding1.png"
                         width={390}
                         height={658}
@@ -76,6 +66,9 @@ const GameModal = () => {
                         priority={true}
                         loading="eager"
                         quality={100}
+                        onClick={(e) => {
+                            handleSetOnBoardingStep(2)
+                        }}
                     />
                 </div>
             )}
@@ -111,13 +104,10 @@ const GameModal = () => {
                         >
                             {t("Start Farming")}🌿
                         </button>
-       
                     </div>
                 </div>
             )}
-            {onBoardingStep == 3 && (
-                <div className="fixed w-full h-full bg-[rgba(0,0,0,0.65)] z-[10] flex justify-center items-center"></div>
-            )}
+
             {boosting && (
                 // <div className="fixed w-full h-full bg-[rgba(0,0,0,0.65)] z-[2000] flex justify-center items-center">
                 //     <DotLottiePlayer

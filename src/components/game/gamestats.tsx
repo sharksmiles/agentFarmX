@@ -4,7 +4,7 @@ import { useUser } from "../context/userContext"
 import ProgressBar from "./levelprogressbar"
 import { useData } from "../context/dataContext"
 import Image from "next/image"
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
 import CountUp from "react-countup"
 import { useRouter } from "next/navigation"
 import { useLanguage } from "../context/languageContext"
@@ -12,7 +12,7 @@ import { formatWalletAddress } from "../../utils/func/utils"
 import { updateOnboardingStep } from "@/utils/api/game"
 
 const GameStats = ({}) => {
-    const { user, setUser } = useUser()
+    const { user, setUser, refreshUser } = useUser()
     const { t } = useLanguage()
     const router = useRouter()
     const {
@@ -33,6 +33,8 @@ const GameStats = ({}) => {
     const [prevEnergy, setPrevEnergy] = useState<number>(0)
     const [currentEnergy, setCurrentEnergy] = useState<number>(0)
     const [openMoreButtons, setOpenMoreButtons] = useState<boolean>(false)
+    // 使用 ref 防止重复调用
+    const isUpdatingOnboardingRef = useRef(false)
     const setupNextRestore = useCallback((nextRestoreTimeString: string) => {
         const nextRestoreTime = new Date(nextRestoreTimeString).getTime()
         const now = new Date().getTime()
@@ -101,6 +103,25 @@ const GameStats = ({}) => {
             setActionType("upgrade")
         }
     }
+
+    // 完成 onboarding 引导
+    const completeOnboarding = async () => {
+        if (isUpdatingOnboardingRef.current) return
+        
+        isUpdatingOnboardingRef.current = true
+        setOnBoardingStep(null)
+        
+        try {
+            await updateOnboardingStep(5)
+            if (refreshUser) {
+                await refreshUser()
+            }
+        } catch (error) {
+            console.error("Failed to complete onboarding:", error)
+        } finally {
+            isUpdatingOnboardingRef.current = false
+        }
+    }
     return (
         <div className="fixed top-0 w-full h-auto flex flex-col items-center z-30">
             <div className="w-full flex justify-between gap-[12px] p-[12px] text-[12px]">
@@ -122,8 +143,7 @@ const GameStats = ({}) => {
                             className="text-[#80EE9E] underline font-semibold relative"
                             onClick={() => {
                                 if (onBoardingStep) {
-                                    setOnBoardingStep(null)
-                                    updateOnboardingStep(5).catch(console.error) // 完成引导
+                                    completeOnboarding()
                                 }
                                 upgradeLevel()
                             }}

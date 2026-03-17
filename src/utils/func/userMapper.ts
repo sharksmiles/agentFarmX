@@ -47,9 +47,14 @@ export function mapUserToFrontend(user: UserWithRelations): FrontendUser {
           const harvestAt = new Date(plot.harvestAt);
           maturingTimeHours = (harvestAt.getTime() - plantedAt.getTime()) / (1000 * 60 * 60);
           
-          // 计算上次浇水时已经生长的时间（小时）
-          const lastWateredAt = plotAny.lastWateredAt ? new Date(plotAny.lastWateredAt) : plantedAt;
-          growthTimeHours = (lastWateredAt.getTime() - plantedAt.getTime()) / (1000 * 60 * 60);
+          // 如果作物已成熟，growth_time_hours 应该等于 maturingTimeHours
+          if (currentStage >= 4) {
+            growthTimeHours = maturingTimeHours;
+          } else {
+            // 计算上次浇水时已经生长的时间（小时）
+            const lastWateredAt = plotAny.lastWateredAt ? new Date(plotAny.lastWateredAt) : plantedAt;
+            growthTimeHours = (lastWateredAt.getTime() - plantedAt.getTime()) / (1000 * 60 * 60);
+          }
         }
         
         cropDetails.crop_id = plot.cropId;
