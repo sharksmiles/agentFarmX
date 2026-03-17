@@ -6,6 +6,7 @@ import { useUser } from "../context/userContext"
 import Image from "next/image"
 import { useLanguage } from "../context/languageContext"
 import { updateOnboardingStep } from "@/utils/api/game"
+import { useState, useCallback } from "react"
 
 const GameModal = () => {
     const { t } = useLanguage()
@@ -20,12 +21,17 @@ const GameModal = () => {
         harvestCoinAmount,
         harvestSuccess,
     } = useData()
+    const [isUpdatingStep, setIsUpdatingStep] = useState(false)
     const openDetails = (taskUrl: string) => {
         window.open(taskUrl, "_blank")
     }
 
-    // 同步 onboarding 步骤到后端
-    const handleSetOnBoardingStep = async (step: number) => {
+    // 同步 onboarding 步骤到后端（带防抖保护）
+    const handleSetOnBoardingStep = useCallback(async (step: number) => {
+        // 防止重复点击
+        if (isUpdatingStep) return
+        
+        setIsUpdatingStep(true)
         // 先更新本地状态
         setOnBoardingStep(step)
         
@@ -46,19 +52,23 @@ const GameModal = () => {
             }
         } catch (error) {
             console.error("Failed to update onboarding step:", error)
+        } finally {
+            setIsUpdatingStep(false)
         }
-    }
+    }, [isUpdatingStep, setOnBoardingStep, user, setUser])
     return (
         <>
             {onBoardingStep == 1 && (
                 <div
                     className="fixed w-full h-full bg-[rgba(0,0,0,0.65)] z-[2000] flex justify-center items-center"
-                    onClick={() => {
+                    onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
                         handleSetOnBoardingStep(2)
                     }}
                 >
                     <Image
-                        className="w-auto h-auto"
+                        className="w-auto h-auto pointer-events-none"
                         src="/game/onBoarding1.png"
                         width={390}
                         height={658}
@@ -92,7 +102,9 @@ const GameModal = () => {
                             {t("from ")}Papa doge
                         </p>
                         <button
-                            onClick={() => {
+                            onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
                                 handleSetOnBoardingStep(3)
                             }}
                             className="mt-[36px] w-full p-[12px] bg-[#5964F5] text-white font-semibold rounded-xl"

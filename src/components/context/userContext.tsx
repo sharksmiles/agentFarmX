@@ -118,6 +118,25 @@ export const UserProvider: FC<UserProviderProps> = ({ children }) => {
             await siweLogout()
         } catch { /* best effort */ }
         
+        // Try to revoke wallet permissions (EIP-2255)
+        // This will properly disconnect the wallet so it won't show as "connected" anymore
+        if (typeof window !== 'undefined') {
+            const provider = (window as any).ethereum
+            if (provider && provider.request) {
+                try {
+                    // Try to revoke permissions - this is the proper way to disconnect
+                    await provider.request({
+                        method: 'wallet_revokePermissions',
+                        params: [{ eth_accounts: {} }]
+                    })
+                } catch (revokeError: any) {
+                    // wallet_revokePermissions may not be supported by all wallets
+                    // MetaMask supports it from v10.0.0
+                    console.log('wallet_revokePermissions not supported or failed:', revokeError?.message)
+                }
+            }
+        }
+
         // Clear all user-related state
         setUser(null)
         setWallet(null)
