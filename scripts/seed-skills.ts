@@ -2,7 +2,21 @@ import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
-const SKILLS = [
+// 定义 Skill 种子数据类型
+interface SkillSeedData {
+  name: string
+  displayName: string
+  description: string
+  category: string
+  parameters: any
+  energyCost: number
+  cooldown: number
+  requiredLevel: number
+  priceUsdc?: number      // 付费价格，undefined 表示免费
+  priceCurrency?: string  // 货币类型
+}
+
+const SKILLS: SkillSeedData[] = [
   // Farming Skills
   {
     name: 'plant_crop',
@@ -71,7 +85,7 @@ const SKILLS = [
     requiredLevel: 3,
   },
   
-  // Social Skills
+  // Social Skills (Raider - 全部付费)
   {
     name: 'visit_friend',
     displayName: '访问好友',
@@ -87,6 +101,7 @@ const SKILLS = [
     energyCost: 5,
     cooldown: 300,
     requiredLevel: 1,
+    priceUsdc: 0.001, // Raider Skill 付费
   },
   {
     name: 'water_friend_crop',
@@ -104,6 +119,7 @@ const SKILLS = [
     energyCost: 10,
     cooldown: 600,
     requiredLevel: 2,
+    priceUsdc: 0.001, // Raider Skill 付费
   },
   {
     name: 'steal_crop',
@@ -121,6 +137,24 @@ const SKILLS = [
     energyCost: 15,
     cooldown: 1800,
     requiredLevel: 5,
+    priceUsdc: 0.001, // Raider Skill 付费
+  },
+  {
+    name: 'radar_scan',
+    displayName: '雷达扫描',
+    description: '扫描附近可偷窃的目标农场。',
+    category: 'social',
+    parameters: {
+      type: 'object',
+      properties: {
+        level: { type: 'number', description: '雷达等级 (1-3)' },
+      },
+      required: [],
+    },
+    energyCost: 0,
+    cooldown: 60,
+    requiredLevel: 1,
+    priceUsdc: 0.001, // Raider Skill 付费
   },
   
   {
@@ -149,7 +183,22 @@ async function seedSkills() {
       })
       
       if (existing) {
-        console.log(`  ⏭️  Skill "${skill.displayName}" already exists, skipping...`)
+        // 更新已存在的技能（包括价格等字段）
+        await prisma.agentSkill.update({
+          where: { name: skill.name },
+          data: {
+            displayName: skill.displayName,
+            description: skill.description,
+            category: skill.category,
+            parameters: skill.parameters,
+            energyCost: skill.energyCost,
+            cooldown: skill.cooldown,
+            requiredLevel: skill.requiredLevel,
+            priceUsdc: skill.priceUsdc,
+            priceCurrency: skill.priceCurrency,
+          },
+        })
+        console.log(`  🔄 Updated skill: ${skill.displayName} (${skill.category})${skill.priceUsdc ? ` - ${skill.priceUsdc} USDC` : ''}`)
         continue
       }
       
@@ -157,7 +206,7 @@ async function seedSkills() {
         data: skill,
       })
       
-      console.log(`  ✅ Created skill: ${skill.displayName} (${skill.category})`)
+      console.log(`  ✅ Created skill: ${skill.displayName} (${skill.category})${skill.priceUsdc ? ` - ${skill.priceUsdc} USDC` : ''}`)
     }
     
     const totalSkills = await prisma.agentSkill.count()

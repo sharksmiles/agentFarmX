@@ -1,4 +1,9 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
+
+// USDC 合约地址 (X Layer Testnet)
+const USDC_CONTRACT = process.env.USDC_CONTRACT_ADDRESS || '0x74b7f16337b8972027f6196a17a631ac6de26d22';
+// 支付接收地址
+const PAYMENT_RECEIVER = process.env.PAYMENT_RECEIVER_ADDRESS || '0x0000000000000000000000000000000000000000';
 
 /**
  * 标准化 API 成功响应
@@ -34,4 +39,105 @@ export function notFoundResponse(message: string = 'Resource not found') {
 export function internalErrorResponse(error: any) {
   console.error('[API Error]:', error);
   return errorResponse('Internal server error', 500, process.env.NODE_ENV === 'development' ? error.message : undefined);
+}
+
+/**
+ * x402 支付要求响应 (HTTP 402)
+ * 用于 Raider Skills 付费
+ */
+export function paymentRequiredResponse(
+  skillName: string,
+  priceUsdc: number,
+  resource: string,
+  description?: string
+) {
+  const paymentRequired = {
+    scheme: 'exact',
+    network: 'xlayer-196',
+    maxAmountRequired: String(Math.floor(priceUsdc * 1e6)), // USDC 6 decimals
+    resource,
+    description: description || `Payment required for skill: ${skillName}`,
+    mimeType: 'application/json',
+    payTo: PAYMENT_RECEIVER,
+    maxTimeoutSeconds: 300,
+    asset: USDC_CONTRACT,
+  };
+
+  return NextResponse.json(
+    { 
+      error: 'Payment required', 
+      skillName,
+      priceUsdc,
+      currency: 'USDC'
+    },
+    { 
+      status: 402,
+      headers: {
+        'X-Payment-Required': Buffer.from(JSON.stringify(paymentRequired)).toString('base64')
+      }
+    }
+  );
+}
+
+/**
+ * x402 预授权要求响应 (HTTP 402)
+ * 用于 Agent 启动时的预授权请求
+ * 有效期30天，一次签名多次使用
+ */
+export function preauthRequiredResponse(
+  agentId: string,
+  amountUsdc: number = 10
+) {
+  const THIRTY_DAYS = 30 * 24 * 60 * 60; // 2592000秒
+  
+  const paymentRequired = {
+    scheme: 'exact',
+    network: 'xlayer-196',
+    maxAmountRequired: String(Math.floor(amountUsdc * 1e6)), // USDC 6 decimals
+    resource: `agent_preauth:${agentId}`,
+    description: `Agent预授权 ${amountUsdc} USDC，有效期30天`,
+    mimeType: 'application/json',
+    payTo: PAYMENT_RECEIVER,
+    maxTimeoutSeconds: THIRTY_DAYS,
+    asset: USDC_CONTRACT,
+  };
+
+  return NextResponse.json(
+    { 
+      error: 'Pre-authorization required', 
+      agentId,
+      amountUsdc,
+      validDays: 30,
+      currency: 'USDC',
+      message: `请预授权 ${amountUsdc} USDC 以启动 Agent，签名有效期30天`
+    },
+    { 
+      status: 402,
+      headers: {
+        'X-Payment-Required': Buffer.from(JSON.stringify(paymentRequired)).toString('base64')
+      }
+    }
+  );
+}
+
+/**
+ * 检查请求是否包含有效的 x402 支付头
+ */
+export function hasValidPaymentHeader(request: NextRequest): boolean {
+  const paymentHeader = request.headers.get('X-Payment');
+  return !!paymentHeader && paymentHeader.length > 0;
+}
+
+/**
+ * 解析 x402 支付头
+ */
+export function parsePaymentHeader(request: NextRequest): any | null {
+  const paymentHeader = request.headers.get('X-Payment');
+  if (!paymentHeader) return null;
+  
+  try {
+    return JSON.parse(atob(paymentHeader));
+  } catch {
+    return null;
+  }
 }

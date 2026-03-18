@@ -8,10 +8,10 @@ import { withAuth, AuthContext } from '@/middleware/auth';
 type AgentParams = { id: string };
 
 /**
- * POST /api/agents/[id]/stop - Stop agent
+ * GET /api/agents/[id]/logs - Get agent's logs
  * 需要认证：验证Agent所有权
  */
-export const POST = withAuth<AgentParams>(async (
+export const GET = withAuth<AgentParams>(async (
   request: NextRequest,
   context: { params: AgentParams; auth: AuthContext }
 ) => {
@@ -19,8 +19,10 @@ export const POST = withAuth<AgentParams>(async (
     const agentId = context.params.id;
     const userId = context.auth.userId;
 
+    // 验证Agent所有权
     const agent = await prisma.agent.findUnique({
       where: { id: agentId },
+      select: { userId: true },
     });
 
     if (!agent) {
@@ -30,7 +32,6 @@ export const POST = withAuth<AgentParams>(async (
       );
     }
 
-    // 验证所有权
     if (agent.userId !== userId) {
       return NextResponse.json(
         { error: 'Access denied: You do not own this agent' },
@@ -38,26 +39,31 @@ export const POST = withAuth<AgentParams>(async (
       );
     }
 
-    const updatedAgent = await prisma.agent.update({
-      where: { id: agentId },
-      data: {
-        status: 'paused',
-        isActive: false,
-      },
-    });
+    const { searchParams } = new URL(request.url);
+    const limit = parseInt(searchParams.get('limit') || '50');
+    const offset = parseInt(searchParams.get('offset') || '0');
+    const level = searchParams.get('level');
 
-    // Create log
-    await prisma.agentLog.create({
-      data: {
+    const logs = await prisma.agentLog.findMany({
+      where: {
         agentId,
-        level: 'info',
-        message: 'Agent stopped',
+        ...(level && { level }),
+      },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      skip: offset,
+    });
+
+    const total = await prisma.agentLog.count({
+      where: {
+        agentId,
+        ...(level && { level }),
       },
     });
 
-    return NextResponse.json({ agent: updatedAgent });
+    return NextResponse.json({ logs, total });
   } catch (error) {
-    console.error('POST /api/agents/[id]/stop error:', error);
+    console.error('GET /api/agents/[id]/logs error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -91,6 +91,9 @@ export interface AgentSkill {
     cooldown: number
     requiredLevel: number
     isActive: boolean
+    // x402 支付定价
+    priceUsdc?: number      // 付费价格，undefined 表示免费
+    priceCurrency?: string  // 货币类型，默认 USDC
 }
 
 export interface AgentTopUpRequest {

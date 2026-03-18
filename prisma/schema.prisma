@@ -120,6 +120,7 @@ model Agent {
   logs           AgentLog[]
   skillUsages    AgentSkillUsage[]
   tasks          AgentTask[]
+  paymentAuths   AgentPaymentAuth[]
   user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
@@ -181,12 +182,16 @@ model AgentSkill {
   isSystem      Boolean           @default(true)
   totalUsages   Int               @default(0)
   successCount  Int               @default(0)
+  // x402 支付定价
+  priceUsdc     Float?            // 付费价格，null 表示免费
+  priceCurrency String?           @default("USDC") @db.VarChar(10)
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
   usages        AgentSkillUsage[]
 
   @@index([category])
   @@index([isActive])
+  @@index([category, priceUsdc])
   @@map("agent_skills")
 }
 
@@ -335,4 +340,31 @@ model SystemConfig {
 
   @@index([key])
   @@map("system_configs")
+}
+
+model AgentPaymentAuth {
+  id              String   @id @default(cuid())
+  userId          String   @db.VarChar(42)
+  agentId         String
+  signature       String   @db.Text
+  nonce           String   @unique @db.VarChar(66)
+  authorizedValue BigInt
+  usedValue       BigInt   @default(0)
+  validAfter      DateTime
+  validBefore     DateTime
+  chainId         Int      @default(196)
+  asset           String   @db.VarChar(42)
+  payTo           String   @db.VarChar(42)
+  isActive        Boolean  @default(true)
+  revokedAt       DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  agent           Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([agentId])
+  @@index([validBefore])
+  @@index([isActive, validBefore])
+  @@map("agent_payment_auths")
 }

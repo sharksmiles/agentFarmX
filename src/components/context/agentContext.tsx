@@ -2,8 +2,10 @@
 
 import React, { createContext, useContext, useState, ReactNode, FC, useCallback } from "react"
 import { Agent, AgentDecision, AgentLog, AgentSkill } from "@/utils/types/agent"
+import { PreauthStatus } from "@/utils/api/agents"
 
 export type { Agent, AgentDecision, AgentLog, AgentSkill }
+export type { PreauthStatus }
 
 interface AgentContextValue {
     // Agent 列表
@@ -40,6 +42,11 @@ interface AgentContextValue {
     agentError: string | null
     setAgentError: React.Dispatch<React.SetStateAction<string | null>>
     
+    // 预授权状态
+    preauthStatus: PreauthStatus | null
+    needsPreauth: boolean
+    setNeedsPreauth: React.Dispatch<React.SetStateAction<boolean>>
+    
     // 方法
     refreshAgents: () => Promise<void>
     refreshDecisions: (agentId: string) => Promise<void>
@@ -48,6 +55,7 @@ interface AgentContextValue {
     stopAgent: (agentId: string) => Promise<void>
     triggerDecision: (agentId: string) => Promise<void>
     clearAgentError: () => void
+    checkPreauthStatus: (agentId: string) => Promise<PreauthStatus>
 }
 
 const AgentContext = createContext<AgentContextValue | undefined>(undefined)
@@ -68,6 +76,8 @@ export const AgentProvider: FC<AgentProviderProps> = ({ children }) => {
     const [isLoadingLogs, setIsLoadingLogs] = useState<boolean>(false)
     
     const [agentError, setAgentError] = useState<string | null>(null)
+    const [preauthStatus, setPreauthStatus] = useState<PreauthStatus | null>(null)
+    const [needsPreauth, setNeedsPreauth] = useState<boolean>(false)
 
     const refreshAgents = useCallback(async () => {
         setIsLoadingAgents(true)
@@ -88,10 +98,9 @@ export const AgentProvider: FC<AgentProviderProps> = ({ children }) => {
         setIsLoadingDecisions(true)
         setAgentError(null)
         try {
-            // TODO: Implement fetchAgentDecisions API call
-            // const decisions = await fetchAgentDecisions(agentId)
-            // setDecisions(decisions)
-            console.log('Fetching decisions for agent:', agentId)
+            const { fetchAgentDecisions } = await import("@/utils/api/agents")
+            const result = await fetchAgentDecisions(agentId)
+            setDecisions(result.decisions)
         } catch (error: any) {
             console.error('Failed to fetch decisions:', error)
             setAgentError(error.message || 'Failed to fetch decisions')
@@ -104,10 +113,9 @@ export const AgentProvider: FC<AgentProviderProps> = ({ children }) => {
         setIsLoadingLogs(true)
         setAgentError(null)
         try {
-            // TODO: Implement fetchAgentLogs API call
-            // const logs = await fetchAgentLogs(agentId)
-            // setLogs(logs)
-            console.log('Fetching logs for agent:', agentId)
+            const { fetchAgentLogs } = await import("@/utils/api/agents")
+            const result = await fetchAgentLogs(agentId)
+            setLogs(result.logs)
         } catch (error: any) {
             console.error('Failed to fetch logs:', error)
             setAgentError(error.message || 'Failed to fetch logs')
@@ -159,10 +167,9 @@ export const AgentProvider: FC<AgentProviderProps> = ({ children }) => {
     const triggerDecision = useCallback(async (agentId: string) => {
         setAgentError(null)
         try {
-            // TODO: Implement triggerAgentDecision API call
-            // const decision = await triggerAgentDecision(agentId)
-            // setDecisions(prev => [decision, ...prev])
-            console.log('Triggering decision for agent:', agentId)
+            const { triggerAgentDecision } = await import("@/utils/api/agents")
+            const decision = await triggerAgentDecision(agentId)
+            setDecisions(prev => [decision, ...prev])
         } catch (error: any) {
             console.error('Failed to trigger decision:', error)
             setAgentError(error.message || 'Failed to trigger decision')
@@ -172,6 +179,18 @@ export const AgentProvider: FC<AgentProviderProps> = ({ children }) => {
 
     const clearAgentError = useCallback(() => {
         setAgentError(null)
+    }, [])
+
+    const checkPreauthStatus = useCallback(async (agentId: string): Promise<PreauthStatus> => {
+        try {
+            const { getPreauthStatus } = await import("@/utils/api/agents")
+            const status = await getPreauthStatus(agentId)
+            setPreauthStatus(status)
+            return status
+        } catch (error: any) {
+            console.error('Failed to check preauth status:', error)
+            return { hasValidPreauth: false }
+        }
     }, [])
 
     const value: AgentContextValue = {
@@ -193,6 +212,9 @@ export const AgentProvider: FC<AgentProviderProps> = ({ children }) => {
         setIsLoadingLogs,
         agentError,
         setAgentError,
+        preauthStatus,
+        needsPreauth,
+        setNeedsPreauth,
         refreshAgents,
         refreshDecisions,
         refreshLogs,
@@ -200,6 +222,7 @@ export const AgentProvider: FC<AgentProviderProps> = ({ children }) => {
         stopAgent,
         triggerDecision,
         clearAgentError,
+        checkPreauthStatus,
     }
 
     return <AgentContext.Provider value={value}>{children}</AgentContext.Provider>

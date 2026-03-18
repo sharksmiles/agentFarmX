@@ -127,3 +127,77 @@ export async function signX402Payment(
 export function encodePaymentHeader(payment: X402PaymentPayload): string {
     return btoa(JSON.stringify(payment))
 }
+
+/**
+ * Build and sign an x402 pre-authorization for Agent payment.
+ * Uses EIP-3009 transferWithAuthorization style with 30-day validity.
+ * 
+ * @param provider - EIP-1193 provider (window.ethereum)
+ * @param fromAddress - User's wallet address
+ * @param req - Payment requirement from server
+ * @returns Signed pre-authorization payload
+ */
+export async function signPreAuthorization(
+    provider: any,
+    fromAddress: string,
+    req: X402PaymentRequired
+): Promise<X402PaymentPayload> {
+    const now = Math.floor(Date.now() / 1000)
+    const THIRTY_DAYS = 30 * 24 * 60 * 60 // 2592000秒
+    
+    const validAfter = String(now - 30) // 生效时间：30秒前
+    const validBefore = String(now + THIRTY_DAYS) // 过期时间：30天后
+    const nonce = `0x${crypto.getRandomValues(new Uint8Array(32)).reduce((s, b) => s + b.toString(16).padStart(2, "0"), "")}`
+
+    const domain = {
+        name: "USD Coin",
+        version: "2",
+        chainId: parseInt(req.network.replace(/\D/g, "")) || 196,
+        verifyingContract: req.asset,
+    }
+
+    const types = {
+        TransferWithAuthorization: [
+            { name: "from",        type: "address" },
+            { name: "to",          type: "address" },
+            { name: "value",       type: "uint256" },
+            { name: "validAfter",  type: "uint256" },
+            { name: "validBefore", type: "uint256" },
+            { name: "nonce",       type: "bytes32" },
+        ],
+    }
+
+    const message = {
+        from:        fromAddress,
+        to:          req.payTo,
+        value:       req.maxAmountRequired,
+        validAfter,
+        validBefore,
+        nonce,
+    }
+
+    const signature: string = await provider.request({
+        method: "eth_signTypedData_v4",
+        params: [
+            fromAddress,
+            JSON.stringify({ types, domain, primaryType: "TransferWithAuthorization", message }),
+        ],
+    })
+
+    return {
+        x402Version: 1,
+        scheme: "exact",
+        network: req.network,
+        payload: {
+            signature,
+            authorization: {
+                from:        fromAddress,
+                to:          req.payTo,
+                value:       req.maxAmountRequired,
+                validAfter,
+                validBefore,
+                nonce,
+            },
+        },
+    }
+}

@@ -262,6 +262,134 @@ export class AgentExecutor extends BaseService {
       }
     }
 
+    // 检查 x402 预授权付费
+    if (skill.priceUsdc && skill.priceUsdc > 0) {
+      // 查找有效的预授权
+      const validAuth = await prisma.agentPaymentAuth.findFirst({
+        where: {
+          agentId: context.agentId,
+          isActive: true,
+          validBefore: { gt: new Date() },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      if (!validAuth) {
+        await this.logAgentWarning(context.agentId, 
+          `No valid pre-authorization for paid skill: ${skillName}`);
+        
+        return {
+          success: false,
+          message: 'No valid pre-authorization. Please authorize payment first.',
+          error: 'NO_VALID_PREAUTH',
+          data: { 
+            needsPreauth: true,
+            skillName,
+            priceUsdc: skill.priceUsdc,
+          },
+        };
+      }
+
+      // 计算剩余额度
+      const priceMicroUsdc = BigInt(Math.floor(skill.priceUsdc * 1e6));
+      const remaining = validAuth.authorizedValue - validAuth.usedValue;
+
+      if (remaining < priceMicroUsdc) {
+        await this.logAgentWarning(context.agentId, 
+          `Insufficient pre-authorization balance for ${skillName}. Required: ${skill.priceUsdc} USDC, Remaining: ${Number(remaining) / 1e6} USDC`);
+        
+        return {
+          success: false,
+          message: `Insufficient pre-authorization balance. Required: ${skill.priceUsdc} USDC`,
+          error: 'INSUFFICIENT_PREAUTH_BALANCE',
+          data: { 
+            needsPreauth: true,
+            requiredUsdc: skill.priceUsdc,
+            remainingUsdc: Number(remaining) / 1e6,
+          },
+        };
+      }
+
+      // 执行链上转账（如果配置了链上服务）
+      let txHash: string | null = null;
+      const { executeTransferWithAuthorization, parseSignature, isTransferServiceConfigured } = await import('./usdcTransferService');
+      
+      if (isTransferServiceConfigured()) {
+        try {
+          // 从签名中提取v, r, s
+          const { v, r, s } = parseSignature(validAuth.signature);
+          
+          // 执行链上转账
+          const result = await executeTransferWithAuthorization({
+            from: validAuth.userId,
+            to: validAuth.payTo,
+            value: priceMicroUsdc,
+            validAfter: Math.floor(validAuth.validAfter.getTime() / 1000),
+            validBefore: Math.floor(validAuth.validBefore.getTime() / 1000),
+            nonce: validAuth.nonce,
+            v,
+            r,
+            s,
+          });
+          
+          if (result.success) {
+            txHash = result.txHash || null;
+            await this.logAgentInfo(context.agentId, 
+              `On-chain transfer successful: ${txHash}`);
+          } else {
+            // 链上转账失败，回滚数据库操作
+            await this.logAgentError(context.agentId, 
+              `On-chain transfer failed: ${result.error}`);
+            return {
+              success: false,
+              message: `Payment failed: ${result.error}`,
+              error: 'ONCHAIN_TRANSFER_FAILED',
+              data: { 
+                needsPreauth: false,
+                error: result.error,
+              },
+            };
+          }
+        } catch (error: any) {
+          await this.logAgentError(context.agentId, 
+            `On-chain transfer error: ${error.message}`);
+          return {
+            success: false,
+            message: `Payment error: ${error.message}`,
+            error: 'ONCHAIN_TRANSFER_ERROR',
+            data: { 
+              needsPreauth: false,
+              error: error.message,
+            },
+          };
+        }
+      } else {
+        // 未配置链上服务，使用数据库模拟模式
+        await this.logAgentInfo(context.agentId, 
+          `Using simulated payment (on-chain service not configured)`);
+      }
+
+      // 扣除预授权额度（数据库记录）
+      await prisma.agentPaymentAuth.update({
+        where: { id: validAuth.id },
+        data: {
+          usedValue: { increment: priceMicroUsdc },
+        },
+      });
+
+      // 记录付费日志
+      await this.logAgentInfo(context.agentId, 
+        `Paid ${skill.priceUsdc} USDC via x402 preauth for skill: ${skillName}`, {
+          skillName,
+          priceUsdc: skill.priceUsdc,
+          currency: skill.priceCurrency || 'USDC',
+          authId: validAuth.id,
+          remainingAfter: (remaining - priceMicroUsdc).toString(),
+          txHash,
+          onChain: !!txHash,
+        });
+    }
+
     // 执行Skill
     const executor = this.skillExecutors.get(skillName);
     let result: SkillExecutionResult;

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withAuth, AuthContext } from '@/middleware/auth';
-import { errorResponse, successResponse, internalErrorResponse, notFoundResponse } from '@/utils/api/response';
+import { errorResponse, successResponse, internalErrorResponse, notFoundResponse, paymentRequiredResponse, hasValidPaymentHeader } from '@/utils/api/response';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -10,15 +10,29 @@ const WATER_REWARD = 5; // 帮助好友浇水的金币奖励
 const WATER_BOOST = 1.05; // 5% 的收益加成
 const DEFAULT_WATERING_INTERVAL = 60; // 默认浇水间隔（分钟）
 
+// Raider Skill 价格
+const WATER_SKILL_PRICE = 0.001; // USDC
+
 /**
  * POST /api/social/water - 帮好友浇水
  * 需要认证：验证用户身份
+ * 需要 x402 支付：Raider Skill 付费
  */
 export const POST = withAuth(async (
   request: NextRequest,
   context: { params: Record<string, string>; auth: AuthContext }
 ) => {
   try {
+    // x402 支付检查 - Raider Skill 付费
+    if (!hasValidPaymentHeader(request)) {
+      return paymentRequiredResponse(
+        'water_friend_crop',
+        WATER_SKILL_PRICE,
+        '/api/social/water',
+        'Water friend crop - Raider Bot Skill'
+      );
+    }
+
     const body = await request.json();
     const { friendId, plotIndex } = body;
     const userId = context.auth.userId;

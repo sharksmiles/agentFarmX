@@ -1,19 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withAuth, AuthContext } from '@/middleware/auth';
+import { paymentRequiredResponse, hasValidPaymentHeader } from '@/utils/api/response';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
 
+// Raider Skill 价格
+const VISIT_SKILL_PRICE = 0.001; // USDC
+
 /**
  * POST /api/social/visit - 访问好友农场
  * 需要认证：验证用户身份
+ * 需要 x402 支付：Raider Skill 付费
  */
 export const POST = withAuth(async (
   request: NextRequest,
   context: { params: Record<string, string>; auth: AuthContext }
 ) => {
   try {
+    // x402 支付检查 - Raider Skill 付费
+    if (!hasValidPaymentHeader(request)) {
+      return paymentRequiredResponse(
+        'visit_friend',
+        VISIT_SKILL_PRICE,
+        '/api/social/visit',
+        'Visit friend farm - Raider Bot Skill'
+      );
+    }
+
     const body = await request.json();
     const { friendId } = body;
     const userId = context.auth.userId;

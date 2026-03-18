@@ -11,6 +11,28 @@ export const dynamic = 'force-dynamic';
  */
 
 const PAYMENT_QUOTES: Record<string, { price: number; currency: string; description: string }> = {
+  // Raider Skills - 全部付费 (x402)
+  'visit_friend': {
+    price: 0.001,
+    currency: 'USDC',
+    description: 'Visit friend farm - Raider Bot',
+  },
+  'water_friend_crop': {
+    price: 0.001,
+    currency: 'USDC',
+    description: 'Water friend crop - Raider Bot',
+  },
+  'steal_crop': {
+    price: 0.001,
+    currency: 'USDC',
+    description: 'Steal crop from friend - Raider Bot',
+  },
+  'radar_scan': {
+    price: 0.001,
+    currency: 'USDC',
+    description: 'Radar scan for targets - Raider Bot',
+  },
+  // Legacy radar services (keep for compatibility)
   'radar-basic': {
     price: 0.1,
     currency: 'USDC',
@@ -26,6 +48,7 @@ const PAYMENT_QUOTES: Record<string, { price: number; currency: string; descript
     currency: 'USDC',
     description: 'Precision Radar Scan - High-value targets only',
   },
+  // Agent services
   'agent-service-harvest': {
     price: 0.05,
     currency: 'USDC',
