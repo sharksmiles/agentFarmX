@@ -1,6 +1,7 @@
 /**
- * USDC链上转账服务
+ * USDC 链上转账服务
  * 执行EIP-3009 transferWithAuthorization进行真实链上扣款
+ * 使用 MockUSDC 合约（测试环境）
  */
 
 import { ethers, JsonRpcProvider, Wallet, Contract } from 'ethers'
@@ -14,8 +15,8 @@ const USDC_ABI = [
 ]
 
 // 配置
-const RPC_URL = process.env.XLAYER_TESTNET_RPC || process.env.XLAYER_RPC || 'https://testrpc.xlayer.tech'
-const USDC_ADDRESS = process.env.USDC_CONTRACT_ADDRESS || ''
+const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL || 'https://testrpc.xlayer.tech'
+const USDC_ADDRESS = process.env.PAYMENT_TOKEN_ADDRESS || ''
 const BACKEND_PRIVATE_KEY = process.env.BACKEND_WALLET_PRIVATE_KEY || ''
 const PAY_TO_ADDRESS = process.env.PAY_TO_ADDRESS || '' // 收款地址
 
@@ -53,7 +54,7 @@ function getBackendWallet(): Wallet {
 function getUSDCContract(): Contract {
   if (!_usdcContract) {
     if (!USDC_ADDRESS) {
-      throw new Error('USDC_CONTRACT_ADDRESS not configured')
+      throw new Error('PAYMENT_TOKEN_ADDRESS not configured')
     }
     _usdcContract = new Contract(USDC_ADDRESS, USDC_ABI, getBackendWallet())
   }
@@ -80,7 +81,7 @@ export interface TransferResult {
 }
 
 /**
- * 执行链上USDC转账（EIP-3009）
+ * 执行链上FX转账（EIP-3009）
  * 
  * @param auth - 用户签名的授权参数
  * @returns 转账结果
@@ -91,7 +92,7 @@ export async function executeTransferWithAuthorization(
   try {
     // 检查配置
     if (!USDC_ADDRESS) {
-      console.error('USDC_CONTRACT_ADDRESS not configured')
+      console.error('PAYMENT_TOKEN_ADDRESS not configured')
       return { success: false, error: 'USDC contract not configured' }
     }
     if (!BACKEND_PRIVATE_KEY) {
@@ -180,6 +181,9 @@ export async function getUSDCBalance(address: string): Promise<string> {
     return '0'
   }
 }
+
+// 兼容旧接口名
+export const getFXBalance = getUSDCBalance
 
 /**
  * 检查服务是否配置正确

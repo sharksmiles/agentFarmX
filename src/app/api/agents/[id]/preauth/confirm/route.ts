@@ -99,7 +99,7 @@ export const POST = withAuth<AgentParams>(async (
         validAfter: new Date(validAfterTimestamp * 1000),
         validBefore: new Date(validBeforeTimestamp * 1000),
         chainId: parseInt(payment.network.replace(/\D/g, '')) || 196,
-        asset: process.env.USDC_CONTRACT_ADDRESS || '0x74b7f16337b8972027f6196a17a631ac6de26d22',
+        asset: process.env.PAYMENT_TOKEN_ADDRESS || '0xA0d9E5B2DAA7DBbbd6Fba3a3B4E50B0cd768a8d0',
         payTo: auth.to.toLowerCase(),
         isActive: true,
       },

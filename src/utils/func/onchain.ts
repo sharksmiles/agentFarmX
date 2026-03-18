@@ -4,10 +4,10 @@
  * to keep bundle size minimal and avoid SSR issues.
  */
 
-const X_LAYER_CHAIN_ID_HEX = "0xc4" // 196 decimal
+const X_LAYER_CHAIN_ID_HEX = "0x7a0" // 1952 decimal (testnet)
 
-// USDC contract on X Layer mainnet (update to actual address)
-const USDC_CONTRACT = process.env.NEXT_PUBLIC_USDC_ADDRESS ?? "0x74b7f16337b8972027f6196a17a631ac6de26d22"
+// USDC (MockUSDC) contract on X Layer Testnet - supports EIP-3009
+const USDC_CONTRACT = process.env.NEXT_PUBLIC_USDC_ADDRESS ?? "0xA0d9E5B2DAA7DBbbd6Fba3a3B4E50B0cd768a8d0"
 
 // ERC-20 transfer(address to, uint256 amount) selector
 const ERC20_TRANSFER_SELECTOR = "0xa9059cbb"
@@ -21,7 +21,7 @@ function encodeUint256(value: bigint): string {
 }
 
 /**
- * Ensure the wallet is connected to X Layer (chainId 196).
+ * Ensure the wallet is connected to X Layer Testnet (chainId 1952).
  * Requests a chain switch if needed.
  */
 export async function ensureXLayer(provider: any): Promise<void> {
@@ -39,10 +39,10 @@ export async function ensureXLayer(provider: any): Promise<void> {
                 method: "wallet_addEthereumChain",
                 params: [{
                     chainId: X_LAYER_CHAIN_ID_HEX,
-                    chainName: "X Layer Mainnet",
+                    chainName: "X Layer Testnet",
                     nativeCurrency: { name: "OKB", symbol: "OKB", decimals: 18 },
-                    rpcUrls: ["https://rpc.xlayer.tech"],
-                    blockExplorerUrls: ["https://www.okx.com/explorer/xlayer"],
+                    rpcUrls: ["https://testrpc.xlayer.tech"],
+                    blockExplorerUrls: ["https://www.okx.com/explorer/xlayer-test"],
                 }],
             })
         } else {
@@ -108,6 +108,9 @@ export async function transferUSDC(
     })
     return txHash
 }
+
+// 兼容旧接口名
+export const transferFX = transferUSDC
 
 /**
  * Get OKB (native token) balance for an address.

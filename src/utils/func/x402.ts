@@ -70,7 +70,7 @@ export async function signX402Payment(
 
     const domain = {
         name: "USD Coin",
-        version: "2",
+        version: "2", // X Layer USDC version
         chainId: parseInt(req.network.replace(/\D/g, "")) || 196,
         verifyingContract: req.asset,
     }
@@ -151,7 +151,7 @@ export async function signPreAuthorization(
 
     const domain = {
         name: "USD Coin",
-        version: "2",
+        version: "2", // X Layer USDC version
         chainId: parseInt(req.network.replace(/\D/g, "")) || 196,
         verifyingContract: req.asset,
     }

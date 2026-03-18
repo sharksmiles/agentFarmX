@@ -1,7 +1,7 @@
 import { NextResponse, NextRequest } from 'next/server';
 
-// USDC 合约地址 (X Layer Testnet)
-const USDC_CONTRACT = process.env.USDC_CONTRACT_ADDRESS || '0x74b7f16337b8972027f6196a17a631ac6de26d22';
+// 支付代币合约地址 (MockUSDC - 支持 EIP-3009)
+const PAYMENT_TOKEN = process.env.PAYMENT_TOKEN_ADDRESS || '0xA0d9E5B2DAA7DBbbd6Fba3a3B4E50B0cd768a8d0';
 // 支付接收地址
 const PAYMENT_RECEIVER = process.env.PAYMENT_RECEIVER_ADDRESS || '0x0000000000000000000000000000000000000000';
 
@@ -53,14 +53,14 @@ export function paymentRequiredResponse(
 ) {
   const paymentRequired = {
     scheme: 'exact',
-    network: 'xlayer-196',
+    network: 'xlayer-1952',
     maxAmountRequired: String(Math.floor(priceUsdc * 1e6)), // USDC 6 decimals
     resource,
     description: description || `Payment required for skill: ${skillName}`,
     mimeType: 'application/json',
     payTo: PAYMENT_RECEIVER,
     maxTimeoutSeconds: 300,
-    asset: USDC_CONTRACT,
+    asset: PAYMENT_TOKEN,
   };
 
   return NextResponse.json(
@@ -92,14 +92,14 @@ export function preauthRequiredResponse(
   
   const paymentRequired = {
     scheme: 'exact',
-    network: 'xlayer-196',
+    network: 'xlayer-1952',
     maxAmountRequired: String(Math.floor(amountUsdc * 1e6)), // USDC 6 decimals
     resource: `agent_preauth:${agentId}`,
     description: `Agent预授权 ${amountUsdc} USDC，有效期30天`,
     mimeType: 'application/json',
     payTo: PAYMENT_RECEIVER,
     maxTimeoutSeconds: THIRTY_DAYS,
-    asset: USDC_CONTRACT,
+    asset: PAYMENT_TOKEN,
   };
 
   return NextResponse.json(

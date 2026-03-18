@@ -4,6 +4,7 @@
   "deployer": "0x97E8128f759973f6DCe0c1957030fA8a23a23953",
   "timestamp": "2026-03-18T05:22:27.328Z",
   "contracts": {
-    "FarmXToken": "0x3A4f62e715f96F526f9928836313CB3DCCad8174"
+    "FarmXToken": "0x3A4f62e715f96F526f9928836313CB3DCCad8174",
+    "MockUSDC": "0xA0d9E5B2DAA7DBbbd6Fba3a3B4E50B0cd768a8d0"
   }
 }
