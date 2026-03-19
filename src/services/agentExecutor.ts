@@ -612,15 +612,241 @@ export class AgentExecutor extends BaseService {
   }
 
   /**
-   * 执行社交类Skill
+   * 执行社交类Skill (Raider Bot)
    */
   private static async executeSocialSkill(
     skillName: string,
     parameters: Record<string, any>,
     context: SkillExecutionContext
   ): Promise<any> {
-    // TODO: 实现社交逻辑
-    return { message: `Social skill ${skillName} executed` };
+    console.log(`[AgentExecutor] Executing social skill: ${skillName}`, JSON.stringify(parameters));
+    
+    switch (skillName) {
+      case 'steal_crop':
+        // 偷菜逻辑
+        console.log(`[AgentExecutor] Stealing crop: userId=${context.userId}, targetUserId=${parameters.targetUserId}`);
+        try {
+          // 1. 如果没有指定目标，查找可偷菜的目标
+          let targetUserId = parameters.targetUserId;
+          let plotIndex = parameters.plotIndex;
+          
+          if (!targetUserId || targetUserId === 'nearby' || targetUserId === 'random') {
+            // 查找有成熟作物的目标农场
+            const targetPlot = await this.findStealableTarget(context.userId);
+            if (!targetPlot) {
+              return { success: false, message: 'No stealable crops found nearby' };
+            }
+            targetUserId = targetPlot.userId;
+            plotIndex = targetPlot.plotIndex;
+          }
+          
+          if (plotIndex === undefined) {
+            // 查找目标的成熟作物
+            const targetPlot = await this.findMatureCrop(targetUserId);
+            if (!targetPlot) {
+              return { success: false, message: 'No mature crops found on target farm' };
+            }
+            plotIndex = targetPlot.plotIndex;
+          }
+          
+          // 2. 调用偷菜 API
+          const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+          const response = await fetch(`${baseUrl}/api/social/steal`, {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'x-user-id': context.userId,  // 用于内部 API 调用认证
+            },
+            body: JSON.stringify({
+              friendId: targetUserId,
+              plotIndex: plotIndex,
+            }),
+          });
+          
+          const result = await response.json();
+          console.log(`[AgentExecutor] Steal result:`, JSON.stringify(result));
+          
+          if (!response.ok) {
+            throw new Error(result.error || 'Steal failed');
+          }
+          
+          return { 
+            success: result.success, 
+            reward: result.data?.reward,
+            targetUserId,
+            plotIndex 
+          };
+        } catch (error: any) {
+          console.error(`[AgentExecutor] Steal failed:`, error.message);
+          throw error;
+        }
+
+      case 'visit_friend':
+        // 访问好友农场
+        console.log(`[AgentExecutor] Visiting friend: userId=${context.userId}, friendId=${parameters.friendId}`);
+        try {
+          let friendId = parameters.friendId;
+          
+          if (!friendId || friendId === 'random') {
+            // 随机选择一个好友
+            const randomFriend = await this.findRandomFriend(context.userId);
+            if (!randomFriend) {
+              return { success: false, message: 'No friends to visit' };
+            }
+            friendId = randomFriend;
+          }
+          
+          const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+          const response = await fetch(`${baseUrl}/api/social/visit`, {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'x-user-id': context.userId,
+            },
+            body: JSON.stringify({ friendId }),
+          });
+          
+          const result = await response.json();
+          console.log(`[AgentExecutor] Visit result:`, JSON.stringify(result));
+          
+          if (!response.ok) {
+            throw new Error(result.error || 'Visit failed');
+          }
+          
+          return { success: true, friendId };
+        } catch (error: any) {
+          console.error(`[AgentExecutor] Visit failed:`, error.message);
+          throw error;
+        }
+
+      case 'scan_farms':
+        // 扫描附近农场
+        console.log(`[AgentExecutor] Scanning farms: userId=${context.userId}, radarLevel=${parameters.radarLevel}`);
+        try {
+          const radarLevel = parameters.radarLevel || 2;
+          const targets = await this.scanNearbyFarms(context.userId, radarLevel);
+          return { 
+            success: true, 
+            targetsFound: targets.length,
+            targets: targets.slice(0, 5) // 返回前5个目标
+          };
+        } catch (error: any) {
+          console.error(`[AgentExecutor] Scan failed:`, error.message);
+          throw error;
+        }
+
+      default:
+        console.log(`[AgentExecutor] Unknown social skill: ${skillName}`);
+        return { success: false, message: `Unknown social skill: ${skillName}` };
+    }
+  }
+
+  /**
+   * 查找可偷菜的目标
+   */
+  private static async findStealableTarget(userId: string): Promise<{ userId: string; plotIndex: number } | null> {
+    const now = new Date();
+    
+    // 查找有成熟作物的农场（排除自己）
+    const plotWithMatureCrop = await prisma.landPlot.findFirst({
+      where: {
+        cropId: { not: null },
+        growthStage: { gte: 4 },
+        farmState: {
+          userId: { not: userId },
+        },
+      },
+      include: {
+        farmState: {
+          select: { userId: true },
+        },
+      },
+    });
+    
+    if (!plotWithMatureCrop) return null;
+    
+    return {
+      userId: plotWithMatureCrop.farmState.userId,
+      plotIndex: plotWithMatureCrop.plotIndex,
+    };
+  }
+
+  /**
+   * 查找目标农场的成熟作物
+   */
+  private static async findMatureCrop(targetUserId: string): Promise<{ plotIndex: number } | null> {
+    const plot = await prisma.landPlot.findFirst({
+      where: {
+        cropId: { not: null },
+        growthStage: { gte: 4 },
+        farmState: {
+          userId: targetUserId,
+        },
+      },
+    });
+    
+    if (!plot) return null;
+    
+    return { plotIndex: plot.plotIndex };
+  }
+
+  /**
+   * 随机选择一个好友
+   */
+  private static async findRandomFriend(userId: string): Promise<string | null> {
+    const friendship = await prisma.socialAction.findFirst({
+      where: {
+        OR: [
+          { fromUserId: userId, actionType: 'friend_accept' },
+          { toUserId: userId, actionType: 'friend_accept' },
+        ],
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    
+    if (!friendship) return null;
+    
+    // 返回好友的 ID
+    return friendship.fromUserId === userId ? friendship.toUserId : friendship.fromUserId;
+  }
+
+  /**
+   * 扫描附近农场
+   */
+  private static async scanNearbyFarms(userId: string, radarLevel: number): Promise<any[]> {
+    const limit = radarLevel * 3; // 雷达等级越高，扫描范围越大
+    
+    // 查找有成熟作物的农场
+    const farmsWithMatureCrops = await prisma.farmState.findMany({
+      where: {
+        userId: { not: userId },
+        landPlots: {
+          some: {
+            cropId: { not: null },
+            growthStage: { gte: 4 },
+          },
+        },
+      },
+      include: {
+        user: {
+          select: { id: true, username: true, level: true },
+        },
+        landPlots: {
+          where: {
+            cropId: { not: null },
+            growthStage: { gte: 4 },
+          },
+        },
+      },
+      take: limit,
+    });
+    
+    return farmsWithMatureCrops.map(farm => ({
+      userId: farm.userId,
+      username: farm.user.username,
+      level: farm.user.level,
+      matureCropsCount: farm.landPlots.length,
+    }));
   }
 
   /**

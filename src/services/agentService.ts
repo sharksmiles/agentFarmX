@@ -279,50 +279,106 @@ Return a JSON array of skill calls in order of execution.`;
     const landPlots = farmState?.landPlots || [];
     const energy = context.energy || 0;
     
-    // 策略类型影响决策优先级
-    const strategyType = agent.strategyType || 'balanced';
+    // 策略类型：'farming' 或 'raider'
+    const strategyType = agent.strategyType || 'farming';
+    // 性格：'aggressive' 或 'balanced' 或 'conservative'
+    const personality = agent.personality || 'balanced';
     
-    // 1. 检查是否有可收获的作物
-    const harvestablePlots = landPlots.filter((plot: any) => 
-      plot.cropId && plot.growthStage >= 4
-    );
-    
-    if (harvestablePlots.length > 0 && energy >= 10) {
-      const plot = harvestablePlots[0];
-      // 注意：farm.service.ts 中的 harvest 方法会将 plotIndex - 1
-      // 所以前端/API 传入的索引是从1开始的，这里需要 +1
-      decisions.push({
-        skillName: 'harvest_crop',
-        parameters: { plotIndex: plot.plotIndex + 1 }
-      });
-      reasoningParts.push(`Harvesting crop from plot ${plot.plotIndex}`);
-    }
-    
-    // 2. 检查是否有空地块可以种植
-    const emptyPlots = landPlots.filter((plot: any) => !plot.cropId);
-    
-    if (emptyPlots.length > 0 && energy >= 15 && decisions.length === 0) {
-      // 根据策略选择作物
-      const cropId = strategyType === 'aggressive' ? 'corn' : 'wheat';
-      // 注意：farm.service.ts 中的 plant 方法会将 plotIndex - 1
-      // 所以前端/API 传入的索引是从1开始的，这里需要 +1
-      decisions.push({
-        skillName: 'plant_crop',
-        parameters: { 
-          plotIndex: emptyPlots[0].plotIndex + 1,
-          cropId 
-        }
-      });
-      reasoningParts.push(`Planting ${cropId} on empty plot ${emptyPlots[0].plotIndex}`);
-    }
-    
-    // 3. 检查能量状态
-    if (energy < 30 && decisions.length === 0) {
-      decisions.push({
-        skillName: 'check_energy',
-        parameters: {}
-      });
-      reasoningParts.push('Checking energy status (energy is low)');
+    // 根据策略类型选择不同的决策逻辑
+    if (strategyType === 'raider') {
+      // ========== Raider Bot 逻辑（社交/偷菜）==========
+      
+      // 获取 social 类型的技能
+      const socialSkills = skills.filter((s: any) => s.category === 'social');
+      
+      // 1. 优先尝试偷菜
+      const stealSkill = socialSkills.find((s: any) => s.name === 'steal_crop');
+      if (stealSkill && energy >= 10) {
+        // 模拟选择一个目标用户（实际应从好友列表或附近农场获取）
+        decisions.push({
+          skillName: 'steal_crop',
+          parameters: { 
+            targetUserId: 'nearby',  // 模拟参数，实际需要查询可偷菜的目标
+          }
+        });
+        reasoningParts.push('Attempting to steal crop from nearby farm');
+      }
+      
+      // 2. 尝试访问好友农场
+      const visitSkill = socialSkills.find((s: any) => s.name === 'visit_friend');
+      if (visitSkill && decisions.length === 0 && energy >= 5) {
+        decisions.push({
+          skillName: 'visit_friend',
+          parameters: { friendId: 'random' }
+        });
+        reasoningParts.push('Visiting a friend\'s farm');
+      }
+      
+      // 3. 检查雷达状态
+      const radarSkill = socialSkills.find((s: any) => s.name === 'scan_farms');
+      if (radarSkill && decisions.length === 0) {
+        decisions.push({
+          skillName: 'scan_farms',
+          parameters: { radarLevel: agent.strategyConfig?.radar_level || 2 }
+        });
+        reasoningParts.push('Scanning nearby farms for targets');
+      }
+      
+      // 4. 如果没有社交技能可用，随机选择一个 social 技能
+      if (decisions.length === 0 && socialSkills.length > 0) {
+        const randomSocialSkill = socialSkills[Math.floor(Math.random() * socialSkills.length)];
+        decisions.push({
+          skillName: randomSocialSkill.name,
+          parameters: {}
+        });
+        reasoningParts.push(`Using social skill ${randomSocialSkill.name}`);
+      }
+      
+    } else {
+      // ========== Farmer Bot 逻辑（种植/收获）==========
+      
+      // 1. 检查是否有可收获的作物
+      const harvestablePlots = landPlots.filter((plot: any) => 
+        plot.cropId && plot.growthStage >= 4
+      );
+      
+      if (harvestablePlots.length > 0 && energy >= 10) {
+        const plot = harvestablePlots[0];
+        // 注意：farm.service.ts 中的 harvest 方法会将 plotIndex - 1
+        // 所以前端/API 传入的索引是从1开始的，这里需要 +1
+        decisions.push({
+          skillName: 'harvest_crop',
+          parameters: { plotIndex: plot.plotIndex + 1 }
+        });
+        reasoningParts.push(`Harvesting crop from plot ${plot.plotIndex}`);
+      }
+      
+      // 2. 检查是否有空地块可以种植
+      const emptyPlots = landPlots.filter((plot: any) => !plot.cropId);
+      
+      if (emptyPlots.length > 0 && energy >= 15 && decisions.length === 0) {
+        // 根据性格选择作物
+        const cropId = personality === 'aggressive' ? 'Corn' : 'Wheat';
+        // 注意：farm.service.ts 中的 plant 方法会将 plotIndex - 1
+        // 所以前端/API 传入的索引是从1开始的，这里需要 +1
+        decisions.push({
+          skillName: 'plant_crop',
+          parameters: { 
+            plotIndex: emptyPlots[0].plotIndex + 1,
+            cropId 
+          }
+        });
+        reasoningParts.push(`Planting ${cropId} on empty plot ${emptyPlots[0].plotIndex}`);
+      }
+      
+      // 3. 检查能量状态
+      if (energy < 30 && decisions.length === 0) {
+        decisions.push({
+          skillName: 'check_energy',
+          parameters: {}
+        });
+        reasoningParts.push('Checking energy status (energy is low)');
+      }
     }
     
     // 4. 如果没有其他操作，尝试使用随机技能
@@ -336,8 +392,8 @@ Return a JSON array of skill calls in order of execution.`;
     }
     
     const reasoning = reasoningParts.length > 0 
-      ? `[SIMULATION MODE] ${reasoningParts.join('. ')}`
-      : '[SIMULATION MODE] No actions needed at this time';
+      ? `[SIMULATION MODE][${strategyType.toUpperCase()}] ${reasoningParts.join('. ')}`
+      : `[SIMULATION MODE][${strategyType.toUpperCase()}] No actions needed at this time`;
     
     return { decisions, reasoning };
   }
