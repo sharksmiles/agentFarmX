@@ -344,10 +344,30 @@ export class AgentExecutor extends BaseService {
         
         if (isPermit2Configured()) {
           try {
+            // 从 nonce 字段解析 sigDeadline: permit2-${nonce}-${sigDeadline}
+            const nonceParts = validAuth.nonce.split('-');
+            const storedSigDeadline = nonceParts.length >= 3 
+              ? BigInt(nonceParts[2]) 
+              : BigInt(Math.floor(validAuth.createdAt.getTime() / 1000) + 3600);
+            
+            // 重建 PermitSingle 数据结构
+            const permitSingle = {
+              details: {
+                token: validAuth.asset,
+                amount: BigInt(validAuth.authorizedValue.toString()),
+                expiration: Math.floor(validAuth.validBefore.getTime() / 1000),
+                nonce: validAuth.permit2Nonce || 0,
+              },
+              spender: validAuth.payTo,
+              sigDeadline: storedSigDeadline,
+            };
+            
             const result = await permit2TransferFrom(
               validAuth.userId,  // from
               validAuth.payTo,   // to
-              priceMicroUsdc     // amount
+              priceMicroUsdc,    // amount
+              permitSingle,      // PermitSingle 数据
+              validAuth.signature // 签名
             );
             
             if (result.success) {

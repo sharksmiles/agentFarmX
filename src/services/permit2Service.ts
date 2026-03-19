@@ -68,22 +68,71 @@ export const PERMIT2_TYPES = {
 }
 
 // 配置
-const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL || 'https://rpc.xlayer.tech'
+// 可用节点（按延迟排序）: xlayer.drpc.org > okx-xlayer.rpc.blxrbdn.com > rpc.sentio.xyz
+const PRIMARY_RPC_URL = process.env.NEXT_PUBLIC_RPC_URL || 'https://xlayer.drpc.org'
+const FALLBACK_RPC_URLS = [
+  'https://okx-xlayer.rpc.blxrbdn.com',
+  'https://rpc.sentio.xyz/xlayer-mainnet',
+  // 以下节点在本地测试失败，但可能在服务器环境可用
+  'https://xlayerrpc.okx.com',
+  'https://rpc.xlayer.tech',
+  'https://flap-xlayer.rpc.blxrbdn.com',
+  'https://xlayer.rpc.blxrbdn.com',
+]
 const USDC_ADDRESS = process.env.PAYMENT_TOKEN_ADDRESS || ''
 const BACKEND_PRIVATE_KEY = process.env.BACKEND_WALLET_PRIVATE_KEY || ''
 const PAY_TO_ADDRESS = process.env.PAY_TO_ADDRESS || ''
 
 // 缓存
 let _provider: JsonRpcProvider | null = null
+let _currentRpcIndex = 0
 let _wallet: Wallet | null = null
 let _permit2Contract: Contract | null = null
+
+/**
+ * 获取所有 RPC URL（主节点 + 备用节点）
+ */
+function getAllRpcUrls(): string[] {
+  return [PRIMARY_RPC_URL, ...FALLBACK_RPC_URLS]
+}
+
+/**
+ * 获取当前 RPC URL
+ */
+function getCurrentRpcUrl(): string {
+  const urls = getAllRpcUrls()
+  return urls[_currentRpcIndex % urls.length]
+}
+
+/**
+ * 切换到下一个 RPC 节点
+ */
+function switchToNextRpc(): void {
+  const urls = getAllRpcUrls()
+  _currentRpcIndex = (_currentRpcIndex + 1) % urls.length
+  // 清除缓存，强制重新创建 provider
+  _provider = null
+  _wallet = null
+  _permit2Contract = null
+  console.log(`[Permit2] Switched to RPC: ${getCurrentRpcUrl()}`)
+}
+
+/**
+ * 重置 RPC 连接
+ */
+export function resetRpcConnection(): void {
+  _provider = null
+  _wallet = null
+  _permit2Contract = null
+  _currentRpcIndex = 0
+}
 
 /**
  * 获取 Provider
  */
 function getProvider(): JsonRpcProvider {
   if (!_provider) {
-    _provider = new JsonRpcProvider(RPC_URL)
+    _provider = new JsonRpcProvider(getCurrentRpcUrl())
   }
   return _provider
 }
@@ -224,58 +273,39 @@ export async function checkPermit2Auth(
 }
 
 /**
- * 使用 Permit2 transferFrom 执行转账
+ * 提交 Permit2 签名到链上
  * 
- * @param from - 用户地址
- * @param to - 收款地址
- * @param amount - 转账金额（微单位，6位小数）
- * @returns 转账结果
+ * @param owner - 用户地址
+ * @param permitSingle - PermitSingle 数据
+ * @param signature - 签名
+ * @returns 交易结果
  */
-export async function permit2TransferFrom(
-  from: string,
-  to: string,
-  amount: bigint
+export async function submitPermit2Signature(
+  owner: string,
+  permitSingle: PermitSingle,
+  signature: BytesLike
 ): Promise<TransferResult> {
   try {
     const contract = getPermit2Contract()
-    const wallet = getBackendWallet()
     
-    console.log(`[Permit2] Executing transferFrom:`)
-    console.log(`  From: ${from}`)
-    console.log(`  To: ${to}`)
-    console.log(`  Amount: ${Number(amount) / 1e6} USDC`)
-    console.log(`  Spender (Backend): ${wallet.address}`)
+    console.log(`[Permit2] Submitting permit signature:`)
+    console.log(`  Owner: ${owner}`)
+    console.log(`  Token: ${permitSingle.details.token}`)
+    console.log(`  Amount: ${Number(permitSingle.details.amount) / 1e6} USDC`)
+    console.log(`  Spender: ${permitSingle.spender}`)
     
-    // 检查授权状态
-    const allowance = await getPermit2Allowance(from, USDC_ADDRESS, wallet.address)
-    const now = Math.floor(Date.now() / 1000)
-    
-    if (allowance.amount < amount) {
-      return {
-        success: false,
-        error: `Insufficient allowance. Required: ${Number(amount) / 1e6}, Available: ${Number(allowance.amount) / 1e6}`,
-      }
-    }
-    
-    if (allowance.expiration < now) {
-      return {
-        success: false,
-        error: `Authorization expired at ${new Date(allowance.expiration * 1000).toISOString()}`,
-      }
-    }
-    
-    // 执行转账
-    const tx = await contract.transferFrom(from, to, amount, USDC_ADDRESS)
-    console.log(`[Permit2] Transaction sent: ${tx.hash}`)
+    // 调用 permit 函数
+    const tx = await contract.permit(owner, permitSingle, signature)
+    console.log(`[Permit2] Permit transaction sent: ${tx.hash}`)
     
     // 等待确认
     const receipt = await tx.wait()
     
     if (receipt.status === 0) {
-      return { success: false, error: 'Transaction reverted on chain' }
+      return { success: false, error: 'Permit transaction reverted on chain' }
     }
     
-    console.log(`[Permit2] Transaction confirmed in block ${receipt.blockNumber}`)
+    console.log(`[Permit2] Permit confirmed in block ${receipt.blockNumber}`)
     
     return {
       success: true,
@@ -283,19 +313,145 @@ export async function permit2TransferFrom(
       blockNumber: receipt.blockNumber,
     }
   } catch (error: any) {
-    console.error('[Permit2] Transfer failed:', error)
-    
-    let errorMessage = error.message || 'Unknown error'
-    if (error.reason) {
-      errorMessage = error.reason
-    } else if (error.data?.message) {
-      errorMessage = error.data.message
-    }
-    
+    console.error(`[Permit2] Submit permit failed:`, error.message)
     return {
       success: false,
-      error: errorMessage,
+      error: error.reason || error.message || 'Unknown error',
     }
+  }
+}
+
+/**
+ * 使用 Permit2 transferFrom 执行转账（带签名提交）
+ * 
+ * 如果链上授权不足，会先尝试提交签名
+ * 
+ * @param from - 用户地址
+ * @param to - 收款地址
+ * @param amount - 转账金额（微单位，6位小数）
+ * @param permitSingle - 可选：PermitSingle 数据（用于在需要时提交签名）
+ * @param signature - 可选：签名（用于在需要时提交签名）
+ * @returns 转账结果
+ */
+export async function permit2TransferFrom(
+  from: string,
+  to: string,
+  amount: bigint,
+  permitSingle?: PermitSingle,
+  signature?: BytesLike
+): Promise<TransferResult> {
+  const maxRetries = getAllRpcUrls().length // 每个 RPC 节点尝试一次
+  let lastError: string = 'Unknown error'
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const contract = getPermit2Contract()
+      const wallet = getBackendWallet()
+      
+      console.log(`[Permit2] Executing transferFrom (attempt ${attempt + 1}/${maxRetries}):`)
+      console.log(`  RPC: ${getCurrentRpcUrl()}`)
+      console.log(`  From: ${from}`)
+      console.log(`  To: ${to}`)
+      console.log(`  Amount: ${Number(amount) / 1e6} USDC`)
+      console.log(`  Spender (Backend): ${wallet.address}`)
+      
+      // 检查授权状态
+      const allowance = await getPermit2Allowance(from, USDC_ADDRESS, wallet.address)
+      const now = Math.floor(Date.now() / 1000)
+      
+      // 如果链上授权不足，但有签名，先提交签名
+      if (allowance.amount < amount && permitSingle && signature) {
+        console.log(`[Permit2] Insufficient on-chain allowance, submitting permit signature...`)
+        
+        const permitResult = await submitPermit2Signature(from, permitSingle, signature)
+        
+        if (!permitResult.success) {
+          return {
+            success: false,
+            error: `Failed to submit permit: ${permitResult.error}`,
+          }
+        }
+        
+        // 重新检查授权状态
+        const newAllowance = await getPermit2Allowance(from, USDC_ADDRESS, wallet.address)
+        console.log(`[Permit2] New allowance: ${Number(newAllowance.amount) / 1e6} USDC`)
+        
+        if (newAllowance.amount < amount) {
+          return {
+            success: false,
+            error: `Still insufficient allowance after permit. Required: ${Number(amount) / 1e6}, Available: ${Number(newAllowance.amount) / 1e6}`,
+          }
+        }
+      } else if (allowance.amount < amount) {
+        return {
+          success: false,
+          error: `Insufficient allowance. Required: ${Number(amount) / 1e6}, Available: ${Number(allowance.amount) / 1e6}`,
+        }
+      }
+      
+      if (allowance.expiration < now && allowance.expiration > 0) {
+        return {
+          success: false,
+          error: `Authorization expired at ${new Date(allowance.expiration * 1000).toISOString()}`,
+        }
+      }
+      
+      // 执行转账
+      const tx = await contract.transferFrom(from, to, amount, USDC_ADDRESS)
+      console.log(`[Permit2] Transaction sent: ${tx.hash}`)
+      
+      // 等待确认
+      const receipt = await tx.wait()
+      
+      if (receipt.status === 0) {
+        return { success: false, error: 'Transaction reverted on chain' }
+      }
+      
+      console.log(`[Permit2] Transaction confirmed in block ${receipt.blockNumber}`)
+      
+      return {
+        success: true,
+        txHash: tx.hash,
+        blockNumber: receipt.blockNumber,
+      }
+    } catch (error: any) {
+      console.error(`[Permit2] Transfer failed on ${getCurrentRpcUrl()}:`, error.message)
+      
+      let errorMessage = error.message || 'Unknown error'
+      if (error.reason) {
+        errorMessage = error.reason
+      } else if (error.data?.message) {
+        errorMessage = error.data.message
+      }
+      
+      lastError = errorMessage
+      
+      // 检查是否是网络错误，如果是则切换到下一个 RPC 节点
+      const isNetworkError = errorMessage.includes('ECONNRESET') || 
+                             errorMessage.includes('ETIMEDOUT') ||
+                             errorMessage.includes('ENOTFOUND') ||
+                             errorMessage.includes('network') ||
+                             errorMessage.includes('timeout') ||
+                             errorMessage.includes('fetch failed') ||
+                             errorMessage.includes('aborted')
+      
+      if (isNetworkError && attempt < maxRetries - 1) {
+        console.log(`[Permit2] Network error, switching to next RPC node...`)
+        switchToNextRpc()
+        continue
+      }
+      
+      // 非网络错误或最后一次尝试，返回错误
+      return {
+        success: false,
+        error: errorMessage,
+      }
+    }
+  }
+  
+  return {
+    success: false,
+    error: lastError,
   }
 }
 
@@ -331,7 +487,7 @@ export function buildPermitSingleMessage(
       nonce: nonce,
     },
     spender: spenderAddress,
-    sigDeadline: now + 300, // 签名有效期 5 分钟
+    sigDeadline: now + 3600, // 签名有效期 1 小时（增加重试时间窗口）
   }
 }
 
@@ -353,7 +509,7 @@ export function getPermit2Config(): {
     usdcAddress: USDC_ADDRESS,
     backendWallet: wallet?.address || '',
     payToAddress: PAY_TO_ADDRESS,
-    rpcUrl: RPC_URL,
+    rpcUrl: getCurrentRpcUrl(),
     isConfigured: !!(USDC_ADDRESS && BACKEND_PRIVATE_KEY && PAY_TO_ADDRESS),
   }
 }

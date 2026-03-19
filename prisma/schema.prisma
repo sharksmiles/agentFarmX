@@ -361,6 +361,7 @@ model AgentPaymentAuth {
   // Permit2 相关字段
   permit2Nonce    Int?     // Permit2 nonce (uint48)
   permit2Address  String?  @db.VarChar(42)  // Permit2 合约地址
+  // sigDeadline     BigInt?  // Permit2 签名截止时间 (暂时不存储，使用 createdAt + 1小时 计算)
   
   // 授权类型: "eip3009" 或 "permit2"
   authType        String   @default("eip3009") @db.VarChar(20)

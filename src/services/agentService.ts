@@ -38,7 +38,9 @@ export class AgentService {
           include: {
             farmState: {
               include: {
-                landPlots: true,
+                landPlots: {
+                  orderBy: { plotIndex: 'asc' }
+                },
               },
             },
             inventory: true,
@@ -239,8 +241,8 @@ Current Farm State:
 - Unlocked Lands: ${context.farmState?.unlockedLands || 0}
 
 Land Plots:
-${context.farmState?.landPlots.map((plot: any, i: number) => 
-  `Plot ${i}: ${plot.cropId ? `Growing ${plot.cropId} (stage ${plot.growthStage})` : 'Empty'}`
+${context.farmState?.landPlots.map((plot: any) => 
+  `Plot ${plot.plotIndex}: ${plot.cropId ? `Growing ${plot.cropId} (stage ${plot.growthStage})` : 'Empty'}`
 ).join('\n')}
 
 Inventory:

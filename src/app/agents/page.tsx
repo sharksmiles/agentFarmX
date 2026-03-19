@@ -39,7 +39,7 @@ export default function AgentsPage() {
         <div className="w-full h-screen bg-[#1A1F25] text-white flex flex-col">
             {/* Header */}
             <div className="px-4 pt-5 pb-3 flex items-center justify-between shrink-0">
-                <h1 className="text-2xl font-extrabold">AI Agents</h1>
+                <h1 className="text-2xl font-extrabold">Farmer Agents</h1>
             </div>
 
             <div className="flex-1  pb-32 ">

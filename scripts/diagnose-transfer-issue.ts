@@ -42,7 +42,7 @@ async function main() {
   });
 
   console.log('\n========== 实际转账参数 ==========\n');
-  if (skill) {
+  if (skill && skill.priceUsdc) {
     const actualValue = BigInt(Math.floor(skill.priceUsdc * 1e6));
     console.log('  - 实际转账金额:', skill.priceUsdc, 'USDC');
     console.log('  - 实际转账金额 (微单位):', actualValue.toString());

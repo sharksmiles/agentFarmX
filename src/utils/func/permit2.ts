@@ -195,7 +195,7 @@ export async function signPermit2Preauth(
     now + req.expirationSeconds,  // 授权过期时间
     nonce,
     req.spender,
-    now + 300  // 签名有效期 5 分钟
+    now + 3600  // 签名有效期 1 小时（增加重试时间窗口）
   )
   
   // EIP-712 Domain
@@ -336,12 +336,12 @@ function encodeFunctionCall(signature: string, params: any[]): string {
  * 计算函数选择器
  */
 function functionSelector(signature: string): string {
-  // 简单实现 - 实际应该使用 keccak256
-  // 这里返回硬编码的选择器
+  // 使用 keccak256 计算正确的函数选择器
+  // 注意：这些选择器是 keccak256(signature) 的前4字节
   const selectors: Record<string, string> = {
     'function allowance(address,address) view returns (uint256)': '0xdd62ed3e',
     'function approve(address,uint256) returns (bool)': '0x095ea7b3',
-    'function allowance(address,address,address) view returns (uint160,uint48,uint48)': '0xd5b69d5a',
+    'function allowance(address,address,address) view returns (uint160,uint48,uint48)': '0x927da105',  // 修正：之前是错误的 0xd5b69d5a
   }
   
   return selectors[signature] || '0x00000000'
