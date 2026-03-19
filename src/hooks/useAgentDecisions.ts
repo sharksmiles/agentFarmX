@@ -1,24 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { fetchAgentDecisions as fetchDecisionsApi } from '@/utils/api/agents';
+import { AgentDecision } from '@/utils/types/agent';
 
-export interface AgentDecision {
-  id: string;
-  agentId: string;
-  model: string;
-  prompt: string;
-  response: string;
-  decisions: Array<{
-    skillName: string;
-    parameters: any;
-    reasoning?: string;
-  }>;
-  reasoning?: string;
-  tokensUsed: number;
-  cost: number;
-  latency: number;
-  executed: boolean;
-  success: boolean;
-  createdAt: string;
-}
+// Re-export for convenience
+export type { AgentDecision };
 
 export function useAgentDecisions(
   agentId: string,
@@ -34,31 +19,27 @@ export function useAgentDecisions(
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchDecisions();
-  }, [agentId, options?.limit, options?.offset]);
-
-  const fetchDecisions = async () => {
+  const fetchDecisions = useCallback(async () => {
+    if (!agentId) return;
+    
     try {
       setIsLoading(true);
-      const params = new URLSearchParams();
-      if (options?.limit) params.append('limit', options.limit.toString());
-      if (options?.offset) params.append('offset', options.offset.toString());
-
-      const response = await fetch(`/api/agents/${agentId}/decisions?${params}`);
-      if (!response.ok) throw new Error('Failed to fetch decisions');
-
-      const data = await response.json();
+      // 使用 apiClient 发送请求，自动携带 Authorization 头
+      const data = await fetchDecisionsApi(agentId, options?.limit || 10);
       setDecisions(data.decisions || []);
       setTotal(data.total || 0);
       setStats(data.stats || { totalTokens: 0, totalCost: 0, avgLatency: 0 });
       setError(null);
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || 'Failed to fetch decisions');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [agentId, options?.limit, options?.offset]);
+
+  useEffect(() => {
+    fetchDecisions();
+  }, [fetchDecisions]);
 
   return {
     decisions,

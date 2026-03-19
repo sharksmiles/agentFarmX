@@ -3,6 +3,7 @@ import { parsePaymentRequired, signX402Payment, signPreAuthorization, encodePaym
 
 /**
  * 预授权签名后调用confirm接口存储签名
+ * 注意：必须使用 apiClient 而不是 axios，以便自动携带 Authorization 头
  */
 async function confirmPreauthFromPayment(payReq: X402PaymentRequired, payment: X402PaymentPayload): Promise<void> {
     // 从resource中提取agentId，格式为 "agent_preauth:${agentId}"
@@ -10,15 +11,24 @@ async function confirmPreauthFromPayment(payReq: X402PaymentRequired, payment: X
     if (!agentId) return
     
     try {
-        await axios.post(`/api/agents/${agentId}/preauth/confirm`, {
-            auth: {
-                from: payment.payload.authorization.from,
-                to: payment.payload.authorization.to,
-                value: payment.payload.authorization.value,
-                validAfter: payment.payload.authorization.validAfter,
-                validBefore: payment.payload.authorization.validBefore,
-                nonce: payment.payload.authorization.nonce,
-                signature: payment.payload.signature,
+        // 使用 apiClient 而不是 axios，确保携带 Authorization 头
+        // 请求体结构需要匹配后端 PreauthConfirmRequest 接口
+        await apiClient.post(`/api/agents/${agentId}/preauth/confirm`, {
+            payment: {
+                x402Version: payment.x402Version,
+                scheme: payment.scheme,
+                network: payment.network,
+                payload: {
+                    signature: payment.payload.signature,
+                    authorization: {
+                        from: payment.payload.authorization.from,
+                        to: payment.payload.authorization.to,
+                        value: payment.payload.authorization.value,
+                        validAfter: payment.payload.authorization.validAfter,
+                        validBefore: payment.payload.authorization.validBefore,
+                        nonce: payment.payload.authorization.nonce,
+                    },
+                },
             },
         })
     } catch (err) {
