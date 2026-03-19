@@ -2,9 +2,17 @@ import { prisma } from '@/lib/prisma';
 import OpenAI from 'openai';
 import { AICostService } from './aiCostService';
 
-const openai = new OpenAI({
+// 检查 OpenAI API Key 是否有效
+const isOpenAIConfigured = process.env.OPENAI_API_KEY && 
+  process.env.OPENAI_API_KEY.startsWith('sk-') && 
+  process.env.OPENAI_API_KEY.length > 20;
+
+const openai = isOpenAIConfigured ? new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
-});
+}) : null;
+
+// 模拟模式开关
+const SIMULATION_MODE = !isOpenAIConfigured || process.env.AGENT_SIMULATION_MODE === 'true';
 
 export type AgentErrorCode = 'NOT_FOUND' | 'INACTIVE' | 'LLM_ERROR' | 'INVALID_RESPONSE' | 'UNKNOWN_ERROR';
 
@@ -74,9 +82,25 @@ export class AgentService {
       };
     }
 
-    // 5. 调用 LLM
+    // 5. 调用 LLM 或使用模拟模式
     const startTime = Date.now();
-    const completion = await openai.chat.completions.create({
+    let decisions: any[] = [];
+    let reasoning = '';
+    let tokensUsed = 0;
+    let cost = 0;
+    let latency = 0;
+
+    if (SIMULATION_MODE || !openai) {
+      // 模拟模式：使用规则引擎生成决策
+      console.log(`[AgentService] Running in SIMULATION mode for agent ${agentId}`);
+      const simulatedDecision = this.generateSimulatedDecision(agent, context, skills);
+      decisions = simulatedDecision.decisions;
+      reasoning = simulatedDecision.reasoning;
+      latency = Date.now() - startTime;
+      // 模拟模式不消耗 token 和成本
+    } else {
+      // 正常模式：调用 OpenAI API
+      const completion = await openai.chat.completions.create({
         model: agent.aiModel,
         messages: [
           { role: 'system', content: systemPrompt },
@@ -93,7 +117,7 @@ export class AgentService {
         function_call: 'auto',
         temperature: agent.temperature,
       });
-      const latency = Date.now() - startTime;
+      latency = Date.now() - startTime;
 
       if (!completion.choices || completion.choices.length === 0) {
         throw new Error('No choices returned from OpenAI');
@@ -104,10 +128,10 @@ export class AgentService {
         throw new Error('No message returned from OpenAI');
       }
 
-      const tokensUsed = completion.usage?.total_tokens || 0;
+      tokensUsed = completion.usage?.total_tokens || 0;
       const promptTokens = completion.usage?.prompt_tokens || 0;
       const completionTokens = completion.usage?.completion_tokens || 0;
-      const cost = AICostService.calculateCost('openai', agent.aiModel, promptTokens, completionTokens);
+      cost = AICostService.calculateCost('openai', agent.aiModel, promptTokens, completionTokens);
 
       // 5.5 记录token使用
       await AICostService.recordUsage({
@@ -122,10 +146,7 @@ export class AgentService {
         cost,
       });
 
-      // 6. 解析决策
-      let decisions: any[] = [];
-      let reasoning = '';
-
+      // 解析 LLM 响应
       if (message.function_call) {
         try {
           decisions = [{
@@ -148,18 +169,23 @@ export class AgentService {
           // Content is not JSON, might be reasoning
         }
       }
+    }
 
       if (decisions.length === 0 && !reasoning) {
         return { success: false, error: 'Empty decision from LLM', errorCode: 'INVALID_RESPONSE' };
       }
 
       // 7. 保存决策
+      const responseData = SIMULATION_MODE 
+        ? JSON.stringify({ decisions, reasoning, mode: 'simulation' })
+        : JSON.stringify({ decisions, reasoning, mode: 'llm' });
+      
       const decision = await prisma.agentDecision.create({
         data: {
           agentId: agent.id,
-          model: agent.aiModel,
+          model: SIMULATION_MODE ? 'simulation' : agent.aiModel,
           prompt: systemPrompt,
-          response: JSON.stringify(message),
+          response: responseData,
           decisions,
           reasoning,
           tokensUsed,
@@ -234,5 +260,81 @@ Return a JSON array of skill calls in order of execution.`;
 
     const price = pricing[model] || pricing['gpt-3.5-turbo'];
     return ((tokens / 2) * price.input + (tokens / 2) * price.output) / 1000;
+  }
+
+  /**
+   * 模拟模式：基于规则生成决策
+   * 当 OpenAI API Key 无效或未配置时使用
+   */
+  private static generateSimulatedDecision(
+    agent: any, 
+    context: any, 
+    skills: any[]
+  ): { decisions: any[]; reasoning: string } {
+    const decisions: any[] = [];
+    const reasoningParts: string[] = [];
+    
+    // 获取农场状态
+    const farmState = context.farmState;
+    const landPlots = farmState?.landPlots || [];
+    const energy = context.energy || 0;
+    
+    // 策略类型影响决策优先级
+    const strategyType = agent.strategyType || 'balanced';
+    
+    // 1. 检查是否有可收获的作物
+    const harvestablePlots = landPlots.filter((plot: any) => 
+      plot.cropId && plot.growthStage >= 4
+    );
+    
+    if (harvestablePlots.length > 0 && energy >= 10) {
+      const plot = harvestablePlots[0];
+      decisions.push({
+        skillName: 'harvest_crop',
+        parameters: { plotIndex: plot.plotIndex }
+      });
+      reasoningParts.push(`Harvesting crop from plot ${plot.plotIndex}`);
+    }
+    
+    // 2. 检查是否有空地块可以种植
+    const emptyPlots = landPlots.filter((plot: any) => !plot.cropId);
+    
+    if (emptyPlots.length > 0 && energy >= 15 && decisions.length === 0) {
+      // 根据策略选择作物
+      const cropId = strategyType === 'aggressive' ? 'corn' : 'wheat';
+      decisions.push({
+        skillName: 'plant_crop',
+        parameters: { 
+          plotIndex: emptyPlots[0].plotIndex,
+          cropId 
+        }
+      });
+      reasoningParts.push(`Planting ${cropId} on empty plot ${emptyPlots[0].plotIndex}`);
+    }
+    
+    // 3. 检查能量状态
+    if (energy < 30 && decisions.length === 0) {
+      decisions.push({
+        skillName: 'check_energy',
+        parameters: {}
+      });
+      reasoningParts.push('Checking energy status (energy is low)');
+    }
+    
+    // 4. 如果没有其他操作，尝试使用随机技能
+    if (decisions.length === 0 && skills.length > 0) {
+      const randomSkill = skills[Math.floor(Math.random() * skills.length)];
+      decisions.push({
+        skillName: randomSkill.name,
+        parameters: {}
+      });
+      reasoningParts.push(`Using skill ${randomSkill.name} (random selection in simulation mode)`);
+    }
+    
+    const reasoning = reasoningParts.length > 0 
+      ? `[SIMULATION MODE] ${reasoningParts.join('. ')}`
+      : '[SIMULATION MODE] No actions needed at this time';
+    
+    return { decisions, reasoning };
   }
 }

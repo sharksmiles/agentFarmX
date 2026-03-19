@@ -78,15 +78,26 @@ export class FarmService extends BaseService {
    * 种植作物
    */
   async plant(userId: string, plotIndex: number, cropId: string): Promise<PlantResult> {
+    console.log(`[FarmService] ===== plant START =====`);
+    console.log(`[FarmService] userId: ${userId}, plotIndex: ${plotIndex}, cropId: ${cropId}`);
+    
     return this.withTransaction(async (tx) => {
-      // 1. 获取作物配置
-      const cropConfig = await tx.cropConfig.findUnique({
-        where: { cropType: cropId },
+      // 1. 获取作物配置（大小写不敏感）
+      const cropConfig = await tx.cropConfig.findFirst({
+        where: { 
+          cropType: { equals: cropId, mode: 'insensitive' } 
+        },
       });
 
       if (!cropConfig) {
+        console.error(`[FarmService] Crop configuration not found: ${cropId}`);
+        // 尝试查找所有作物配置
+        const allCrops = await tx.cropConfig.findMany();
+        console.log(`[FarmService] Available crops:`, allCrops.map(c => c.cropType));
         throw ServiceError.badRequest(`Crop configuration not found: ${cropId}`);
       }
+      
+      console.log(`[FarmService] Found cropConfig: ${cropConfig.cropType}, matureTime: ${cropConfig.matureTime}`);
 
       // 2. 同步能量并获取农场状态
       const farmState = await GameService.syncUserStamina<{ landPlots: LandPlot[] }>(userId, tx, {
@@ -103,32 +114,44 @@ export class FarmService extends BaseService {
         throw ServiceError.badRequest('Insufficient energy');
       }
 
-      // 4. 校验库存
-      const inventoryItem = await tx.inventory.findUnique({
+      // 4. 校验库存（大小写不敏感）
+      const inventoryItem = await tx.inventory.findFirst({
         where: {
-          userId_itemType_itemId: {
-            userId,
-            itemType: 'crop',
-            itemId: cropId,
-          },
+          userId,
+          itemType: 'crop',
+          itemId: { equals: cropId, mode: 'insensitive' },
         },
       });
 
+      console.log(`[FarmService] Inventory check:`, inventoryItem ? `found, quantity=${inventoryItem.quantity}` : 'not found');
+
       if (!inventoryItem || inventoryItem.quantity <= 0) {
+        console.error(`[FarmService] Insufficient seeds for ${cropId}`);
+        // 查看用户所有库存
+        const allInventory = await tx.inventory.findMany({ where: { userId } });
+        console.log(`[FarmService] User inventory:`, allInventory.map(i => `${i.itemType}:${i.itemId}=${i.quantity}`));
         throw ServiceError.badRequest(`Insufficient seeds for ${cropId}`);
       }
 
       // 5. 校验地块
       const dbPlotIndex = plotIndex > 0 ? plotIndex - 1 : plotIndex;
+      console.log(`[FarmService] Looking for plot: plotIndex=${plotIndex}, dbPlotIndex=${dbPlotIndex}`);
+      console.log(`[FarmService] Available plots:`, farmState.landPlots?.map((p: LandPlot) => `index=${p.plotIndex}, unlocked=${p.isUnlocked}, crop=${p.cropId || 'empty'}`));
+      
       const plot = farmState.landPlots?.find((p: LandPlot) => p.plotIndex === dbPlotIndex);
 
       if (!plot) {
+        console.error(`[FarmService] Plot not found: ${plotIndex}`);
         throw ServiceError.notFound('Plot', String(plotIndex));
       }
+      console.log(`[FarmService] Found plot: id=${plot.id}, isUnlocked=${plot.isUnlocked}, cropId=${plot.cropId}`);
+      
       if (!plot.isUnlocked) {
+        console.error(`[FarmService] Plot ${plotIndex} is locked`);
         throw ServiceError.badRequest(`Plot ${plotIndex} is locked`);
       }
       if (plot.cropId) {
+        console.error(`[FarmService] Plot ${plotIndex} already has crop: ${plot.cropId}`);
         throw ServiceError.conflict(`Plot ${plotIndex} already has a crop`);
       }
 
@@ -202,9 +225,11 @@ export class FarmService extends BaseService {
         throw ServiceError.badRequest('No crop to harvest');
       }
 
-      // 2. 获取作物配置
-      const cropConfig = await tx.cropConfig.findUnique({
-        where: { cropType: plot.cropId },
+      // 2. 获取作物配置（大小写不敏感）
+      const cropConfig = await tx.cropConfig.findFirst({
+        where: { 
+          cropType: { equals: plot.cropId, mode: 'insensitive' } 
+        },
       });
 
       const reward = Math.floor(

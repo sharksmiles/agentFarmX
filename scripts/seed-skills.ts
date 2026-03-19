@@ -84,6 +84,26 @@ const SKILLS: SkillSeedData[] = [
     cooldown: 60,
     requiredLevel: 3,
   },
+  {
+    name: 'buy_seed',
+    displayName: '购买种子',
+    description: '从商店购买作物种子。需要提供作物名称和数量。',
+    category: 'farming',
+    parameters: {
+      type: 'object',
+      properties: {
+        quantities: {
+          type: 'object',
+          description: '购买数量映射，key为作物名称(如"Wheat","Corn")，value为数量',
+          additionalProperties: { type: 'number' }
+        },
+      },
+      required: ['quantities'],
+    },
+    energyCost: 0,
+    cooldown: 0,
+    requiredLevel: 1,
+  },
   
   // Social Skills (Raider - 全部付费)
   {

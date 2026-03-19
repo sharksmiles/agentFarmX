@@ -134,12 +134,18 @@ export class AgentExecutor extends BaseService {
    * 执行AI决策
    */
   static async executeDecision(decision: AgentDecision): Promise<void> {
+    console.log(`[AgentExecutor] ===== executeDecision START =====`);
+    console.log(`[AgentExecutor] decision.id: ${decision.id}`);
+    console.log(`[AgentExecutor] decision.agentId: ${decision.agentId}`);
+    console.log(`[AgentExecutor] decision.decisions:`, JSON.stringify(decision.decisions));
+    
     const agent = await prisma.agent.findUnique({
       where: { id: decision.agentId },
       include: { user: true },
     });
 
     if (!agent) {
+      console.error(`[AgentExecutor] Agent not found: ${decision.agentId}`);
       throw ServiceError.notFound('Agent', decision.agentId);
     }
 
@@ -164,8 +170,11 @@ export class AgentExecutor extends BaseService {
     let failCount = 0;
 
     for (const d of decisions) {
+      console.log(`[AgentExecutor] Processing decision: skillName=${d.skillName}`);
       try {
         const result = await this.executeSkill(d.skillName, d.parameters, context);
+        
+        console.log(`[AgentExecutor] Skill result: success=${result.success}, message=${result.message}, error=${result.error}`);
         
         if (result.success) {
           successCount++;
@@ -175,13 +184,18 @@ export class AgentExecutor extends BaseService {
           });
         } else {
           failCount++;
+          console.error(`[AgentExecutor] Skill ${d.skillName} failed: ${result.error}`);
           await this.logAgentWarning(agent.id, `Skill ${d.skillName} failed: ${result.error}`);
         }
       } catch (error: any) {
         failCount++;
+        console.error(`[AgentExecutor] Skill ${d.skillName} exception:`, error.message);
+        console.error(`[AgentExecutor] Stack:`, error.stack);
         await this.logAgentError(agent.id, `Skill ${d.skillName} exception: ${error.message}`);
       }
     }
+
+    console.log(`[AgentExecutor] Execution summary: successCount=${successCount}, failCount=${failCount}`);
 
     // 更新决策执行状态
     await prisma.agentDecision.update({
@@ -191,6 +205,8 @@ export class AgentExecutor extends BaseService {
         success: failCount === 0,
       },
     });
+    
+    console.log(`[AgentExecutor] Decision ${decision.id} updated: executed=true, success=${failCount === 0}`);
 
     // 更新Agent统计
     await prisma.agent.update({
@@ -210,18 +226,26 @@ export class AgentExecutor extends BaseService {
     parameters: Record<string, any>,
     context: SkillExecutionContext
   ): Promise<SkillExecutionResult> {
+    console.log(`[AgentExecutor] ===== executeSkill START =====`);
+    console.log(`[AgentExecutor] skillName: ${skillName}`);
+    console.log(`[AgentExecutor] parameters:`, JSON.stringify(parameters));
+    console.log(`[AgentExecutor] context.agentId: ${context.agentId}, context.userId: ${context.userId}`);
+    
     // 获取Skill信息
     const skill = await prisma.agentSkill.findUnique({
       where: { name: skillName },
     });
 
     if (!skill) {
+      console.error(`[AgentExecutor] SKILL_NOT_FOUND: ${skillName}`);
       return {
         success: false,
         message: `Skill not found: ${skillName}`,
         error: 'SKILL_NOT_FOUND',
       };
     }
+    
+    console.log(`[AgentExecutor] Found skill: ${skill.displayName}, category: ${skill.category}, energyCost: ${skill.energyCost}`);
 
     // 检查冷却时间
     if (skill.cooldown > 0) {
@@ -507,15 +531,33 @@ export class AgentExecutor extends BaseService {
     parameters: Record<string, any>,
     context: SkillExecutionContext
   ): Promise<any> {
+    console.log(`[AgentExecutor] Executing farming skill: ${skillName}`, JSON.stringify(parameters));
+    
     switch (skillName) {
       case 'plant_crop':
         // 调用种植逻辑
-        const farmService = await import('./farm.service').then(m => new m.FarmService());
-        return farmService.plant(context.userId, parameters.plotIndex, parameters.cropId);
+        console.log(`[AgentExecutor] Planting crop: userId=${context.userId}, plotIndex=${parameters.plotIndex}, cropId=${parameters.cropId}`);
+        try {
+          const farmService = await import('./farm.service').then(m => new m.FarmService());
+          const result = await farmService.plant(context.userId, parameters.plotIndex, parameters.cropId);
+          console.log(`[AgentExecutor] Plant result:`, JSON.stringify(result));
+          return result;
+        } catch (error: any) {
+          console.error(`[AgentExecutor] Plant failed:`, error.message);
+          throw error;
+        }
 
       case 'harvest_crop':
-        const farmService2 = await import('./farm.service').then(m => new m.FarmService());
-        return farmService2.harvest(context.userId, parameters.plotIndex);
+        console.log(`[AgentExecutor] Harvesting: userId=${context.userId}, plotIndex=${parameters.plotIndex}`);
+        try {
+          const farmService2 = await import('./farm.service').then(m => new m.FarmService());
+          const result = await farmService2.harvest(context.userId, parameters.plotIndex);
+          console.log(`[AgentExecutor] Harvest result:`, JSON.stringify(result));
+          return result;
+        } catch (error: any) {
+          console.error(`[AgentExecutor] Harvest failed:`, error.message);
+          throw error;
+        }
 
       case 'analyze_farm_state':
         const farmState = await prisma.farmState.findUnique({
@@ -528,6 +570,29 @@ export class AgentExecutor extends BaseService {
           emptyPlots: farmState?.landPlots.filter(p => !p.cropId).length,
           matureCrops: farmState?.landPlots.filter(p => p.growthStage === 4).length,
         };
+
+      case 'buy_seed':
+        console.log(`[AgentExecutor] Buying seeds: userId=${context.userId}, quantities=${JSON.stringify(parameters.quantities)}`);
+        try {
+          // 调用商店购买 API 逻辑
+          const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/shop/buy`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: context.userId,
+              quantities: parameters.quantities,
+            }),
+          });
+          const result = await response.json();
+          if (!response.ok) {
+            throw new Error(result.error || 'Failed to buy seeds');
+          }
+          console.log(`[AgentExecutor] Buy seed result:`, JSON.stringify(result));
+          return { success: true, data: result.data };
+        } catch (error: any) {
+          console.error(`[AgentExecutor] Buy seed failed:`, error.message);
+          throw error;
+        }
 
       default:
         throw new Error(`Unknown farming skill: ${skillName}`);

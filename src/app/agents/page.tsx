@@ -131,7 +131,7 @@ export default function AgentsPage() {
                                             if (loadingAgentId) return
                                             setLoadingAgentId(agent.id)
                                             try {
-                                                const updated = agent.status === 'running' || agent.status === 'paused'
+                                                const updated = agent.status === 'running'
                                                     ? await stopAgent(agent.id)
                                                     : await startAgent(agent.id)
                                                 setAgents(prev => prev.map(a => a.id === agent.id ? updated : a))
@@ -143,19 +143,19 @@ export default function AgentsPage() {
                                         }}
                                         disabled={loadingAgentId === agent.id}
                                         className={`flex-1 py-2 px-3 text-white text-sm font-medium rounded-xl transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed ${
-                                            agent.status === 'running' || agent.status === 'paused'
+                                            agent.status === 'running'
                                                 ? 'bg-red-500/80 hover:bg-red-600'
                                                 : 'bg-green-500/80 hover:bg-green-600'
                                         }`}
                                     >
                                         {loadingAgentId === agent.id ? (
                                             <span className="animate-spin">⏳</span>
-                                        ) : agent.status === 'running' || agent.status === 'paused' ? (
+                                        ) : agent.status === 'running' ? (
                                             <span>⏹️</span>
                                         ) : (
                                             <span>▶️</span>
                                         )}
-                                        <span>{loadingAgentId === agent.id ? '...' : (agent.status === 'running' || agent.status === 'paused' ? 'Stop' : 'Start')}</span>
+                                        <span>{loadingAgentId === agent.id ? '...' : (agent.status === 'running' ? 'Stop' : 'Start')}</span>
                                     </button>
                                     <Link href={`/agents/${agent.id}/settings`} className="flex-1">
                                         <button className="w-full py-2 px-3 bg-[#5964F5] hover:bg-[#4751D8] text-white text-sm font-medium rounded-xl transition-colors flex items-center justify-center gap-1.5">

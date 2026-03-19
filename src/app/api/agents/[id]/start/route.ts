@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withAuth, AuthContext } from '@/middleware/auth';
 import { preauthRequiredResponse } from '@/utils/api/response';
+import { AgentService } from '@/services/agentService';
+import { AgentExecutor } from '@/services/agentExecutor';
 
 /**
  * Agent路由参数类型
@@ -95,6 +97,28 @@ export const POST = withAuth<AgentParams>(async (
         level: 'info',
         message: 'Agent started',
       },
+    });
+
+    // 立即触发一次决策执行（异步，不阻塞响应）
+    setImmediate(async () => {
+      try {
+        console.log(`[Agent Start] Triggering first decision for agent ${agentId}`);
+        
+        // 1. 触发 AI 决策
+        const result = await AgentService.triggerDecision(agentId);
+        
+        if (result.success && result.decision) {
+          console.log(`[Agent Start] Decision made, executing...`);
+          
+          // 2. 执行决策
+          await AgentExecutor.executeDecision(result.decision);
+          console.log(`[Agent Start] Decision executed successfully`);
+        } else {
+          console.log(`[Agent Start] Decision failed:`, result.error);
+        }
+      } catch (error) {
+        console.error(`[Agent Start] Error executing initial decision:`, error);
+      }
     });
 
     return NextResponse.json({ agent: updatedAgent });
