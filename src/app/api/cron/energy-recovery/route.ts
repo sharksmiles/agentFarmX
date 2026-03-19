@@ -33,18 +33,19 @@ export async function GET(request: NextRequest) {
 
     // 使用原生SQL批量更新能量
     // 这比逐个查询和更新更高效
+    // 注意：Prisma 默认不转换字段名，数据库列名使用驼峰命名
     const result = await prisma.$executeRaw`
       UPDATE farm_states 
       SET 
         energy = LEAST(
           energy + FLOOR(
-            EXTRACT(EPOCH FROM (NOW() - last_energy_update)) / ${intervalMinutes * 60}
+            EXTRACT(EPOCH FROM (NOW() - "lastEnergyUpdate")) / ${intervalMinutes * 60}
           ) * ${rate},
-          max_energy
+          "maxEnergy"
         ),
-        last_energy_update = NOW()
-      WHERE energy < max_energy
-        AND last_energy_update < NOW() - INTERVAL '1 minute'
+        "lastEnergyUpdate" = NOW()
+      WHERE energy < "maxEnergy"
+        AND "lastEnergyUpdate" < NOW() - INTERVAL '1 minute'
     `;
 
     const duration = Date.now() - startTime;
