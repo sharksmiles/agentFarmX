@@ -17,7 +17,7 @@ interface SkillSeedData {
 }
 
 const SKILLS: SkillSeedData[] = [
-  // Farming Skills
+  // Farming Skills (Farmer - 全部付费)
   {
     name: 'plant_crop',
     displayName: '种植作物',
@@ -34,6 +34,7 @@ const SKILLS: SkillSeedData[] = [
     energyCost: 10,
     cooldown: 0,
     requiredLevel: 1,
+    priceUsdc: 0.001, // Farmer Skill 付费
   },
   {
     name: 'harvest_crop',
@@ -50,6 +51,7 @@ const SKILLS: SkillSeedData[] = [
     energyCost: 5,
     cooldown: 0,
     requiredLevel: 1,
+    priceUsdc: 0.001, // Farmer Skill 付费
   },
   {
     name: 'unlock_land',
@@ -66,6 +68,7 @@ const SKILLS: SkillSeedData[] = [
     energyCost: 0,
     cooldown: 0,
     requiredLevel: 1,
+    priceUsdc: 0.001, // Farmer Skill 付费
   },
   {
     name: 'use_boost',
@@ -83,6 +86,7 @@ const SKILLS: SkillSeedData[] = [
     energyCost: 0,
     cooldown: 60,
     requiredLevel: 3,
+    priceUsdc: 0.001, // Farmer Skill 付费
   },
   {
     name: 'buy_seed',
@@ -103,6 +107,7 @@ const SKILLS: SkillSeedData[] = [
     energyCost: 0,
     cooldown: 0,
     requiredLevel: 1,
+    priceUsdc: 0.001, // Farmer Skill 付费
   },
   
   // Social Skills (Raider - 全部付费)
@@ -177,6 +182,7 @@ const SKILLS: SkillSeedData[] = [
     priceUsdc: 0.001, // Raider Skill 付费
   },
   
+  // Strategy Skills (通用 - 付费)
   {
     name: 'check_energy',
     displayName: '检查能量',
@@ -190,6 +196,7 @@ const SKILLS: SkillSeedData[] = [
     energyCost: 0,
     cooldown: 0,
     requiredLevel: 1,
+    priceUsdc: 0.001, // Strategy Skill 付费
   },
 ]
 

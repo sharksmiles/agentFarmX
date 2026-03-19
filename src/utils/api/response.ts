@@ -86,7 +86,7 @@ export function paymentRequiredResponse(
  */
 export function preauthRequiredResponse(
   agentId: string,
-  amountUsdc: number = 10
+  amountUsdc: number = 1
 ) {
   const THIRTY_DAYS = 30 * 24 * 60 * 60; // 2592000秒
   

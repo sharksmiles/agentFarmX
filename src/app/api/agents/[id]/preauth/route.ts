@@ -92,7 +92,7 @@ export const POST = withAuth<AgentParams>(async (
     const agentId = context.params.id;
     const userId = context.auth.userId;
     const body = await request.json().catch(() => ({}));
-    const amountUsdc = body.amountUsdc || 10; // 默认预授权10 USDC
+    const amountUsdc = body.amountUsdc || 1; // 默认预授权1 USDC
 
     // 验证Agent所有权
     const agent = await prisma.agent.findUnique({
