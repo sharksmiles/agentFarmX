@@ -187,7 +187,8 @@ const toISOString = (date: any): string | undefined => {
 }
 
 export const fetchFriendFarm = async (friendId: string): Promise<FriendStats> => {
-    const res = await visitFriendFarm(friendId)
+    // 手动访问好友农场，使用 mode='manual' 跳过支付
+    const res = await visitFriendFarm(friendId, 'manual')
     const now = new Date()
     
     // 创建完整的地块数组（9个）
@@ -251,9 +252,10 @@ export const fetchFriendFarm = async (friendId: string): Promise<FriendStats> =>
 }
 
 // New API: Visit friend farm
-export const visitFriendFarm = async (friendId: string) => {
+// mode: 'manual' = 手动访问（免费），不传或 'agent' = 机器人执行（需付费）
+export const visitFriendFarm = async (friendId: string, mode: 'manual' | 'agent' = 'agent') => {
     // Record visit for task tracking
-    apiClient.post('/api/social/visit', { friendId }).catch(() => {
+    apiClient.post('/api/social/visit', { friendId, mode }).catch(() => {
         // Ignore visit recording errors
     });
     
@@ -276,8 +278,9 @@ export const waterFriendCrop = async (
 }
 
 // New API: Water friend's crop
-export const waterFriendCropNew = async (userId: string, friendId: string, plotIndex: number) => {
-    const res = await apiClient.post('/api/social/water', { userId, friendId, plotIndex })
+// mode: 'manual' = 手动操作（免费），不传或 'agent' = 机器人执行（需付费）
+export const waterFriendCropNew = async (userId: string, friendId: string, plotIndex: number, mode: 'manual' | 'agent' = 'manual') => {
+    const res = await apiClient.post('/api/social/water', { userId, friendId, plotIndex, mode })
     return res.data
 }
 
@@ -315,8 +318,9 @@ export const stealCrop = async (
 }
 
 // New API: Steal crop from friend
-export const stealCropNew = async (userId: string, friendId: string, plotIndex: number) => {
-    const res = await apiClient.post('/api/social/steal', { userId, friendId, plotIndex })
+// mode: 'manual' = 手动操作（免费），不传或 'agent' = 机器人执行（需付费）
+export const stealCropNew = async (userId: string, friendId: string, plotIndex: number, mode: 'manual' | 'agent' = 'manual') => {
+    const res = await apiClient.post('/api/social/steal', { userId, friendId, plotIndex, mode })
     return res.data
 }
 

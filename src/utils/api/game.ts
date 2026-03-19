@@ -16,10 +16,12 @@ export const plantCrop = async (land_id: LandIdTypes, crop_name: CropTypes): Pro
     // Call new API
     // land_id is 1-based, backend expects 0-based or handles it.
     // I updated backend to handle 1-based by subtracting 1 if > 0.
+    // 手动操作，使用 mode='manual' 跳过支付
     const res = await apiClient.post<User>('/api/farm/plant', { 
         userId: user.id, 
         plotIndex: land_id, 
-        cropId: crop_name 
+        cropId: crop_name,
+        mode: 'manual'
     })
     return res.data
 }
@@ -31,14 +33,16 @@ export const fetchFarmState = async (userId: string) => {
 }
 
 // New API: Plant crop (Duplicate of above but explicit signature)
-export const plantCropNew = async (userId: string, plotIndex: number, cropId: string) => {
-    const res = await apiClient.post<User>('/api/farm/plant', { userId, plotIndex, cropId })
+// mode: 'manual' = 手动操作（免费），不传或 'agent' = 机器人执行（需付费）
+export const plantCropNew = async (userId: string, plotIndex: number, cropId: string, mode: 'manual' | 'agent' = 'manual') => {
+    const res = await apiClient.post<User>('/api/farm/plant', { userId, plotIndex, cropId, mode })
     return res.data
 }
 
 // New API: Harvest crop
-export const harvestCropNew = async (userId: string, plotIndex: number) => {
-    const res = await apiClient.post<User>('/api/farm/harvest', { userId, plotIndex })
+// mode: 'manual' = 手动操作（免费），不传或 'agent' = 机器人执行（需付费）
+export const harvestCropNew = async (userId: string, plotIndex: number, mode: 'manual' | 'agent' = 'manual') => {
+    const res = await apiClient.post<User>('/api/farm/harvest', { userId, plotIndex, mode })
     return res.data
 }
 
@@ -67,18 +71,21 @@ export const farmAction = async (payload: FarmActionPayload): Promise<User> => {
     if (!user) throw new Error("User not found");
 
     if (payload.action === 'harvest') {
+        // 手动操作，使用 mode='manual' 跳过支付
         const res = await apiClient.post<User>('/api/farm/harvest', { 
             userId: user.id, 
-            plotIndex: payload.land_id 
+            plotIndex: payload.land_id,
+            mode: 'manual'
         });
         return res.data;
     }
     
     if (payload.action === 'water') {
-        // Assume water API exists or create it
+        // 手动操作，使用 mode='manual' 跳过支付
         const res = await apiClient.post<User>('/api/farm/water', { 
             userId: user.id, 
-            plotIndex: payload.land_id 
+            plotIndex: payload.land_id,
+            mode: 'manual'
         });
         return res.data;
     }
@@ -92,9 +99,11 @@ export const farmAction = async (payload: FarmActionPayload): Promise<User> => {
     }
     
     if (payload.action === 'boost') {
+        // 手动操作，使用 mode='manual' 跳过支付
         const res = await apiClient.post<User>('/api/farm/boost', { 
             userId: user.id, 
-            plotIndex: payload.land_id 
+            plotIndex: payload.land_id,
+            mode: 'manual'
         });
         return res.data;
     }
@@ -141,14 +150,16 @@ export const unlockLand = async (userId: string, plotIndex: number) => {
 }
 
 // New API: Water crop
-export const waterCropNew = async (userId: string, plotIndex: number) => {
-    const res = await apiClient.post('/api/farm/water', { userId, plotIndex })
+// mode: 'manual' = 手动操作（免费），不传或 'agent' = 机器人执行（需付费）
+export const waterCropNew = async (userId: string, plotIndex: number, mode: 'manual' | 'agent' = 'manual') => {
+    const res = await apiClient.post('/api/farm/water', { userId, plotIndex, mode })
     return res.data
 }
 
 // New API: Boost crop
-export const boostCropNew = async (userId: string, plotIndex: number) => {
-    const res = await apiClient.post('/api/farm/boost', { userId, plotIndex })
+// mode: 'manual' = 手动操作（免费），不传或 'agent' = 机器人执行（需付费）
+export const boostCropNew = async (userId: string, plotIndex: number, mode: 'manual' | 'agent' = 'manual') => {
+    const res = await apiClient.post('/api/farm/boost', { userId, plotIndex, mode })
     return res.data
 }
 

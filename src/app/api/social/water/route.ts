@@ -23,8 +23,12 @@ export const POST = withAuth(async (
   context: { params: Record<string, string>; auth: AuthContext }
 ) => {
   try {
+    const body = await request.json();
+    const { friendId, plotIndex, mode } = body;
+
     // x402 支付检查 - Raider Skill 付费
-    if (!hasValidPaymentHeader(request)) {
+    // 仅机器人执行时需要支付，手动操作(mode=manual)跳过支付
+    if (mode !== 'manual' && !hasValidPaymentHeader(request)) {
       return paymentRequiredResponse(
         'water_friend_crop',
         WATER_SKILL_PRICE,
@@ -32,9 +36,6 @@ export const POST = withAuth(async (
         'Water friend crop - Raider Bot Skill'
       );
     }
-
-    const body = await request.json();
-    const { friendId, plotIndex } = body;
     const userId = context.auth.userId;
 
     if (!friendId || plotIndex === undefined) {

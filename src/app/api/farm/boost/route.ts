@@ -1,15 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { mapUserToFrontend } from '@/utils/func/userMapper';
-import { errorResponse, successResponse, internalErrorResponse, notFoundResponse } from '@/utils/api/response';
+import { errorResponse, successResponse, internalErrorResponse, notFoundResponse, paymentRequiredResponse, hasValidPaymentHeader } from '@/utils/api/response';
+import { withAuth, AuthContext } from '@/middleware/auth';
 
 const BOOST_MULTIPLIER = 2.0;
 const BOOST_DURATION = 30 * 60 * 1000; // 30 minutes
 
-export async function POST(request: NextRequest) {
+// Farming Skill 价格
+const BOOST_SKILL_PRICE = 0.001; // USDC
+
+export const POST = withAuth(async (
+  request: NextRequest,
+  context: { params: Record<string, string>; auth: AuthContext }
+) => {
   try {
     const body = await request.json();
-    const { userId, plotIndex } = body;
+    const { plotIndex, mode } = body;
+    const userId = context.auth.userId;
+
+    // x402 支付检查 - Farming Skill 付费
+    // 仅机器人执行时需要支付，手动操作(mode=manual)跳过支付
+    if (mode !== 'manual' && !hasValidPaymentHeader(request)) {
+      return paymentRequiredResponse(
+        'boost_crop',
+        BOOST_SKILL_PRICE,
+        '/api/farm/boost',
+        'Boost crop - Farmer Bot Skill'
+      );
+    }
 
     if (!userId || plotIndex === undefined) {
       return errorResponse('userId and plotIndex are required', 400);
@@ -89,4 +108,4 @@ export async function POST(request: NextRequest) {
     }
     return internalErrorResponse(error);
   }
-}
+});

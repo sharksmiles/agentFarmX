@@ -607,25 +607,61 @@ export class AgentExecutor extends BaseService {
     
     switch (skillName) {
       case 'plant_crop':
-        // 调用种植逻辑
+        // 调用种植 API（需要 x402 支付）
         console.log(`[AgentExecutor] Planting crop: userId=${context.userId}, plotIndex=${parameters.plotIndex}, cropId=${parameters.cropId}`);
         try {
-          const farmService = await import('./farm.service').then(m => new m.FarmService());
-          const result = await farmService.plant(context.userId, parameters.plotIndex, parameters.cropId);
+          const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+          const response = await fetch(`${baseUrl}/api/farm/plant`, {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'x-user-id': context.userId,
+            },
+            // 不传 mode，默认为 agent 模式，需要付费
+            body: JSON.stringify({
+              plotIndex: parameters.plotIndex,
+              cropId: parameters.cropId,
+            }),
+          });
+          
+          const result = await response.json();
           console.log(`[AgentExecutor] Plant result:`, JSON.stringify(result));
-          return result;
+          
+          if (!response.ok) {
+            throw new Error(result.error || 'Plant failed');
+          }
+          
+          return result.data;
         } catch (error: any) {
           console.error(`[AgentExecutor] Plant failed:`, error.message);
           throw error;
         }
 
       case 'harvest_crop':
+        // 调用收获 API（需要 x402 支付）
         console.log(`[AgentExecutor] Harvesting: userId=${context.userId}, plotIndex=${parameters.plotIndex}`);
         try {
-          const farmService2 = await import('./farm.service').then(m => new m.FarmService());
-          const result = await farmService2.harvest(context.userId, parameters.plotIndex);
+          const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+          const response = await fetch(`${baseUrl}/api/farm/harvest`, {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'x-user-id': context.userId,
+            },
+            // 不传 mode，默认为 agent 模式，需要付费
+            body: JSON.stringify({
+              plotIndex: parameters.plotIndex,
+            }),
+          });
+          
+          const result = await response.json();
           console.log(`[AgentExecutor] Harvest result:`, JSON.stringify(result));
-          return result;
+          
+          if (!response.ok) {
+            throw new Error(result.error || 'Harvest failed');
+          }
+          
+          return result.data;
         } catch (error: any) {
           console.error(`[AgentExecutor] Harvest failed:`, error.message);
           throw error;
@@ -775,6 +811,7 @@ export class AgentExecutor extends BaseService {
               'Content-Type': 'application/json',
               'x-user-id': context.userId,
             },
+            // Agent 执行需要付费，不传 mode 或传 'agent' 都会触发支付
             body: JSON.stringify({ friendId }),
           });
           

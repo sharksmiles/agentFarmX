@@ -2,15 +2,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { mapUserToFrontend } from '@/utils/func/userMapper';
 import { GameService, GAME_CONSTANTS, FarmStateWithPlots } from '@/services/gameService';
-import { errorResponse, successResponse, internalErrorResponse, notFoundResponse } from '@/utils/api/response';
+import { errorResponse, successResponse, internalErrorResponse, notFoundResponse, paymentRequiredResponse, hasValidPaymentHeader } from '@/utils/api/response';
 import { withAuth, AuthContext } from '@/middleware/auth';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
 
+// Farming Skill 价格
+const PLANT_SKILL_PRICE = 0.001; // USDC
+
 /**
  * POST /api/farm/plant - Plant a crop
  * 需要认证：从Token中获取用户ID
+ * 需要 x402 支付：Farming Skill 付费（机器人执行时）
  */
 export const POST = withAuth(async (
   request: NextRequest,
@@ -18,8 +22,19 @@ export const POST = withAuth(async (
 ) => {
   try {
     const body = await request.json();
-    const { plotIndex, cropId } = body;
+    const { plotIndex, cropId, mode } = body;
     const userId = context.auth.userId; // 从认证上下文获取用户ID
+
+    // x402 支付检查 - Farming Skill 付费
+    // 仅机器人执行时需要支付，手动操作(mode=manual)跳过支付
+    if (mode !== 'manual' && !hasValidPaymentHeader(request)) {
+      return paymentRequiredResponse(
+        'plant_crop',
+        PLANT_SKILL_PRICE,
+        '/api/farm/plant',
+        'Plant crop - Farmer Bot Skill'
+      );
+    }
 
     if (plotIndex === undefined || !cropId) {
       return errorResponse('plotIndex and cropId are required', 400);
