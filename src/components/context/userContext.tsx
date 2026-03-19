@@ -29,6 +29,7 @@ interface UserContextValue {
     setIsSessionRestored: React.Dispatch<React.SetStateAction<boolean>>
     availableProviders: EIP6963Provider[]
     setAvailableProviders: React.Dispatch<React.SetStateAction<EIP6963Provider[]>>
+    selectedProviderRdns: string | null
     connectWallet: (provider: EIP6963Provider) => Promise<void>
     disconnectWallet: () => Promise<void>
     refreshUser: () => Promise<void>
@@ -55,6 +56,7 @@ export const UserProvider: FC<UserProviderProps> = ({ children }) => {
     const [isSessionRestored, setIsSessionRestored] = useState<boolean>(false)
     const [authError, setAuthError] = useState<string | null>(null)
     const [availableProviders, setAvailableProviders] = useState<EIP6963Provider[]>([])
+    const [selectedProviderRdns, setSelectedProviderRdns] = useState<string | null>(null)
 
     const refreshUser = useCallback(async () => {
         try {
@@ -81,6 +83,13 @@ export const UserProvider: FC<UserProviderProps> = ({ children }) => {
         try {
             const user = await performSiweLogin(providerDetail.provider)
             const address = user.wallet_address
+            
+            // Save the selected provider rdns for later use (e.g., payment authorization)
+            const rdns = providerDetail.info.rdns
+            setSelectedProviderRdns(rdns)
+            if (typeof window !== 'undefined') {
+                localStorage.setItem('selectedProviderRdns', rdns)
+            }
             
             // Update all states with new user data
             setWalletAddress(address)
@@ -146,11 +155,13 @@ export const UserProvider: FC<UserProviderProps> = ({ children }) => {
         setAirdropInfo(null)
         setIsAuthenticated(false)
         setAuthError(null)
+        setSelectedProviderRdns(null)
 
         if (typeof window !== 'undefined') {
             localStorage.removeItem('walletAddress')
             localStorage.removeItem('accessToken')
             localStorage.removeItem('refreshToken')
+            localStorage.removeItem('selectedProviderRdns')
         }
     }, [])
 
@@ -210,6 +221,7 @@ export const UserProvider: FC<UserProviderProps> = ({ children }) => {
         setIsSessionRestored,
         availableProviders,
         setAvailableProviders,
+        selectedProviderRdns,
         connectWallet,
         disconnectWallet,
         refreshUser,
@@ -225,7 +237,8 @@ export const UserProvider: FC<UserProviderProps> = ({ children }) => {
         isAuthLoading, 
         isSessionRestored, 
         authError, 
-        availableProviders, 
+        availableProviders,
+        selectedProviderRdns,
         connectWallet, 
         disconnectWallet, 
         refreshUser, 

@@ -1,5 +1,7 @@
 import axios, { AxiosRequestConfig, InternalAxiosRequestConfig } from "axios"
 import { parsePaymentRequired, signX402Payment, signPreAuthorization, encodePaymentHeader, X402PaymentPayload, X402PaymentRequired } from "../func/x402"
+import { getSelectedWalletProvider } from "../func/walletAuth"
+import { ensureXLayer } from "../func/onchain"
 
 /**
  * 预授权签名后调用confirm接口存储签名
@@ -105,7 +107,12 @@ apiClient.interceptors.response.use(
 
         // ── x402 Payment Required ─────────────────────────────────────────
         if (status === 402 && typeof window !== "undefined") {
-            const provider = (window as any).ethereum
+            // Try to get the user's selected wallet provider first
+            let providerDetail = await getSelectedWalletProvider()
+            
+            // Fallback to window.ethereum if no selected provider found
+            // This handles cases where user logged in before the fix was applied
+            const provider = providerDetail?.provider ?? (window as any).ethereum
             if (!provider) return Promise.reject(error)
 
             const headerVal =
@@ -121,6 +128,9 @@ apiClient.interceptors.response.use(
             try {
                 const accounts: string[] = await provider.request({ method: "eth_requestAccounts" })
                 const from = accounts[0]
+                
+                // Ensure wallet is on X Layer network before signing
+                await ensureXLayer(provider)
                 
                 // 预授权使用30天有效期签名，普通支付使用单次签名
                 const payment = isPreauth 

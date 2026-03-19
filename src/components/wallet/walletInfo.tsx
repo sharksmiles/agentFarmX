@@ -17,7 +17,7 @@ const CHAIN_NAMES: Record<string, string> = {
     "0xa4b1": "Arbitrum",
     "0xa": "Optimism",
     "0xc4": "X Layer",
-    "0x115": "X Layer Testnet",
+    "0x794": "X Layer Testnet",
     "0xaa36a7": "Sepolia",
     "0x5": "Goerli",
 }
@@ -34,8 +34,8 @@ const SUPPORTED_NETWORKS = [
         icon: "/xlayer.png",
     },
     {
-        chainId: "0x115",
-        chainIdDecimal: 277,
+        chainId: "0x794",
+        chainIdDecimal: 1952,
         name: "X Layer Testnet",
         rpcUrl: "https://testrpc.xlayer.tech",
         blockExplorer: "https://www.okx.com/explorer/xlayer-test",
