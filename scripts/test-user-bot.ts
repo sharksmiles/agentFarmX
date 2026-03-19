@@ -5,6 +5,7 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 const AGENT_ID = 'cmmxg7a6z003zxzea9glcxxeg';
+const USER_ID = 'test-user-id'; // 替换为实际用户ID
 
 // 颜色输出
 const colors = {
