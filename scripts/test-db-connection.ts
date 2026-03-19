@@ -36,6 +36,7 @@ async function testConnection() {
     ]
     
     for (const table of tables) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const count = await (table.model as any).count()
       console.log(`  ✓ ${table.name}: ${count} records`)
     }
