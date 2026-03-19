@@ -13,15 +13,19 @@ import RadarModal from "@/components/game/radarmodal"
 import ShopModal from "@/components/game/shopmodal"
 import UpgradeModal from "@/components/game/upgrademodal"
 import { useEffect, useRef } from "react"
+import { usePathname } from "next/navigation"
 import { updateOnboardingStep } from "@/utils/api/game"
 
 export default function Home() {
     const { setCurrentTab, setOnBoardingStep, onBoardingStep } = useData()
     const { user, refreshUser, isAuthenticated } = useUser()
+    const pathname = usePathname()
     // 用于标记是否已初始化过 onboarding 状态
     const hasInitializedRef = useRef(false)
     // 用于追踪上一次的认证状态，检测登录事件
     const prevIsAuthenticatedRef = useRef(isAuthenticated)
+    // 用于追踪上一次的路径，检测页面切换
+    const prevPathnameRef = useRef(pathname)
 
     useEffect(() => {
         setCurrentTab("Farm")
@@ -36,12 +40,29 @@ export default function Home() {
         prevIsAuthenticatedRef.current = isAuthenticated
     }, [isAuthenticated])
 
-    // 当返回农场页面时，确保用户数据存在
+    // 当返回农场页面时，刷新用户数据
+    // 检测从其他页面切换到农场页面的情况
     useEffect(() => {
-        if (isAuthenticated && !user) {
+        // 检测是否是从其他页面切换到农场页面
+        const isComingFromOtherPage = prevPathnameRef.current !== pathname
+        prevPathnameRef.current = pathname
+
+        // 如果已认证，且（用户数据不存在 或 从其他页面切换过来），则刷新数据
+        if (isAuthenticated && (!user || isComingFromOtherPage)) {
             refreshUser().catch(console.error)
         }
-    }, [isAuthenticated, user, refreshUser])
+    }, [isAuthenticated, user, refreshUser, pathname])
+
+    // 定时刷新用户数据（每分钟刷新一次，因为 Agent 执行会更新数据）
+    useEffect(() => {
+        if (!isAuthenticated) return
+
+        const interval = setInterval(() => {
+            refreshUser().catch(console.error)
+        }, 60000) // 60秒
+
+        return () => clearInterval(interval)
+    }, [isAuthenticated, refreshUser])
 
     // 当用户数据加载完成后，初始化 onBoardingStep
     // 只在首次加载或页面刷新时执行一次

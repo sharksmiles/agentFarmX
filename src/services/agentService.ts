@@ -289,9 +289,11 @@ Return a JSON array of skill calls in order of execution.`;
     
     if (harvestablePlots.length > 0 && energy >= 10) {
       const plot = harvestablePlots[0];
+      // 注意：farm.service.ts 中的 harvest 方法会将 plotIndex - 1
+      // 所以前端/API 传入的索引是从1开始的，这里需要 +1
       decisions.push({
         skillName: 'harvest_crop',
-        parameters: { plotIndex: plot.plotIndex }
+        parameters: { plotIndex: plot.plotIndex + 1 }
       });
       reasoningParts.push(`Harvesting crop from plot ${plot.plotIndex}`);
     }
@@ -302,10 +304,12 @@ Return a JSON array of skill calls in order of execution.`;
     if (emptyPlots.length > 0 && energy >= 15 && decisions.length === 0) {
       // 根据策略选择作物
       const cropId = strategyType === 'aggressive' ? 'corn' : 'wheat';
+      // 注意：farm.service.ts 中的 plant 方法会将 plotIndex - 1
+      // 所以前端/API 传入的索引是从1开始的，这里需要 +1
       decisions.push({
         skillName: 'plant_crop',
         parameters: { 
-          plotIndex: emptyPlots[0].plotIndex,
+          plotIndex: emptyPlots[0].plotIndex + 1,
           cropId 
         }
       });
