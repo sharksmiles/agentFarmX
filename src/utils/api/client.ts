@@ -1,41 +1,34 @@
 import axios, { AxiosRequestConfig, InternalAxiosRequestConfig } from "axios"
-import { parsePaymentRequired, signX402Payment, signPreAuthorization, encodePaymentHeader, X402PaymentPayload, X402PaymentRequired } from "../func/x402"
+import { parsePaymentRequired, signX402Payment, encodePaymentHeader, X402PaymentPayload, X402PaymentRequired } from "../func/x402"
 import { getSelectedWalletProvider } from "../func/walletAuth"
 import { ensureXLayer } from "../func/onchain"
+import { permit2Preauth, Permit2PreauthPayload, Permit2PreauthRequest } from "../func/permit2"
 
 /**
- * 预授权签名后调用confirm接口存储签名
- * 注意：必须使用 apiClient 而不是 axios，以便自动携带 Authorization 头
+ * Permit2 预授权签名后调用confirm接口存储签名
  */
-async function confirmPreauthFromPayment(payReq: X402PaymentRequired, payment: X402PaymentPayload): Promise<void> {
-    // 从resource中提取agentId，格式为 "agent_preauth:${agentId}"
-    const agentId = payReq.resource?.replace("agent_preauth:", "")
-    if (!agentId) return
-    
+async function confirmPermit2Preauth(agentId: string, payload: Permit2PreauthPayload): Promise<void> {
     try {
-        // 使用 apiClient 而不是 axios，确保携带 Authorization 头
-        // 请求体结构需要匹配后端 PreauthConfirmRequest 接口
-        await apiClient.post(`/api/agents/${agentId}/preauth/confirm`, {
-            payment: {
-                x402Version: payment.x402Version,
-                scheme: payment.scheme,
-                network: payment.network,
-                payload: {
-                    signature: payment.payload.signature,
-                    authorization: {
-                        from: payment.payload.authorization.from,
-                        to: payment.payload.authorization.to,
-                        value: payment.payload.authorization.value,
-                        validAfter: payment.payload.authorization.validAfter,
-                        validBefore: payment.payload.authorization.validBefore,
-                        nonce: payment.payload.authorization.nonce,
+        await apiClient.post(`/api/agents/${agentId}/preauth/permit2`, {
+            permit2Version: payload.permit2Version,
+            scheme: payload.scheme,
+            network: payload.network,
+            payload: {
+                signature: payload.payload.signature,
+                permitSingle: {
+                    details: {
+                        token: payload.payload.permitSingle.details.token,
+                        amount: payload.payload.permitSingle.details.amount,
+                        expiration: payload.payload.permitSingle.details.expiration,
+                        nonce: payload.payload.permitSingle.details.nonce,
                     },
+                    spender: payload.payload.permitSingle.spender,
+                    sigDeadline: payload.payload.permitSingle.sigDeadline,
                 },
             },
         })
     } catch (err) {
-        console.error("Failed to confirm preauth:", err)
-        // 不抛出错误，允许重试原请求
+        console.error("Failed to confirm Permit2 preauth:", err)
     }
 }
 
@@ -132,20 +125,38 @@ apiClient.interceptors.response.use(
                 // Ensure wallet is on X Layer network before signing
                 await ensureXLayer(provider)
                 
-                // 预授权使用30天有效期签名，普通支付使用单次签名
-                const payment = isPreauth 
-                    ? await signPreAuthorization(provider, from, payReq)
-                    : await signX402Payment(provider, from, payReq)
-                const encoded = encodePaymentHeader(payment)
-
-                // 预授权签名后，调用confirm接口存储签名
                 if (isPreauth) {
-                    await confirmPreauthFromPayment(payReq, payment)
+                    // 预授权使用 Permit2 流程
+                    const THIRTY_DAYS = 30 * 24 * 60 * 60
+                    const agentId = payReq.resource?.replace("agent_preauth:", "")
+                    
+                    const permit2Request: Permit2PreauthRequest = {
+                        network: payReq.network,
+                        asset: payReq.asset,
+                        spender: payReq.payTo,
+                        amount: payReq.maxAmountRequired,
+                        expirationSeconds: THIRTY_DAYS,
+                    }
+                    
+                    // 执行 Permit2 预授权流程（可能需要先 approve Permit2）
+                    const permit2Payload = await permit2Preauth(provider, from, permit2Request)
+                    
+                    // 调用后端存储预授权
+                    if (agentId) {
+                        await confirmPermit2Preauth(agentId, permit2Payload)
+                    }
+                    
+                    // 重试原始请求
+                    const originalConfig = error.config as AxiosRequestConfig
+                    return apiClient(originalConfig)
+                } else {
+                    // 普通支付使用 x402 单次签名
+                    const payment = await signX402Payment(provider, from, payReq)
+                    const encoded = encodePaymentHeader(payment)
+                    const originalConfig = error.config as AxiosRequestConfig
+                    const retryHeaders = { ...(originalConfig.headers as Record<string, string>), "X-Payment": encoded }
+                    return apiClient({ ...originalConfig, headers: retryHeaders })
                 }
-
-                const originalConfig = error.config as AxiosRequestConfig
-                const retryHeaders = { ...(originalConfig.headers as Record<string, string>), "X-Payment": encoded }
-                return apiClient({ ...originalConfig, headers: retryHeaders })
             } catch {
                 return Promise.reject(error)
             }

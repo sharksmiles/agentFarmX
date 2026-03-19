@@ -5,6 +5,10 @@ const PAYMENT_TOKEN = process.env.PAYMENT_TOKEN_ADDRESS || '0xA0d9E5B2DAA7DBbbd6
 // 支付接收地址
 const PAYMENT_RECEIVER = process.env.PAYMENT_RECEIVER_ADDRESS || '0x0000000000000000000000000000000000000000';
 
+// 根据 chainId 获取网络标识
+const CHAIN_ID = process.env.NEXT_PUBLIC_CHAIN_ID || '196';
+const NETWORK = CHAIN_ID === '1952' ? 'xlayer-1952' : 'xlayer-196';
+
 /**
  * 标准化 API 成功响应
  */
@@ -53,7 +57,7 @@ export function paymentRequiredResponse(
 ) {
   const paymentRequired = {
     scheme: 'exact',
-    network: 'xlayer-1952',
+    network: NETWORK,
     maxAmountRequired: String(Math.floor(priceUsdc * 1e6)), // USDC 6 decimals
     resource,
     description: description || `Payment required for skill: ${skillName}`,
@@ -92,7 +96,7 @@ export function preauthRequiredResponse(
   
   const paymentRequired = {
     scheme: 'exact',
-    network: 'xlayer-1952',
+    network: NETWORK,
     maxAmountRequired: String(Math.floor(amountUsdc * 1e6)), // USDC 6 decimals
     resource: `agent_preauth:${agentId}`,
     description: `Agent预授权 ${amountUsdc} USDC，有效期30天`,

@@ -41,7 +41,7 @@ export const POST = withAuth(async (
     // 动态导入ethers
     const { ethers, JsonRpcProvider, Wallet, Contract } = await import('ethers');
 
-    const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL || 'https://testrpc.xlayer.tech';
+    const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL || 'https://rpc.xlayer.tech';
     const provider = new JsonRpcProvider(RPC_URL);
     const wallet = new Wallet(backendKey, provider);
 

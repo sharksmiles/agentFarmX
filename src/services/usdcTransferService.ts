@@ -15,7 +15,7 @@ const USDC_ABI = [
 ]
 
 // 配置
-const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL || 'https://testrpc.xlayer.tech'
+const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL || 'https://rpc.xlayer.tech'
 const USDC_ADDRESS = process.env.PAYMENT_TOKEN_ADDRESS || ''
 const BACKEND_PRIVATE_KEY = process.env.BACKEND_WALLET_PRIVATE_KEY || ''
 const PAY_TO_ADDRESS = process.env.PAY_TO_ADDRESS || '' // 收款地址

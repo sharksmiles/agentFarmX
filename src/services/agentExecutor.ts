@@ -336,61 +336,113 @@ export class AgentExecutor extends BaseService {
 
       // 执行链上转账（如果配置了链上服务）
       let txHash: string | null = null;
-      const { executeTransferWithAuthorization, parseSignature, isTransferServiceConfigured } = await import('./usdcTransferService');
       
-      if (isTransferServiceConfigured()) {
-        try {
-          // 从签名中提取v, r, s
-          const { v, r, s } = parseSignature(validAuth.signature);
-          
-          // 执行链上转账
-          const result = await executeTransferWithAuthorization({
-            from: validAuth.userId,
-            to: validAuth.payTo,
-            value: priceMicroUsdc,
-            validAfter: Math.floor(validAuth.validAfter.getTime() / 1000),
-            validBefore: Math.floor(validAuth.validBefore.getTime() / 1000),
-            nonce: validAuth.nonce,
-            v,
-            r,
-            s,
-          });
-          
-          if (result.success) {
-            txHash = result.txHash || null;
-            await this.logAgentInfo(context.agentId, 
-              `On-chain transfer successful: ${txHash}`);
-          } else {
-            // 链上转账失败，回滚数据库操作
+      // 根据授权类型选择不同的转账方式
+      if (validAuth.authType === 'permit2') {
+        // 使用 Permit2 转账
+        const { permit2TransferFrom, isPermit2Configured } = await import('./permit2Service');
+        
+        if (isPermit2Configured()) {
+          try {
+            const result = await permit2TransferFrom(
+              validAuth.userId,  // from
+              validAuth.payTo,   // to
+              priceMicroUsdc     // amount
+            );
+            
+            if (result.success) {
+              txHash = result.txHash || null;
+              await this.logAgentInfo(context.agentId, 
+                `Permit2 transfer successful: ${txHash}`);
+            } else {
+              await this.logAgentError(context.agentId, 
+                `Permit2 transfer failed: ${result.error}`);
+              return {
+                success: false,
+                message: `Payment failed: ${result.error}`,
+                error: 'PERMIT2_TRANSFER_FAILED',
+                data: { 
+                  needsPreauth: false,
+                  error: result.error,
+                },
+              };
+            }
+          } catch (error: any) {
             await this.logAgentError(context.agentId, 
-              `On-chain transfer failed: ${result.error}`);
+              `Permit2 transfer error: ${error.message}`);
             return {
               success: false,
-              message: `Payment failed: ${result.error}`,
-              error: 'ONCHAIN_TRANSFER_FAILED',
+              message: `Payment error: ${error.message}`,
+              error: 'PERMIT2_TRANSFER_ERROR',
               data: { 
                 needsPreauth: false,
-                error: result.error,
+                error: error.message,
               },
             };
           }
-        } catch (error: any) {
-          await this.logAgentError(context.agentId, 
-            `On-chain transfer error: ${error.message}`);
-          return {
-            success: false,
-            message: `Payment error: ${error.message}`,
-            error: 'ONCHAIN_TRANSFER_ERROR',
-            data: { 
-              needsPreauth: false,
-              error: error.message,
-            },
-          };
+        } else {
+          // Permit2 未配置，使用模拟模式
+          await this.logAgentInfo(context.agentId, 
+            `Using simulated payment (Permit2 service not configured)`);
         }
       } else {
-        // 未配置链上服务，使用数据库模拟模式
-        await this.logAgentInfo(context.agentId, 
-          `Using simulated payment (on-chain service not configured)`);
+        // 使用 EIP-3009 转账（旧方式）
+        const { executeTransferWithAuthorization, parseSignature, isTransferServiceConfigured } = await import('./usdcTransferService');
+        
+        if (isTransferServiceConfigured()) {
+          try {
+            // 从签名中提取v, r, s
+            const { v, r, s } = parseSignature(validAuth.signature);
+            
+            // 执行链上转账
+            const result = await executeTransferWithAuthorization({
+              from: validAuth.userId,
+              to: validAuth.payTo,
+              value: priceMicroUsdc,
+              validAfter: Math.floor(validAuth.validAfter.getTime() / 1000),
+              validBefore: Math.floor(validAuth.validBefore.getTime() / 1000),
+              nonce: validAuth.nonce,
+              v,
+              r,
+              s,
+            });
+            
+            if (result.success) {
+              txHash = result.txHash || null;
+              await this.logAgentInfo(context.agentId, 
+                `On-chain transfer successful: ${txHash}`);
+            } else {
+              // 链上转账失败，回滚数据库操作
+              await this.logAgentError(context.agentId, 
+                `On-chain transfer failed: ${result.error}`);
+              return {
+                success: false,
+                message: `Payment failed: ${result.error}`,
+                error: 'ONCHAIN_TRANSFER_FAILED',
+                data: { 
+                  needsPreauth: false,
+                  error: result.error,
+                },
+              };
+            }
+          } catch (error: any) {
+            await this.logAgentError(context.agentId, 
+              `On-chain transfer error: ${error.message}`);
+            return {
+              success: false,
+              message: `Payment error: ${error.message}`,
+              error: 'ONCHAIN_TRANSFER_ERROR',
+              data: { 
+                needsPreauth: false,
+                error: error.message,
+              },
+            };
+          }
+        } else {
+          // 未配置链上服务，使用数据库模拟模式
+          await this.logAgentInfo(context.agentId, 
+            `Using simulated payment (on-chain service not configured)`);
+        }
       }
 
       // 扣除预授权额度（数据库记录）

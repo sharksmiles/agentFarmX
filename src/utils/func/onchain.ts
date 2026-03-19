@@ -4,9 +4,17 @@
  * to keep bundle size minimal and avoid SSR issues.
  */
 
-const X_LAYER_CHAIN_ID_HEX = "0x7a0" // 1952 decimal (testnet)
+// 根据环境变量选择网络配置
+const CHAIN_ID = process.env.NEXT_PUBLIC_CHAIN_ID || '196'
+const IS_TESTNET = CHAIN_ID === '1952'
 
-// USDC (MockUSDC) contract on X Layer Testnet - supports EIP-3009
+// X Layer 网络配置
+const X_LAYER_CHAIN_ID_HEX = IS_TESTNET ? "0x7a0" : "0xc4" // 1952 (testnet) or 196 (mainnet)
+const X_LAYER_CHAIN_NAME = IS_TESTNET ? "X Layer Testnet" : "X Layer"
+const X_LAYER_RPC = IS_TESTNET ? "https://testrpc.xlayer.tech" : "https://rpc.xlayer.tech"
+const X_LAYER_EXPLORER = IS_TESTNET ? "https://www.okx.com/explorer/xlayer-test" : "https://www.okx.com/explorer/xlayer"
+
+// USDC contract on X Layer - supports EIP-3009
 const USDC_CONTRACT = process.env.NEXT_PUBLIC_USDC_ADDRESS ?? "0xA0d9E5B2DAA7DBbbd6Fba3a3B4E50B0cd768a8d0"
 
 // ERC-20 transfer(address to, uint256 amount) selector
@@ -21,7 +29,7 @@ function encodeUint256(value: bigint): string {
 }
 
 /**
- * Ensure the wallet is connected to X Layer Testnet (chainId 1952).
+ * Ensure the wallet is connected to X Layer (mainnet or testnet based on env).
  * Requests a chain switch if needed.
  */
 export async function ensureXLayer(provider: any): Promise<void> {
@@ -39,10 +47,10 @@ export async function ensureXLayer(provider: any): Promise<void> {
                 method: "wallet_addEthereumChain",
                 params: [{
                     chainId: X_LAYER_CHAIN_ID_HEX,
-                    chainName: "X Layer Testnet",
+                    chainName: X_LAYER_CHAIN_NAME,
                     nativeCurrency: { name: "OKB", symbol: "OKB", decimals: 18 },
-                    rpcUrls: ["https://testrpc.xlayer.tech"],
-                    blockExplorerUrls: ["https://www.okx.com/explorer/xlayer-test"],
+                    rpcUrls: [X_LAYER_RPC],
+                    blockExplorerUrls: [X_LAYER_EXPLORER],
                 }],
             })
         } else {

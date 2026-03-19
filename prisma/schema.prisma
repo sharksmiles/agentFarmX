@@ -347,7 +347,7 @@ model AgentPaymentAuth {
   userId          String   @db.VarChar(42)
   agentId         String
   signature       String   @db.Text
-  nonce           String   @unique @db.VarChar(66)
+  nonce           String   @unique @db.VarChar(100)  // 增加长度以支持 Permit2 nonce 格式
   authorizedValue BigInt
   usedValue       BigInt   @default(0)
   validAfter      DateTime
@@ -357,6 +357,14 @@ model AgentPaymentAuth {
   payTo           String   @db.VarChar(42)
   isActive        Boolean  @default(true)
   revokedAt       DateTime?
+  
+  // Permit2 相关字段
+  permit2Nonce    Int?     // Permit2 nonce (uint48)
+  permit2Address  String?  @db.VarChar(42)  // Permit2 合约地址
+  
+  // 授权类型: "eip3009" 或 "permit2"
+  authType        String   @default("eip3009") @db.VarChar(20)
+  
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -366,5 +374,6 @@ model AgentPaymentAuth {
   @@index([agentId])
   @@index([validBefore])
   @@index([isActive, validBefore])
+  @@index([authType])
   @@map("agent_payment_auths")
 }

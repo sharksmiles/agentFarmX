@@ -48,7 +48,7 @@ export const POST = withAuth<AgentParams>(async (
       );
     }
 
-    // 检查Agent是否有付费Skill需要预授权
+    // 检查系统中是否有付费技能
     const paidSkills = await prisma.agentSkill.findMany({
       where: {
         priceUsdc: { gt: 0 },
@@ -56,28 +56,22 @@ export const POST = withAuth<AgentParams>(async (
       },
     });
 
-    // 如果有付费Skill，检查预授权状态
+    // 如果有付费技能，每次启动都需要重新授权
     if (paidSkills.length > 0) {
-      const validAuth = await prisma.agentPaymentAuth.findFirst({
+      // 检查是否有本次启动的预授权（最近5分钟内创建的）
+      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+      const recentAuth = await prisma.agentPaymentAuth.findFirst({
         where: {
           agentId,
           isActive: true,
-          validBefore: { gt: new Date() },
+          createdAt: { gte: fiveMinutesAgo },
         },
         orderBy: { createdAt: 'desc' },
       });
 
-      // 无有效预授权或额度不足，返回402
-      if (!validAuth) {
-        return preauthRequiredResponse(agentId, 10);
-      }
-
-      const remaining = validAuth.authorizedValue - validAuth.usedValue;
-      const minRequired = BigInt(Math.floor(0.001 * 1e6)); // 最低需要 0.001 USDC
-      
-      if (remaining < minRequired) {
-        // 额度不足，需要重新预授权
-        return preauthRequiredResponse(agentId, 10);
+      // 无本次启动的预授权，返回402要求签名
+      if (!recentAuth) {
+        return preauthRequiredResponse(agentId);  // 默认 1 USDC
       }
     }
 

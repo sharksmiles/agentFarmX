@@ -56,8 +56,9 @@ async function createDefaultAgents(
   const normalizedAddress = walletAddress.toLowerCase();
   
   // 生成唯一的 SCA 地址（保持 42 字符长度）
+  // 使用有效的十六进制字符作为前缀来区分不同类型的 Agent
   const farmerSca = `0xf${normalizedAddress.slice(3, 42)}`;  // 0xf + 39字符 = 42字符
-  const raiderSca = `0xr${normalizedAddress.slice(3, 42)}`;  // 0xr + 39字符 = 42字符
+  const raiderSca = `0xe${normalizedAddress.slice(3, 42)}`;  // 0xe + 39字符 = 42字符 (使用 'e' 替代无效的 'r')
   
   const scaAddresses = [farmerSca, raiderSca];
   
