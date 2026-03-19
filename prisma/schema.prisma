@@ -23,7 +23,7 @@ model User {
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
   lastLoginAt       DateTime       @default(now())
-  onboardingStep    Int            @default(0)
+  onboardingStep    Int?
   agents            Agent[]
   farmState         FarmState?
   inventory         Inventory[]

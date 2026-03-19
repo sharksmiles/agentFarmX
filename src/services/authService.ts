@@ -13,6 +13,74 @@ const ONBOARDING_CONSTANTS = {
 };
 
 /**
+ * 默认Agent配置
+ */
+const DEFAULT_AGENTS_CONFIG = [
+  {
+    name: 'Farmer Bot',
+    strategyType: 'farming',
+    personality: 'balanced',
+    aiModel: 'gpt-3.5-turbo',
+    strategyConfig: {
+      preferred_crops: ['Wheat', 'Corn'],
+      auto_harvest: true,
+      auto_replant: true,
+      max_daily_gas_okb: 0.05,
+      max_daily_spend_usdc: 10,
+      emergency_stop_balance: 1,
+    },
+  },
+  {
+    name: 'Raider Bot',
+    strategyType: 'raider',
+    personality: 'aggressive',
+    aiModel: 'gpt-3.5-turbo',
+    strategyConfig: {
+      radar_level: 2,
+      max_daily_steals: 5,
+      max_daily_gas_okb: 0.05,
+      max_daily_spend_usdc: 10,
+      emergency_stop_balance: 1,
+    },
+  },
+];
+
+/**
+ * 为用户创建默认Agent
+ */
+async function createDefaultAgents(
+  tx: any,
+  userId: string,
+  walletAddress: string
+): Promise<void> {
+  const normalizedAddress = walletAddress.toLowerCase();
+  
+  // 生成唯一的 SCA 地址（保持 42 字符长度）
+  const farmerSca = `0xf${normalizedAddress.slice(3, 42)}`;  // 0xf + 39字符 = 42字符
+  const raiderSca = `0xr${normalizedAddress.slice(3, 42)}`;  // 0xr + 39字符 = 42字符
+  
+  const scaAddresses = [farmerSca, raiderSca];
+  
+  for (let i = 0; i < DEFAULT_AGENTS_CONFIG.length; i++) {
+    const agentData = DEFAULT_AGENTS_CONFIG[i];
+    await tx.agent.create({
+      data: {
+        userId,
+        scaAddress: scaAddresses[i],
+        name: agentData.name,
+        personality: agentData.personality,
+        strategyType: agentData.strategyType,
+        aiModel: agentData.aiModel,
+        strategyConfig: agentData.strategyConfig,
+        status: 'idle',
+        isActive: false,
+        temperature: 0.7,
+      },
+    });
+  }
+}
+
+/**
  * 认证服务
  * 处理用户认证、会话管理、Token刷新等
  */
@@ -122,62 +190,22 @@ export class AuthService {
         });
         
         // 为新用户创建默认的 Farmer 和 Raider Agent
-        // 生成唯一的 SCA 地址（保持 42 字符长度）
-        const farmerSca = `0xf${normalizedAddress.slice(3, 42)}`;  // 0xf + 39字符 = 42字符
-        const raiderSca = `0xr${normalizedAddress.slice(3, 42)}`;  // 0xr + 39字符 = 42字符
-        
-        const defaultAgents = [
-          {
-            name: 'Farmer Bot',
-            strategyType: 'farming',
-            personality: 'balanced',
-            aiModel: 'gpt-3.5-turbo',
-            scaAddress: farmerSca,
-            strategyConfig: {
-              preferred_crops: ['Wheat', 'Corn'],
-              auto_harvest: true,
-              auto_replant: true,
-              max_daily_gas_okb: 0.05,
-              max_daily_spend_usdc: 10,
-              emergency_stop_balance: 1,
-            },
-          },
-          {
-            name: 'Raider Bot',
-            strategyType: 'raider',
-            personality: 'aggressive',
-            aiModel: 'gpt-3.5-turbo',
-            scaAddress: raiderSca,
-            strategyConfig: {
-              radar_level: 2,
-              max_daily_steals: 5,
-              max_daily_gas_okb: 0.05,
-              max_daily_spend_usdc: 10,
-              emergency_stop_balance: 1,
-            },
-          },
-        ];
-        
-        for (const agentData of defaultAgents) {
-          await tx.agent.create({
-            data: {
-              userId: user.id,
-              scaAddress: agentData.scaAddress,
-              name: agentData.name,
-              personality: agentData.personality,
-              strategyType: agentData.strategyType,
-              aiModel: agentData.aiModel,
-              strategyConfig: agentData.strategyConfig,
-              status: 'idle',
-              isActive: false,
-              temperature: 0.7,
-            },
-          });
-        }
+        await createDefaultAgents(tx, user.id, normalizedAddress);
         
         isNewUser = true;
       } else {
         // 老用户：处理每日重置和能量恢复
+        
+        // 检查老用户是否有Agent，如果没有则创建默认Agent
+        const existingAgents = await tx.agent.findMany({
+          where: { userId: user.id },
+        });
+        
+        if (existingAgents.length === 0) {
+          // 老用户没有Agent，创建默认Agent
+          await createDefaultAgents(tx, user.id, normalizedAddress);
+        }
+        
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         
         // 每日Boost重置

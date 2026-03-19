@@ -78,7 +78,7 @@ async function main() {
   const firstPlot = user.farmState?.landPlots.find(p => p.plotIndex === 0);
   const hasMatureCrop = firstPlot && firstPlot.cropId && firstPlot.harvestAt && now >= firstPlot.harvestAt;
 
-  if (!hasMatureCrop && user.onboardingStep < 5) {
+  if (!hasMatureCrop && (user.onboardingStep ?? 0) < 5) {
     fixes.push('在地块0预种植已成熟的 Wheat 作物');
   }
 
@@ -115,7 +115,7 @@ async function main() {
     }
 
     // 修复预种植作物
-    if (!hasMatureCrop && user.onboardingStep < 5 && user.farmState) {
+    if (!hasMatureCrop && (user.onboardingStep ?? 0) < 5 && user.farmState) {
       const plantedAt = new Date(now.getTime() - 6 * 60 * 1000); // 6分钟前种植
       const harvestAt = new Date(now.getTime() - 1000); // 已成熟
 

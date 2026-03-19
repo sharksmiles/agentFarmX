@@ -53,11 +53,43 @@ apiClient.interceptors.response.use(
     (response) => response,
     async (error) => {
         const status = error.response?.status
+        const originalRequest = error.config
 
-        if (status === 401) {
+        if (status === 401 && !originalRequest._retry) {
+            originalRequest._retry = true
+            
+            // 尝试使用 refreshToken 刷新 accessToken
             if (typeof window !== "undefined") {
-                window.dispatchEvent(new CustomEvent("auth:unauthorized"))
+                const refreshToken = localStorage.getItem('refreshToken')
+                
+                if (refreshToken) {
+                    try {
+                        const response = await axios.post('/api/auth/refresh', {
+                            refreshToken
+                        })
+                        
+                        if (response.data.tokens?.accessToken) {
+                            localStorage.setItem('accessToken', response.data.tokens.accessToken)
+                            localStorage.setItem('refreshToken', response.data.tokens.refreshToken)
+                            
+                            // 使用新 token 重试原请求
+                            if (originalRequest.headers) {
+                                originalRequest.headers.Authorization = `Bearer ${response.data.tokens.accessToken}`
+                            }
+                            return apiClient(originalRequest)
+                        }
+                    } catch (refreshError) {
+                        // 刷新失败，清除登录状态
+                        localStorage.removeItem('accessToken')
+                        localStorage.removeItem('refreshToken')
+                        window.dispatchEvent(new CustomEvent("auth:unauthorized"))
+                        return Promise.reject(error)
+                    }
+                }
             }
+            
+            // 没有 refreshToken 或刷新失败，触发未授权事件
+            window.dispatchEvent(new CustomEvent("auth:unauthorized"))
             return Promise.reject(error)
         }
 

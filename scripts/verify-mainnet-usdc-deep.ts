@@ -74,7 +74,7 @@ async function main() {
   let domainSeparator: string | null = null
   try {
     domainSeparator = await usdc.domainSeparatorV4()
-    console.log(`   ✅ domainSeparatorV4(): ${domainSeparator.slice(0, 20)}...`)
+    console.log(`   ✅ domainSeparatorV4(): ${domainSeparator!.slice(0, 20)}...`)
   } catch (e: any) {
     console.log(`   ❌ domainSeparatorV4(): ${e.message?.slice(0, 50) || '不支持'}`)
   }
