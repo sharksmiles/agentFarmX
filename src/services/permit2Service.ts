@@ -68,16 +68,20 @@ export const PERMIT2_TYPES = {
 }
 
 // 配置
-// 可用节点（按延迟排序）: xlayer.drpc.org > okx-xlayer.rpc.blxrbdn.com > rpc.sentio.xyz
+// 主RPC节点（可通过环境变量覆盖）
 const PRIMARY_RPC_URL = process.env.NEXT_PUBLIC_RPC_URL || 'https://xlayer.drpc.org'
+// 备用RPC节点（按延迟从低到高排序）
+// 数据来源：2026-03-20 测试结果
 const FALLBACK_RPC_URLS = [
+  // 低延迟节点 (~0.107s)
   'https://okx-xlayer.rpc.blxrbdn.com',
-  'https://rpc.sentio.xyz/xlayer-mainnet',
-  // 以下节点在本地测试失败，但可能在服务器环境可用
-  'https://xlayerrpc.okx.com',
-  'https://rpc.xlayer.tech',
   'https://flap-xlayer.rpc.blxrbdn.com',
+  'https://rpc.xlayer.tech',
+  // 中等延迟节点 (~0.114-0.124s)
   'https://xlayer.rpc.blxrbdn.com',
+  'https://xlayerrpc.okx.com',
+  // 较高延迟节点 (~0.224-0.269s)
+  'https://rpc.sento.io/xyz/xlayer-mainnet',
 ]
 const USDC_ADDRESS = process.env.PAYMENT_TOKEN_ADDRESS || ''
 const BACKEND_PRIVATE_KEY = process.env.BACKEND_WALLET_PRIVATE_KEY || ''

@@ -13,7 +13,10 @@ import {
   getBackendWalletAddress,
   isPermit2Configured,
   submitPermit2Signature,
+  PERMIT2_DOMAIN,
+  PERMIT2_TYPES,
 } from '@/services/permit2Service';
+import { ethers } from 'ethers';
 
 export const dynamic = 'force-dynamic';
 
@@ -118,13 +121,7 @@ export const POST = withAuth<AgentParams>(async (
       return NextResponse.json({ error: 'Signature expired' }, { status: 400 });
     }
 
-    // 获取用户钱包地址
-    const userWalletAddress = agent.user?.walletAddress;
-    if (!userWalletAddress) {
-      return NextResponse.json({ error: 'User wallet address not found' }, { status: 400 });
-    }
-
-    // 构建 PermitSingle 对象（用于提交到链上）
+    // 构建 PermitSingle 对象（用于签名验证和链上提交）
     const permitSingleForChain = {
       details: {
         token: details.token,
@@ -136,10 +133,47 @@ export const POST = withAuth<AgentParams>(async (
       sigDeadline: BigInt(permitSingle.sigDeadline),
     };
 
+    // 从签名中恢复签名者地址
+    let signerAddress: string;
+    try {
+      signerAddress = ethers.verifyTypedData(
+        PERMIT2_DOMAIN,
+        PERMIT2_TYPES,
+        permitSingleForChain,
+        payload.signature
+      ).toLowerCase();
+      console.log(`[Permit2 Preauth] Recovered signer address: ${signerAddress}`);
+    } catch (error: any) {
+      console.error(`[Permit2 Preauth] Failed to recover signer: ${error.message}`);
+      return NextResponse.json({ error: 'Invalid signature format' }, { status: 400 });
+    }
+
+    // 获取用户钱包地址（用于验证所有权）
+    const userWalletAddress = agent.user?.walletAddress?.toLowerCase();
+    
+    // 验证签名者地址与数据库中的钱包地址匹配
+    if (userWalletAddress && signerAddress !== userWalletAddress) {
+      console.error(`[Permit2 Preauth] Signer address mismatch:`);
+      console.error(`  - Database wallet: ${userWalletAddress}`);
+      console.error(`  - Signature signer: ${signerAddress}`);
+      
+      return NextResponse.json({
+        success: false,
+        error: '钱包地址不匹配',
+        details: {
+          expectedWallet: userWalletAddress,
+          actualSigner: signerAddress,
+          message: `请使用登录时的钱包地址签名。登录钱包: ${userWalletAddress?.slice(0, 6)}...${userWalletAddress?.slice(-4)}，当前签名钱包: ${signerAddress.slice(0, 6)}...${signerAddress.slice(-4)}`
+        }
+      }, { status: 400 });
+    }
+
+    // 使用签名者地址作为 owner
+
     // 立即提交签名到 Permit2 合约
     console.log(`[Permit2 Preauth] Submitting signature to chain for agent ${agentId}`);
     const permitResult = await submitPermit2Signature(
-      userWalletAddress.toLowerCase(),
+      signerAddress,
       permitSingleForChain,
       payload.signature
     );
@@ -184,7 +218,7 @@ export const POST = withAuth<AgentParams>(async (
     
     const paymentAuth = await prisma.agentPaymentAuth.create({
       data: {
-        userId: userWalletAddress.toLowerCase(),
+        userId: signerAddress, // 使用签名者地址
         agentId,
         signature: payload.signature,
         nonce: `permit2-${details.nonce}-${sigDeadlineSeconds}`, // 存储秒格式的 sigDeadline

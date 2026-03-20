@@ -9,7 +9,7 @@ import { permit2Preauth, Permit2PreauthPayload, Permit2PreauthRequest } from "..
  */
 async function confirmPermit2Preauth(agentId: string, payload: Permit2PreauthPayload): Promise<void> {
     try {
-        await apiClient.post(`/api/agents/${agentId}/preauth/permit2`, {
+        const response = await apiClient.post(`/api/agents/${agentId}/preauth/permit2`, {
             permit2Version: payload.permit2Version,
             scheme: payload.scheme,
             network: payload.network,
@@ -27,8 +27,16 @@ async function confirmPermit2Preauth(agentId: string, payload: Permit2PreauthPay
                 },
             },
         })
-    } catch (err) {
+        
+        // 检查响应
+        if (!response.data.success) {
+            throw new Error(response.data.details?.message || response.data.error || '预授权确认失败')
+        }
+    } catch (err: any) {
         console.error("Failed to confirm Permit2 preauth:", err)
+        // 抛出错误，让调用者处理
+        const errorMsg = err.response?.data?.details?.message || err.response?.data?.error || err.message || '预授权确认失败'
+        throw new Error(errorMsg)
     }
 }
 
@@ -103,16 +111,24 @@ apiClient.interceptors.response.use(
             console.log('[Preauth] Received 402, starting payment flow...')
             
             // Try to get the user's selected wallet provider first
-            let providerDetail = await getSelectedWalletProvider()
+            const providerDetail = await getSelectedWalletProvider()
             
-            // Fallback to window.ethereum if no selected provider found
-            // This handles cases where user logged in before the fix was applied
-            const provider = providerDetail?.provider ?? (window as any).ethereum
-            if (!provider) {
-                console.error('[Preauth] No wallet provider found')
-                return Promise.reject(new Error('请先连接钱包'))
+            // 检查是否找到了正确的 provider
+            if (!providerDetail) {
+                const expectedRdns = localStorage.getItem('selectedProviderRdns')
+                const expectedWallet = localStorage.getItem('walletAddress')
+                console.error('[Preauth] No provider found!')
+                console.error('  Expected rdns:', expectedRdns)
+                console.error('  Expected wallet:', expectedWallet)
+                
+                // 不要静默 fallback 到 window.ethereum，而是提示用户重新连接钱包
+                return Promise.reject(new Error(
+                    '钱包连接丢失，请刷新页面或重新连接钱包'
+                ))
             }
-            console.log('[Preauth] Using wallet:', providerDetail?.info?.name || 'window.ethereum')
+            
+            const provider = providerDetail.provider
+            console.log('[Preauth] Using wallet:', providerDetail.info.name, '(', providerDetail.info.rdns, ')')
 
             const headerVal =
                 error.response.headers["x-payment-required"] ??
@@ -133,6 +149,17 @@ apiClient.interceptors.response.use(
                 const accounts: string[] = await provider.request({ method: "eth_requestAccounts" })
                 const from = accounts[0]
                 console.log('[Preauth] Connected account:', from)
+                
+                // 验证钱包地址是否与登录时的地址一致
+                const expectedWallet = localStorage.getItem('walletAddress')
+                if (expectedWallet && from.toLowerCase() !== expectedWallet.toLowerCase()) {
+                    console.error('[Preauth] Wallet mismatch!')
+                    console.error('  Expected:', expectedWallet)
+                    console.error('  Connected:', from)
+                    return Promise.reject(new Error(
+                        `钱包地址不匹配！请切换到登录时使用的钱包: ${expectedWallet.slice(0, 6)}...${expectedWallet.slice(-4)}`
+                    ))
+                }
                 
                 // Ensure wallet is on X Layer network before signing
                 console.log('[Preauth] Ensuring X Layer network...')

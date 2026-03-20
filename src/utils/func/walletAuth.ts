@@ -81,9 +81,29 @@ export async function getSelectedWalletProvider(): Promise<EIP6963Provider | nul
     if (typeof window === 'undefined') return null
     
     const rdns = localStorage.getItem('selectedProviderRdns')
-    if (!rdns) return null
+    if (!rdns) {
+        console.warn('[Wallet] No selectedProviderRdns found in localStorage')
+        return null
+    }
     
-    return getProviderByRdns(rdns)
+    console.log('[Wallet] Looking for provider with rdns:', rdns)
+    const provider = await getProviderByRdns(rdns, 3000)  // 增加超时到 3 秒
+    
+    if (!provider) {
+        console.warn('[Wallet] Provider not found for rdns:', rdns)
+        // 列出所有可用的钱包
+        const availableProviders: EIP6963Provider[] = []
+        const cleanup = discoverWalletProviders((p) => {
+            availableProviders.push(p)
+        })
+        await new Promise(resolve => setTimeout(resolve, 500))
+        cleanup()
+        console.log('[Wallet] Available providers:', availableProviders.map(p => p.info.rdns))
+    } else {
+        console.log('[Wallet] Found provider:', provider.info.name, provider.info.rdns)
+    }
+    
+    return provider
 }
 
 export async function connectAndSign(

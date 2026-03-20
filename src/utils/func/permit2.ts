@@ -4,6 +4,8 @@
  * 用于在浏览器中执行 Permit2 预授权流程
  */
 
+import { verifyTypedData, TypedDataEncoder, verifyMessage } from 'ethers'
+
 // Permit2 合约地址（跨链统一）
 export const PERMIT2_ADDRESS = '0x000000000022D473030F116dDEE9F6B43aC78BA3'
 
@@ -205,22 +207,155 @@ export async function signPermit2Preauth(
     verifyingContract: PERMIT2_ADDRESS,
   }
   
-  // 签名
-  const signature: string = await provider.request({
-    method: 'eth_signTypedData_v4',
-    params: [
-      userAddress,
-      JSON.stringify({
-        types: {
-          ...PERMIT_DETAILS_TYPE,
-          ...PERMIT_SINGLE_TYPE,
-        },
-        domain,
-        primaryType: 'PermitSingle',
-        message: permitSingle,
-      }),
-    ],
-  })
+  // 在签名前再次确认当前账户
+  console.log('[Permit2] Before signing, verifying account...')
+  const currentAccounts: string[] = await provider.request({ method: 'eth_accounts' })
+  console.log('[Permit2] Current wallet accounts:', currentAccounts)
+  console.log('[Permit2] Expected signer:', userAddress)
+  
+  // 检查钱包是否有多个账户
+  if (currentAccounts.length > 1) {
+    console.warn('[Permit2] WARNING: Wallet has multiple accounts!')
+    console.warn('[Permit2] Please ensure you select the correct account in the signing popup:')
+    currentAccounts.forEach((acc, i) => {
+      const isExpected = acc.toLowerCase() === userAddress.toLowerCase()
+      console.warn(`  [${i}] ${acc} ${isExpected ? '<-- EXPECTED' : ''}`)
+    })
+  }
+  
+  if (!currentAccounts.some(acc => acc.toLowerCase() === userAddress.toLowerCase())) {
+    throw new Error(
+      `钱包当前账户不匹配！请切换到账户: ${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`
+    )
+  }
+  
+  // 构建签名消息
+  const typedData = {
+    types: {
+      ...PERMIT_DETAILS_TYPE,
+      ...PERMIT_SINGLE_TYPE,
+      EIP712Domain: [
+        { name: 'name', type: 'string' },
+        { name: 'chainId', type: 'uint256' },
+        { name: 'verifyingContract', type: 'address' },
+      ],
+    },
+    domain,
+    primaryType: 'PermitSingle',
+    message: permitSingle,
+  }
+  console.log('[Permit2] Typed data for signing:', JSON.stringify(typedData, null, 2))
+  
+  // 重要提示：签名时请确认钱包弹窗中显示的账户
+  console.log('[Permit2] ⚠️ IMPORTANT: When signing, please verify the account shown in wallet popup!')
+  console.log('[Permit2] Expected account:', userAddress)
+  
+  // 尝试多种签名方式以提高兼容性
+  let signature: string
+  let usedPersonalSign = false
+  
+  // 准备验证用的数据
+  const permitSingleForVerify = {
+    details: {
+      token: permitSingle.details.token,
+      amount: BigInt(permitSingle.details.amount),
+      expiration: permitSingle.details.expiration,
+      nonce: permitSingle.details.nonce,
+    },
+    spender: permitSingle.spender,
+    sigDeadline: BigInt(permitSingle.sigDeadline),
+  }
+  
+  try {
+    // 方式1: eth_signTypedData_v4 (标准方式)
+    console.log('[Permit2] Trying eth_signTypedData_v4...')
+    signature = await provider.request({
+      method: 'eth_signTypedData_v4',
+      params: [
+        userAddress,
+        JSON.stringify(typedData),
+      ],
+    })
+    
+    // 验证签名者地址
+    const recovered = verifyTypedData(
+      domain,
+      {
+        ...PERMIT_DETAILS_TYPE,
+        ...PERMIT_SINGLE_TYPE,
+      },
+      permitSingleForVerify,
+      signature
+    )
+    
+    if (recovered.toLowerCase() !== userAddress.toLowerCase()) {
+      console.warn('[Permit2] eth_signTypedData_v4 signer mismatch, trying personal_sign...')
+      console.warn('  Expected:', userAddress)
+      console.warn('  Recovered:', recovered)
+      throw new Error('Signer mismatch')
+    }
+    
+    console.log('[Permit2] eth_signTypedData_v4 signature verified')
+    
+  } catch (v4Error: any) {
+    console.log('[Permit2] eth_signTypedData_v4 failed:', v4Error?.message)
+    
+    // 方式2: personal_sign + EIP-712 hash
+    // Permit2 支持这种签名方式，会自动检测签名类型
+    console.log('[Permit2] Trying personal_sign with EIP-712 hash...')
+    
+    // 计算 EIP-712 hash
+    const eip712Hash = TypedDataEncoder.hash(domain, {
+      ...PERMIT_DETAILS_TYPE,
+      ...PERMIT_SINGLE_TYPE,
+    }, permitSingleForVerify)
+    
+    console.log('[Permit2] EIP-712 hash:', eip712Hash)
+    
+    signature = await provider.request({
+      method: 'personal_sign',
+      params: [eip712Hash, userAddress],
+    })
+    
+    usedPersonalSign = true
+    console.log('[Permit2] personal_sign signature obtained')
+  }
+  
+  console.log('[Permit2] Signature obtained:', signature.slice(0, 20) + '...')
+  
+  // 最终验证签名
+  let recoveredAddress: string
+  
+  if (usedPersonalSign) {
+    // personal_sign 签名验证：重新计算 hash 并验证
+    const eip712Hash = TypedDataEncoder.hash(domain, {
+      ...PERMIT_DETAILS_TYPE,
+      ...PERMIT_SINGLE_TYPE,
+    }, permitSingleForVerify)
+    recoveredAddress = verifyMessage(eip712Hash, signature)
+  } else {
+    // EIP-712 签名验证
+    recoveredAddress = verifyTypedData(
+      domain,
+      {
+        ...PERMIT_DETAILS_TYPE,
+        ...PERMIT_SINGLE_TYPE,
+      },
+      permitSingleForVerify,
+      signature
+    )
+  }
+  
+  if (recoveredAddress.toLowerCase() !== userAddress.toLowerCase()) {
+    console.error('[Permit2] Signer address mismatch!')
+    console.error('  Expected:', userAddress)
+    console.error('  Recovered:', recoveredAddress)
+    throw new Error(
+      `钱包使用了错误的账户签名！请切换到登录时使用的账户: ${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`
+    )
+  }
+  
+  console.log('[Permit2] Signature verified, signer:', recoveredAddress)
   
   return {
     permit2Version: 1,

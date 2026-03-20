@@ -8,13 +8,19 @@ const prisma = new PrismaClient();
 
 const AGENT_ID = 'cmmxg7a6z003zxzea9glcxxeg';
 
-// 多个 RPC 节点
+// 多个 RPC 节点（按延迟从低到高排序）
+// 数据来源：2026-03-20 测试结果
 const RPC_URLS = [
-  'https://xlayer.drpc.org',
+  // 低延迟节点 (~0.107s)
   'https://okx-xlayer.rpc.blxrbdn.com',
-  'https://rpc.sentio.xyz/xlayer-mainnet',
-  'https://xlayerrpc.okx.com',
+  'https://flap-xlayer.rpc.blxrbdn.com',
   'https://rpc.xlayer.tech',
+  // 中等延迟节点 (~0.114-0.124s)
+  'https://xlayer.rpc.blxrbdn.com',
+  'https://xlayerrpc.okx.com',
+  'https://xlayer.drpc.org',
+  // 较高延迟节点 (~0.224-0.269s)
+  'https://rpc.sento.io/xyz/xlayer-mainnet',
 ];
 
 const PERMIT2_ADDRESS = '0x000000000022D473030F116dDEE9F6B43aC78BA3';
