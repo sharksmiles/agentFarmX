@@ -23,7 +23,7 @@ const AppInitializer = () => {
 
     useEffect(() => {
         console.log(
-            "%cWelcome to AgentFarm X. If someone asks you to open this tab, you are 100% being scammed.",
+            "Welcome to AgentFarm X. If someone asks you to open this tab, you are 100% being scammed.",
             "font-size: 20px; color: #FC9069; font-weight: bold;"
         )
 

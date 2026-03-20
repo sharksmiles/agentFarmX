@@ -11,7 +11,7 @@ export default function ConnectWallet({ onClose }: ConnectWalletProps) {
     const { availableProviders, connectWallet, isAuthLoading, authError, clearAuthError } = useUser()
 
     return (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60">
+        <div className="fixed inset-0 z-50 flex items-end justify-center ">
             <div className="w-full max-w-md bg-[#1A1F25] rounded-t-3xl p-6 pb-10 border-t border-[#353B45]">
                 <div className="flex items-center justify-between mb-6">
                     <div>

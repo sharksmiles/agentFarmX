@@ -4,6 +4,7 @@ import { useUser } from "@/components/context/userContext"
 import ConnectWallet from "@/components/wallet/connectWallet"
 import { Loader2 } from "lucide-react"
 import { ReactNode } from "react"
+import { DotLottiePlayer } from "@dotlottie/react-player"
 
 interface AuthGateProps {
     children: ReactNode
@@ -25,9 +26,17 @@ export default function AuthGate({ children }: AuthGateProps) {
             <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-end bg-[#1A1F25]">
                 <div
                     className="absolute inset-0"
+                    
+                />
+                <DotLottiePlayer
+                    src="/lottie/Animation - 1717803683490.lottie"
+                    autoplay
+                    loop
                     style={{
-                        background:
-                            "radial-gradient(ellipse at 30% 20%, rgba(89,100,245,0.15) 0%, transparent 60%), radial-gradient(ellipse at 70% 80%, rgba(89,100,245,0.10) 0%, transparent 60%)",
+                        width: "30%",
+                        height: "30%",
+                        position: "relative",
+                        top: "-50%",
                     }}
                 />
                 <ConnectWallet />
