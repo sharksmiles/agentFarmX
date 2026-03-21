@@ -27,7 +27,7 @@ export const POST = withAuth(async (
 
     // x402 支付检查 - Farming Skill 付费
     // 仅机器人执行时需要支付，手动操作(mode=manual)跳过支付
-    if (mode !== 'manual' && !hasValidPaymentHeader(request)) {
+    if (mode !== 'manual' && !context.auth.isInternal && !hasValidPaymentHeader(request)) {
       return paymentRequiredResponse(
         'plant_crop',
         PLANT_SKILL_PRICE,

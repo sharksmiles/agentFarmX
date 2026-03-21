@@ -4,6 +4,7 @@ import { withAuth, AuthContext } from '@/middleware/auth';
 import { preauthRequiredResponse } from '@/utils/api/response';
 import { AgentService } from '@/services/agentService';
 import { AgentExecutor } from '@/services/agentExecutor';
+import { getBackendWalletAddress } from '@/services/permit2Service';
 
 /**
  * Agent路由参数类型
@@ -56,22 +57,25 @@ export const POST = withAuth<AgentParams>(async (
       },
     });
 
-    // 如果有付费技能，每次启动都需要重新授权
+    // 如果有付费技能，每次启动都要求用户重新签名授权（2分钟内的新鲜auth）
     if (paidSkills.length > 0) {
-      // 检查是否有本次启动的预授权（最近5分钟内创建的）
-      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
-      const recentAuth = await prisma.agentPaymentAuth.findFirst({
+      const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
+      const currentBackendWallet = getBackendWalletAddress();
+
+      const freshAuth = await prisma.agentPaymentAuth.findFirst({
         where: {
           agentId,
           isActive: true,
-          createdAt: { gte: fiveMinutesAgo },
+          validBefore: { gt: new Date() },
+          createdAt: { gte: twoMinutesAgo },
+          payTo: { equals: currentBackendWallet, mode: 'insensitive' },
         },
         orderBy: { createdAt: 'desc' },
       });
 
-      // 无本次启动的预授权，返回402要求签名
-      if (!recentAuth) {
-        return preauthRequiredResponse(agentId);  // 默认 1 USDC
+      // 无本次启动的新鲜授权，要求用户重新签名
+      if (!freshAuth) {
+        return preauthRequiredResponse(agentId);
       }
     }
 

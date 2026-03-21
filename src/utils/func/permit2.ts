@@ -141,9 +141,10 @@ export async function getPermit2Allowance(
   })
   
   // 解析返回值 (uint160, uint48, uint48)
-  const amount = BigInt('0x' + result.slice(2, 42))
-  const expiration = parseInt(result.slice(42, 58), 16)
-  const nonce = parseInt(result.slice(58, 74), 16)
+  // ABI 编码每个返回值填充至 32 字节 = 64 个十六进制字符
+  const amount = BigInt('0x' + result.slice(2, 66))
+  const expiration = parseInt(result.slice(66, 130), 16)
+  const nonce = parseInt(result.slice(130, 194), 16)
   
   return { amount, expiration, nonce }
 }

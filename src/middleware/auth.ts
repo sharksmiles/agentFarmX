@@ -9,6 +9,7 @@ export interface AuthContext {
   userId: string;
   walletAddress: string;
   session: SessionPayload;
+  isInternal?: boolean;
 }
 
 /**
@@ -45,7 +46,19 @@ export function withAuth<TParams extends Record<string, string> = Record<string,
     context: { params: TParams }
   ): Promise<NextResponse> => {
     try {
-      // 1. 从请求头提取Token
+      // 1. 检查内部服务调用（AgentExecutor 等服务端调用）
+      const internalUserId = request.headers.get('x-user-id');
+      if (internalUserId) {
+        const authContext: AuthContext = {
+          userId: internalUserId,
+          walletAddress: '',
+          session: { userId: internalUserId, walletAddress: '' } as SessionPayload,
+          isInternal: true,
+        };
+        return handler(request, { ...context, auth: authContext });
+      }
+
+      // 2. 从请求头提取Token
       const authHeader = request.headers.get('Authorization');
       const token = JWTService.extractTokenFromHeader(authHeader);
 
@@ -53,21 +66,21 @@ export function withAuth<TParams extends Record<string, string> = Record<string,
         return unauthorizedError('Missing authentication token');
       }
 
-      // 2. 验证Token
+      // 3. 验证Token
       const session = await JWTService.verifyAccessToken(token);
 
       if (!session) {
         return unauthorizedError('Invalid or expired token');
       }
 
-      // 3. 构建认证上下文
+      // 4. 构建认证上下文
       const authContext: AuthContext = {
         userId: session.userId,
         walletAddress: session.walletAddress,
         session,
       };
 
-      // 4. 调用实际的处理函数
+      // 5. 调用实际的处理函数
       return handler(request, { ...context, auth: authContext });
     } catch (error) {
       console.error('[Auth Middleware] Error:', error);

@@ -22,7 +22,7 @@ const PERMIT2_ABI = [
   // transferFrom - 使用授权转账
   'function transferFrom(address from, address to, uint160 amount, address token) external',
   // 批量转账
-  'function transferFrom(((address from, address to, uint160 amount, address token)[] transferDetails) external',
+  'function transferFrom((address from, address to, uint160 amount, address token)[] transferDetails) external',
   // 查询授权
   'function allowance(address owner, address token, address spender) external view returns (uint160 amount, uint48 expiration, uint48 nonce)',
   // lockdown - 撤销授权

@@ -679,13 +679,67 @@ export class AgentExecutor extends BaseService {
           matureCrops: farmState?.landPlots.filter(p => p.growthStage === 4).length,
         };
 
+      case 'use_boost':
+        console.log(`[AgentExecutor] Boosting crop: userId=${context.userId}`);
+        try {
+          const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+          // Find a non-mature planted crop to boost
+          let plotIdx = parameters.plotIndex;
+          if (plotIdx === undefined) {
+            const nonMaturePlot = await prisma.landPlot.findFirst({
+              where: {
+                farmState: { userId: context.userId },
+                cropId: { not: null },
+                growthStage: { lt: 4 },
+              },
+            });
+            if (!nonMaturePlot) {
+              return { success: false, message: 'No non-mature crop to boost' };
+            }
+            plotIdx = nonMaturePlot.plotIndex;
+          }
+          const response = await fetch(`${baseUrl}/api/farm/boost`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-user-id': context.userId },
+            body: JSON.stringify({ plotIndex: plotIdx }),
+          });
+          const result = await response.json();
+          if (!response.ok) {
+            throw new Error(result.error || 'Boost failed');
+          }
+          console.log(`[AgentExecutor] Boost result:`, JSON.stringify(result));
+          return { success: true, plotIndex: plotIdx, data: result.data };
+        } catch (error: any) {
+          console.error(`[AgentExecutor] Boost failed:`, error.message);
+          throw error;
+        }
+
+      case 'unlock_land':
+        console.log(`[AgentExecutor] Unlocking land: userId=${context.userId}, plotIndex=${parameters.plotIndex}`);
+        try {
+          const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+          const response = await fetch(`${baseUrl}/api/farm/unlock`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-user-id': context.userId },
+            body: JSON.stringify({ plotIndex: parameters.plotIndex }),
+          });
+          const result = await response.json();
+          if (!response.ok) {
+            throw new Error(result.error || 'Unlock failed');
+          }
+          console.log(`[AgentExecutor] Unlock result:`, JSON.stringify(result));
+          return { success: true, data: result.data };
+        } catch (error: any) {
+          console.error(`[AgentExecutor] Unlock failed:`, error.message);
+          throw error;
+        }
+
       case 'buy_seed':
         console.log(`[AgentExecutor] Buying seeds: userId=${context.userId}, quantities=${JSON.stringify(parameters.quantities)}`);
         try {
-          // 调用商店购买 API 逻辑
           const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/shop/buy`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'x-user-id': context.userId },
             body: JSON.stringify({
               userId: context.userId,
               quantities: parameters.quantities,
@@ -828,7 +882,7 @@ export class AgentExecutor extends BaseService {
           throw error;
         }
 
-      case 'scan_farms':
+      case 'radar_scan':
         // 扫描附近农场
         console.log(`[AgentExecutor] Scanning farms: userId=${context.userId}, radarLevel=${parameters.radarLevel}`);
         try {
@@ -841,6 +895,44 @@ export class AgentExecutor extends BaseService {
           };
         } catch (error: any) {
           console.error(`[AgentExecutor] Scan failed:`, error.message);
+          throw error;
+        }
+
+      case 'water_friend_crop':
+        console.log(`[AgentExecutor] Watering friend crop: userId=${context.userId}, friendId=${parameters.friendId}`);
+        try {
+          let friendId = parameters.friendId;
+          let plotIndex = parameters.plotIndex;
+
+          if (!friendId || friendId === 'random') {
+            const target = await this.findStealableTarget(context.userId);
+            if (!target) {
+              return { success: false, message: 'No watereable crops found nearby' };
+            }
+            friendId = target.userId;
+            plotIndex = target.plotIndex;
+          }
+
+          const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+          const response = await fetch(`${baseUrl}/api/social/water`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-user-id': context.userId,
+            },
+            body: JSON.stringify({ friendId, plotIndex }),
+          });
+
+          const result = await response.json();
+          console.log(`[AgentExecutor] Water result:`, JSON.stringify(result));
+
+          if (!response.ok) {
+            throw new Error(result.error || 'Water failed');
+          }
+
+          return { success: true, friendId, plotIndex };
+        } catch (error: any) {
+          console.error(`[AgentExecutor] Water failed:`, error.message);
           throw error;
         }
 
@@ -967,37 +1059,47 @@ export class AgentExecutor extends BaseService {
     context: SkillExecutionContext
   ): Promise<any> {
     switch (skillName) {
-      case 'optimize_planting_schedule':
-        const cropConfigs = await prisma.cropConfig.findMany({
-          where: { isActive: true },
+      case 'check_energy': {
+        const farmState = await prisma.farmState.findUnique({
+          where: { userId: context.userId },
         });
-        
+        if (!farmState) return { success: false, message: 'Farm state not found' };
+        return {
+          success: true,
+          energy: farmState.energy,
+          maxEnergy: farmState.maxEnergy,
+          energyPercent: Math.round((farmState.energy / farmState.maxEnergy) * 100),
+        };
+      }
+
+      case 'optimize_farm':
+      case 'optimize_planting_schedule': {
+        const cropConfigs = await prisma.cropConfig.findMany({ where: { isActive: true } });
         const schedule = cropConfigs
           .map(crop => ({
             cropId: crop.cropType,
             profitPerHour: crop.harvestPrice / (crop.matureTime / 60),
           }))
           .sort((a, b) => b.profitPerHour - a.profitPerHour);
-        
-        return { schedule, recommendation: schedule[0]?.cropId };
+        return { success: true, schedule, recommendation: schedule[0]?.cropId };
+      }
 
-      case 'risk_assessment':
-        const user = await prisma.user.findUnique({
+      case 'analyze_market':
+      case 'risk_assessment': {
+        const userInfo = await prisma.user.findUnique({
           where: { id: context.userId },
           include: { farmState: true },
         });
-        
         const risks: string[] = [];
         const opportunities: string[] = [];
-
-        if (user?.farmState && user.farmState.energy < 50) {
+        if (userInfo?.farmState && userInfo.farmState.energy < 50) {
           risks.push('Low energy - consider waiting for recovery');
         }
-        if (user && user.farmCoins < 100) {
+        if (userInfo && userInfo.farmCoins < 100) {
           risks.push('Low coins - focus on harvesting');
         }
-
-        return { risks, opportunities };
+        return { success: true, risks, opportunities };
+      }
 
       default:
         throw new Error(`Unknown strategy skill: ${skillName}`);
