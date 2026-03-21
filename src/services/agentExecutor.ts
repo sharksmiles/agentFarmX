@@ -734,15 +734,47 @@ export class AgentExecutor extends BaseService {
           throw error;
         }
 
-      case 'buy_seed':
-        console.log(`[AgentExecutor] Buying seeds: userId=${context.userId}, quantities=${JSON.stringify(parameters.quantities)}`);
+      case 'buy_seed': {
+        const requestedQuantities: Record<string, number> = parameters.quantities || {};
+        const SEED_STOCK_THRESHOLD = 5; // 已有 >= 5 颗则跳过购买
+
+        // 查询背包中已有的种子库存
+        const existingInventory = await prisma.inventory.findMany({
+          where: {
+            userId: context.userId,
+            itemType: 'seed',
+            itemId: { in: Object.keys(requestedQuantities) },
+          },
+          select: { itemId: true, quantity: true },
+        });
+        const stockMap: Record<string, number> = {};
+        for (const item of existingInventory) {
+          stockMap[item.itemId] = item.quantity;
+        }
+
+        // 过滤掉库存充足的种子
+        const filteredQuantities: Record<string, number> = {};
+        for (const [cropId, qty] of Object.entries(requestedQuantities)) {
+          const currentStock = stockMap[cropId] || 0;
+          if (currentStock < SEED_STOCK_THRESHOLD) {
+            filteredQuantities[cropId] = qty;
+          } else {
+            console.log(`[AgentExecutor] Skipping buy_seed for ${cropId}: already have ${currentStock} in stock`);
+          }
+        }
+
+        if (Object.keys(filteredQuantities).length === 0) {
+          return { success: true, message: 'Sufficient seeds in inventory, purchase skipped', data: { skipped: true, stockMap } };
+        }
+
+        console.log(`[AgentExecutor] Buying seeds: userId=${context.userId}, quantities=${JSON.stringify(filteredQuantities)}`);
         try {
           const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/shop/buy`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'x-user-id': context.userId },
             body: JSON.stringify({
               userId: context.userId,
-              quantities: parameters.quantities,
+              quantities: filteredQuantities,
             }),
           });
           const result = await response.json();
@@ -755,6 +787,7 @@ export class AgentExecutor extends BaseService {
           console.error(`[AgentExecutor] Buy seed failed:`, error.message);
           throw error;
         }
+      }
 
       default:
         throw new Error(`Unknown farming skill: ${skillName}`);

@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
+import { errorResponse, internalErrorResponse, successResponse } from '@/utils/api/response';
 import { prisma } from '@/lib/prisma';
 
 // Force dynamic rendering
@@ -12,23 +13,13 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
 
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'userId is required' },
-        { status: 400 }
-      );
-    }
+    if (!userId) return errorResponse('userId is required', 400);
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
     });
 
-    if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
-    }
+    if (!user) return errorResponse('User not found', 404);
 
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0];
@@ -46,19 +37,23 @@ export async function GET(request: NextRequest) {
     // 判断今天是否可以签到
     const canCheckInToday = lastCheckInDate !== todayStr;
 
-    // 返回前端期望的格式：数字数组
-    const daily_reward = DAILY_REWARDS;
+    // 当前7天周期中已完成的天数 (0-7)
+    const daysInCurrentCycle = streak % 7 === 0 && streak > 0 ? 7 : streak % 7;
+    // 已完成的天数索引数组 [0, 1, 2, ...]
+    const checkedDays = Array.from({ length: daysInCurrentCycle }, (_, i) => i);
+    // 当前应领取的奖励是第几天（1-7）
+    const nextRewardDay = canCheckInToday ? daysInCurrentCycle + 1 : daysInCurrentCycle;
 
-    return NextResponse.json({
+    return successResponse({
       total_days_checked_in: streak,
+      days_in_current_cycle: daysInCurrentCycle,
+      checked_days: checkedDays,
+      next_reward_day: Math.min(nextRewardDay, 7),
       can_check_in_today: canCheckInToday,
-      daily_reward,
+      daily_reward: DAILY_REWARDS,
     });
   } catch (error) {
     console.error('GET /api/tasks/daily error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return internalErrorResponse(error);
   }
 }

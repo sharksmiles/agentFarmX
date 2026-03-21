@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withAuth, AuthContext } from '@/middleware/auth';
-import { paymentRequiredResponse, hasValidPaymentHeader } from '@/utils/api/response';
+import { paymentRequiredResponse, hasValidPaymentHeader, errorResponse, notFoundResponse, internalErrorResponse, successResponse } from '@/utils/api/response';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -34,20 +34,8 @@ export const POST = withAuth(async (
     }
     const userId = context.auth.userId;
 
-    if (!friendId) {
-      return NextResponse.json(
-        { success: false, error: 'friendId is required', code: 'BAD_REQUEST' },
-        { status: 400 }
-      );
-    }
-
-    // 验证不能访问自己
-    if (friendId === userId) {
-      return NextResponse.json(
-        { success: false, error: 'Cannot visit yourself', code: 'BAD_REQUEST' },
-        { status: 400 }
-      );
-    }
+    if (!friendId) return errorResponse('friendId is required', 400);
+    if (friendId === userId) return errorResponse('Cannot visit yourself', 400);
 
     // 验证好友是否存在
     const friendExists = await prisma.user.findUnique({
@@ -55,12 +43,7 @@ export const POST = withAuth(async (
       select: { id: true },
     });
 
-    if (!friendExists) {
-      return NextResponse.json(
-        { success: false, error: 'Friend not found', code: 'NOT_FOUND' },
-        { status: 404 }
-      );
-    }
+    if (!friendExists) return notFoundResponse('Friend not found');
 
     // Record visit
     const visit = await prisma.socialAction.create({
@@ -74,12 +57,9 @@ export const POST = withAuth(async (
       },
     });
 
-    return NextResponse.json({ success: true, data: { visit } });
+    return successResponse({ visit });
   } catch (error) {
     console.error('POST /api/social/visit error:', error);
-    return NextResponse.json(
-      { success: false, error: 'Internal server error', code: 'INTERNAL_ERROR' },
-      { status: 500 }
-    );
+    return internalErrorResponse(error);
   }
 });

@@ -10,7 +10,7 @@ AgentFarm X is an innovative Web3 application running on the **X Layer** ecosyst
 
 - **🤖 AI Agent v2.0**: LLM-driven autonomous agents with GPT-3.5/GPT-4 decision making and Function Calling skills system
 - **⛓️ X Layer Ecosystem**: High-performance, low-cost on-chain interactions based on OKX L2
-- **💰 x402 Payment**: Integrated x402 protocol with backend verification for secure payments
+- **💰 x402 + Permit2 Payment**: x402 preauth flow with Uniswap Permit2 for gasless per-skill micro-payments (0.001 USDC/skill)
 - **🎮 Database-Driven Config**: 24 crops, 50 levels, dynamic game balance via PostgreSQL
 - **🎯 Advanced Steal System**: 7-factor success rate calculation with anti-cheat protection
 - **🔗 Onchain OS Integration**: Deep integration with Trade/Market APIs, giving agents market awareness
@@ -142,7 +142,7 @@ src/
 - **Wallet**: EIP-6963 Wallet Discovery
 - **Library**: Ethers.js v6
 - **Account Abstraction**: ERC-4337 Smart Contract Account
-- **Payment**: x402 HTTP Payment Protocol + EIP-3009
+- **Payment**: x402 HTTP Payment Protocol + Uniswap Permit2 (EIP-712 preauth + per-skill transferFrom)
 
 ### Testing & DevOps
 - **Unit Tests**: Jest
@@ -160,11 +160,16 @@ src/
 - Boost crops for instant maturity
 
 ### 2. AI Agent System (v2.0)
-- Create and configure AI agents with personality & strategy
-- LLM-driven decision making with Function Calling
-- Skills system: plant_crop, harvest_crop, water_crop, steal_crop, etc.
+- Create and configure AI agents with personality (`aggressive`/`balanced`/`conservative`) & strategy (`farming`/`raider`)
+- LLM-driven decision making with Function Calling (GPT-3.5/GPT-4), plus simulation fallback
+- Decision cycle: every **5 minutes** via cron heartbeat
+- **12 Skills** across 3 categories:
+  - Farming: `plant_crop`, `harvest_crop`, `use_boost`, `unlock_land`, `buy_seed`
+  - Social: `steal_crop`, `visit_friend`, `water_friend_crop`, `radar_scan`
+  - Strategy: `check_energy`, `optimize_farm`, `analyze_market`
+- Per-skill cost: **0.001 USDC** (deducted via Permit2 preauth)
 - Monitor agent performance, costs, and decision history
-- Each Agent has its own Smart Contract Account (SCA)
+- Internal API calls authenticated via `x-user-id` header (no payment gate)
 
 ### 3. Social Features
 - Friend system with farm visits
@@ -194,6 +199,7 @@ src/
 | Contract | Address | Description |
 |----------|---------|-------------|
 | USDC | `0x74b7f16337b8972027f6196a17a631ac6de26d22` | Payment token |
+| Permit2 | `0x000000000022D473030F116dDEE9F6B43aC78BA3` | Uniswap Permit2 (agent preauth) |
 | Agent Factory | `0x7192862d94c8316FDEE4f8AE7d25f80a30C980b6` | ERC-4337 SCA factory |
 | $FARM Token | `0xee9c2a8aF5B232eaf372d78f71B3fC7126798673` | Governance token (ERC-20) |
 | Raffle | `0x94d323Aa7612D8C04e0e597c3E637d98A4243aE1` | Raffle contract |
@@ -209,9 +215,14 @@ src/
 | `/api/agents` | GET | Get user's agents |
 | `/api/agents` | POST | Create new agent |
 | `/api/agents/[id]` | GET/PATCH/DELETE | Agent CRUD |
-| `/api/agents/[id]/start` | POST | Start agent |
+| `/api/agents/[id]/start` | POST | Start agent (requires fresh Permit2 preauth) |
 | `/api/agents/[id]/stop` | POST | Stop agent |
 | `/api/agents/[id]/decide` | POST | Trigger LLM decision |
+| `/api/agents/[id]/decisions` | GET | Decision history |
+| `/api/agents/[id]/logs` | GET | Agent execution logs |
+| `/api/agents/[id]/skills` | GET | Available skills |
+| `/api/agents/[id]/preauth` | GET/POST/DELETE | Permit2 preauth status & revoke |
+| `/api/agents/[id]/preauth/permit2` | POST | Submit Permit2 signature |
 | `/api/agents/[id]/topup` | POST/GET | SCA top-up management |
 
 ---
@@ -229,8 +240,8 @@ src/
 
 ## 📊 Database Schema
 
-- **15 tables** managed by Prisma ORM
-- Core tables: User, FarmState, LandPlot, Agent, AgentSkill, AgentDecision
+- **16 tables** managed by Prisma ORM
+- Core tables: User, FarmState, LandPlot, Agent, AgentSkill, AgentDecision, AgentPaymentAuth
 - Full-text search and cursor-based pagination
 
 ---
@@ -251,6 +262,11 @@ POSTGRES_URL_NON_POOLING=
 OPENAI_API_KEY=
 CRON_SECRET=
 NEXT_PUBLIC_APP_URL=
+# Permit2 / Payment
+BACKEND_WALLET_PRIVATE_KEY=
+NEXT_PUBLIC_PAYMENT_RECEIVER=
+NEXT_PUBLIC_PAYMENT_TOKEN=
+NEXT_PUBLIC_NETWORK=
 ```
 
 ---

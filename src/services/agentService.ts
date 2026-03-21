@@ -287,99 +287,103 @@ Return a JSON array of skill calls in order of execution.`;
     const personality = agent.personality || 'balanced';
     
     // 根据策略类型选择不同的决策逻辑
+    const roll = Math.random(); // 0.0 ~ 1.0，每次决策随机投掷
+
     if (strategyType === 'raider') {
       // ========== Raider Bot 逻辑（社交/偷菜）==========
-      
-      // 获取 social 类型的技能
       const socialSkills = skills.filter((s: any) => s.category === 'social');
-      
-      // 1. 优先尝试偷菜
-      const stealSkill = socialSkills.find((s: any) => s.name === 'steal_crop');
-      if (stealSkill && energy >= 10) {
-        // 模拟选择一个目标用户（实际应从好友列表或附近农场获取）
-        decisions.push({
-          skillName: 'steal_crop',
-          parameters: { 
-            targetUserId: 'nearby',  // 模拟参数，实际需要查询可偷菜的目标
-          }
-        });
-        reasoningParts.push('Attempting to steal crop from nearby farm');
+
+      if (energy >= 15 && roll < 0.70) {
+        // 70% 概率偷菜（需要 15 energy）
+        const stealSkill = socialSkills.find((s: any) => s.name === 'steal_crop');
+        if (stealSkill) {
+          decisions.push({ skillName: 'steal_crop', parameters: { targetUserId: 'nearby' } });
+          reasoningParts.push('Attempting to steal crop from nearby farm');
+        }
+      } else if (energy >= 10 && roll < 0.85) {
+        // 15% 概率浇水好友农场
+        const waterSkill = socialSkills.find((s: any) => s.name === 'water_friend_crop');
+        if (waterSkill) {
+          decisions.push({ skillName: 'water_friend_crop', parameters: { friendId: 'random' } });
+          reasoningParts.push('Watering a friend\'s crop for goodwill');
+        }
+      } else if (energy >= 5 && roll < 0.95) {
+        // 10% 概率访问好友
+        const visitSkill = socialSkills.find((s: any) => s.name === 'visit_friend');
+        if (visitSkill) {
+          decisions.push({ skillName: 'visit_friend', parameters: { friendId: 'random' } });
+          reasoningParts.push('Visiting a friend\'s farm');
+        }
       }
-      
-      // 2. 尝试访问好友农场
-      const visitSkill = socialSkills.find((s: any) => s.name === 'visit_friend');
-      if (visitSkill && decisions.length === 0 && energy >= 5) {
-        decisions.push({
-          skillName: 'visit_friend',
-          parameters: { friendId: 'random' }
-        });
-        reasoningParts.push('Visiting a friend\'s farm');
+
+      // fallback: 雷达扫描（无 energy 消耗）
+      if (decisions.length === 0) {
+        const radarSkill = socialSkills.find((s: any) => s.name === 'radar_scan');
+        if (radarSkill) {
+          decisions.push({ skillName: 'radar_scan', parameters: { radarLevel: agent.strategyConfig?.radar_level || 2 } });
+          reasoningParts.push('Scanning nearby farms for targets (low energy or fallback)');
+        }
       }
-      
-      // 3. 检查雷达状态
-      const radarSkill = socialSkills.find((s: any) => s.name === 'scan_farms');
-      if (radarSkill && decisions.length === 0) {
-        decisions.push({
-          skillName: 'scan_farms',
-          parameters: { radarLevel: agent.strategyConfig?.radar_level || 2 }
-        });
-        reasoningParts.push('Scanning nearby farms for targets');
-      }
-      
-      // 4. 如果没有社交技能可用，随机选择一个 social 技能
+
+      // 最终 fallback：随机 social 技能
       if (decisions.length === 0 && socialSkills.length > 0) {
         const randomSocialSkill = socialSkills[Math.floor(Math.random() * socialSkills.length)];
-        decisions.push({
-          skillName: randomSocialSkill.name,
-          parameters: {}
-        });
+        decisions.push({ skillName: randomSocialSkill.name, parameters: {} });
         reasoningParts.push(`Using social skill ${randomSocialSkill.name}`);
       }
-      
+
     } else {
       // ========== Farmer Bot 逻辑（种植/收获）==========
-      
-      // 1. 检查是否有可收获的作物
-      const harvestablePlots = landPlots.filter((plot: any) => 
-        plot.cropId && plot.growthStage >= 4
-      );
-      
-      if (harvestablePlots.length > 0 && energy >= 10) {
-        const plot = harvestablePlots[0];
-        // 注意：farm.service.ts 中的 harvest 方法会将 plotIndex - 1
-        // 所以前端/API 传入的索引是从1开始的，这里需要 +1
-        decisions.push({
-          skillName: 'harvest_crop',
-          parameters: { plotIndex: plot.plotIndex + 1 }
-        });
-        reasoningParts.push(`Harvesting crop from plot ${plot.plotIndex}`);
+      const strategySkills = skills.filter((s: any) => s.category === 'strategy');
+
+      // 10% 概率优先运行策略分析（避免机械循环）
+      if (roll < 0.10 && strategySkills.length > 0) {
+        const pick = strategySkills[Math.floor(Math.random() * strategySkills.length)];
+        decisions.push({ skillName: pick.name, parameters: {} });
+        reasoningParts.push(`Running strategy analysis: ${pick.name}`);
       }
-      
-      // 2. 检查是否有空地块可以种植
-      const emptyPlots = landPlots.filter((plot: any) => !plot.cropId);
-      
-      if (emptyPlots.length > 0 && energy >= 15 && decisions.length === 0) {
-        // 根据性格选择作物
-        const cropId = personality === 'aggressive' ? 'Corn' : 'Wheat';
-        // 注意：farm.service.ts 中的 plant 方法会将 plotIndex - 1
-        // 所以前端/API 传入的索引是从1开始的，这里需要 +1
-        decisions.push({
-          skillName: 'plant_crop',
-          parameters: { 
-            plotIndex: emptyPlots[0].plotIndex + 1,
-            cropId 
-          }
-        });
-        reasoningParts.push(`Planting ${cropId} on empty plot ${emptyPlots[0].plotIndex}`);
+
+      if (decisions.length === 0) {
+        // 1. 有可收获作物则收割
+        const harvestablePlots = landPlots.filter((plot: any) =>
+          plot.cropId && plot.growthStage >= 4
+        );
+        if (harvestablePlots.length > 0 && energy >= 5) {
+          // 随机选一个成熟地块（而非固定选第一个）
+          const plot = harvestablePlots[Math.floor(Math.random() * harvestablePlots.length)];
+          decisions.push({
+            skillName: 'harvest_crop',
+            parameters: { plotIndex: plot.plotIndex + 1 }
+          });
+          reasoningParts.push(`Harvesting crop from plot ${plot.plotIndex}`);
+        }
       }
-      
-      // 3. 检查能量状态
-      if (energy < 30 && decisions.length === 0) {
-        decisions.push({
-          skillName: 'check_energy',
-          parameters: {}
-        });
-        reasoningParts.push('Checking energy status (energy is low)');
+
+      if (decisions.length === 0) {
+        // 2. 有空地则种植，作物类型根据性格随机选择
+        const emptyPlots = landPlots.filter((plot: any) => !plot.cropId);
+        if (emptyPlots.length > 0 && energy >= 10) {
+          const cropOptions = personality === 'aggressive'
+            ? ['Corn', 'Pumpkin', 'Watermelon']
+            : personality === 'conservative'
+            ? ['Wheat', 'Carrot', 'Potato']
+            : ['Wheat', 'Corn', 'Tomato', 'Carrot'];
+          const cropId = cropOptions[Math.floor(Math.random() * cropOptions.length)];
+          const plot = emptyPlots[Math.floor(Math.random() * emptyPlots.length)];
+          decisions.push({
+            skillName: 'plant_crop',
+            parameters: { plotIndex: plot.plotIndex + 1, cropId }
+          });
+          reasoningParts.push(`Planting ${cropId} on plot ${plot.plotIndex}`);
+        }
+      }
+
+      if (decisions.length === 0) {
+        // 3. 能量低则检查能量
+        if (energy < 30) {
+          decisions.push({ skillName: 'check_energy', parameters: {} });
+          reasoningParts.push('Checking energy status (energy is low)');
+        }
       }
     }
     
