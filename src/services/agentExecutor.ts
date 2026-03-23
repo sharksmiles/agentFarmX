@@ -168,6 +168,7 @@ export class AgentExecutor extends BaseService {
 
     let successCount = 0;
     let failCount = 0;
+    let batchProfit = 0;
 
     for (const d of decisions) {
       console.log(`[AgentExecutor] Processing decision: skillName=${d.skillName}`);
@@ -178,6 +179,9 @@ export class AgentExecutor extends BaseService {
         
         if (result.success) {
           successCount++;
+          if (result.data?.reward && typeof result.data.reward === 'number') {
+            batchProfit += result.data.reward;
+          }
           await this.logAgentInfo(agent.id, `Executed ${d.skillName}: ${result.message}`, {
             parameters: d.parameters,
             reasoning: d.reasoning,
@@ -209,10 +213,16 @@ export class AgentExecutor extends BaseService {
     console.log(`[AgentExecutor] Decision ${decision.id} updated: executed=true, success=${failCount === 0}`);
 
     // 更新Agent统计
+    const newTotalTasks = agent.totalTasks + decisions.length;
+    const existingSuccessCount = Math.round(agent.successRate * agent.totalTasks);
+    const newSuccessRate = newTotalTasks > 0 ? (existingSuccessCount + successCount) / newTotalTasks : 0;
+
     await prisma.agent.update({
       where: { id: agent.id },
       data: {
         totalTasks: { increment: decisions.length },
+        successRate: newSuccessRate,
+        ...(batchProfit > 0 ? { totalProfit: { increment: batchProfit } } : {}),
         lastActiveAt: new Date(),
       },
     });
